@@ -39,7 +39,7 @@ else
     unzip master.zip
 
     echo "Patching Framework [${PWD}]"
-    cp ../../../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
+    cp ../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
     patch -i CorrectWarningsAndBuildIssuesInLibYaml.patch -p0
     echo "Patching Complete"
 
@@ -74,7 +74,7 @@ else
     cmake .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
     -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=OFF \
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
-    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC
+    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DCMAKE_BUILD_TYPE=Release
     make
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}
