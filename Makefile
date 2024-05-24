@@ -25,9 +25,9 @@ NC='\033[0m'
 $(info $(shell echo -e ${GREEN}TARGET_DYNAMIC_LIB [$(TARGET_DYNAMIC_LIB)]${NC}))
 $(info $(shell echo -e ${GREEN}TARGET_STATIC_LIB [$(TARGET_STATIC_LIB)]${NC}))
 
-UT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 export PATH := $(shell pwd)/toolchain:$(PATH)
-TOP_DIR ?= $(UT_DIR)
+TOP_DIR ?= $(UT_CONTROL_DIR)
 BUILD_DIR ?= $(TOP_DIR)/obj
 BIN_DIR ?= $(TOP_DIR)/bin
 XCFLAGS := $(KCFLAGS)
@@ -66,6 +66,7 @@ OBJS := $(subst $(TOP_DIR),$(BUILD_DIR),$(SRCS:.c=.o))
 
 INC_DIRS += $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
+XCFLAGS += $(CFLAGS) $(INC_FLAGS)
 
 #VERSION=$(shell git describe --tags | head -n1)
 
@@ -90,7 +91,61 @@ export LDFLAGS
 export BUILD_LIBS
 export LDFLAGS
 
+MKDIR_P ?= @mkdir -p
+
+TARGET = linux
+
+$(info TARGET [$(TARGET)])
+
+# defaults for target arm
+ifeq ($(TARGET),arm)
+CUNIT_VARIANT=arm-rdk-linux-gnueabi
+#CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
+# CFLAGS will be overriden by Caller as required
+INC_DIRS += $(UT_DIR)/sysroot/usr/include
+endif
+
+# Defaults for target linux
+ifeq ($(TARGET),linux)
+CUNIT_VARIANT=i686-pc-linux-gnu
+CC := gcc -ggdb -o0 -Wall
+AR := ar
+endif
+
 .PHONY: clean list build lib all
+
+lib : static_lib dynamic_lib
+# Rule to create the shared library
+dynamic_lib: ${OBJS}
+	@echo -e ${GREEN}Building dyanamic lib [${YELLOW}$(LIB_DIR)/$(TARGET_DYNAMIC_LIB)${GREEN}]${NC}
+	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $^ $(LDFLAGS)
+
+static_lib: $(OBJS)
+	@echo -e ${GREEN}Building static lib [${YELLOW}$(LIB_DIR)/$(TARGET_STATIC_LIB)${GREEN}]${NC}
+	@$(MKDIR_P) $(LIB_DIR)
+	@$(AR) rcs $(LIB_DIR)/$(TARGET_STATIC_LIB) $^
+
+# Make any c source
+$(BUILD_DIR)/%.o: %.c
+	@echo -e ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
+	@$(MKDIR_P) $(dir $@)
+	@$(CC) $(XCFLAGS) -c $< -o $@
+
+.PHONY: clean list arm linux framework lib
+
+all: framework linux
+
+# Ensure the framework is built
+framework: $(eval SHELL:=/usr/bin/env bash)
+	@echo -e ${GREEN}"Ensure framework is present"${NC}
+	${TOP_DIR}/install.sh
+	@echo -e ${GREEN}Completed${NC}
+
+arm:
+	make TARGET=arm
+
+linux: framework
+	make TARGET=linux
 
 list:
 	@echo ${GREEN}List [$@]${NC}
@@ -100,7 +155,6 @@ list:
 	@echo LDFLAGS: ${LDFLAGS}
 	@echo TARGET_DYNAMIC_LIB: ${TARGET_DYNAMIC_LIB}
 	@echo TARGET_STATIC_LIB: ${TARGET_STATIC_LIB}
-	@make -C ../../ list TARGET=linux
 
 clean:
 	@echo -e ${GREEN}Performing Clean${NC}
@@ -110,7 +164,3 @@ clean:
 cleanall:
 	@echo -e ${GREEN}Performing Clean on frameworks [$(TOP_DIR)/framework]${NC}
 	@${RM} -rf $(TOP_DIR)/framework
-
-lib:
-	@mkdir -p $(LIB_DIR)
-	@make -C ../../ lib TARGET=linux
