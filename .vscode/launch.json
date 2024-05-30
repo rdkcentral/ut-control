@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "/home/jpn323/workspace/ut-core/framework/ut-control-library/src",
-      "program": "/home/jpn323/workspace/ut-core/framework/ut-control-library/src/a.out",
+      "cwd": "${workspaceFolder}/src",
+      "program": "${workspaceFolder}/src/a.out",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

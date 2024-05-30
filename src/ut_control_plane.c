@@ -1,9 +1,33 @@
-#include <libwebsockets.h>
-#include <stdio.h>
-#include <ut_control_plane.h>
-#include <pthread.h>
+/*
+ * If not stated otherwise in this file or this component's LICENSE file the
+ * following copyright and licenses apply:
+ *
+ * Copyright 2023 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-char *test_message="HI FROM SERVER";
+/* Standard Libraries */
+#include <pthread.h>
+#include <time.h>
+#include <stdio.h>
+
+/* Application Includes */
+#include <ut_control_plane.h>
+
+/* External libraries */
+#include <libwebsockets.h>
+
 
 typedef struct
 {
@@ -16,7 +40,8 @@ typedef struct
 typedef enum
 {
     EXIT_REQUESTED = 0,
-    DATA_RECIEVED
+    DATA_RECIEVED,
+    SERVER_START
 }eMessage_t;
 typedef struct
 {
@@ -44,6 +69,8 @@ int message_count = 0;
 
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t queue_condition = PTHREAD_COND_INITIALIZER;
+
+volatile static eMessage_t g_status = SERVER_START;
 
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance);
 
@@ -78,22 +105,63 @@ ut_cp_message_t* dequeue_message()
     return msg;
 }
 
+ut_control_callback_t get_callback_from_list(char* key)
+{
+    for(uint32_t i = 0; i < callback_entry_index; i++)
+    {
+        printf("\nkey = %s", key);
+        printf("\n%s\n", callbackList[i].key);
+        printf("\n%p\n", callbackList[i].pCallback);
+        if(!strcmp(key, callbackList[i].key))
+        {
+            return callbackList[i].pCallback;
+        }
+    }
+
+}
+
 void *thread_function(void *data)
 {
+    pthread_t *thread_id = (pthread_t *)data;
+    char* val;
+    ut_control_callback_t callback = NULL;
     while (1)
     {
         ut_cp_message_t *msg = dequeue_message();
-        printf("Thread received message: %s\n", msg->message);
+        g_status = msg->status;
 
         switch (msg->status)
         {
         case EXIT_REQUESTED:
             printf("EXIT REQUESTED\n");
+            pthread_exit(thread_id);
             /* code */
             break;
 
         case DATA_RECIEVED:
             printf("DATA RECEIVED\n");
+            printf("Thread received message:\n %s\n", msg->message);
+            printf("g_status: %d\n", g_status);
+            if(!msg->message)
+            {
+                break;
+            }
+            val = strstr(msg->message, "key: ") + strlen("key: ");
+            printf("val = %s\n", val);
+            callback = get_callback_from_list(val);
+            if(callback)
+            {
+                callback(NULL, NULL);
+            }
+            if(msg->message)
+            {
+                printf("\n2. msg->message pointer =%p\n", msg->message);
+                free(msg->message);
+                msg->message = NULL;
+            }
+            //free(msg->message);
+            //free(msg);
+
             /**code*/
             break;
 
@@ -103,8 +171,8 @@ void *thread_function(void *data)
         // Process message
         // Look into callback list and call the required callback
         // Free memory if no match
-        free(msg->message);
-        free(msg);
+        //free(msg->message);
+        //free(msg);
     }
     return NULL;
 }
@@ -120,15 +188,16 @@ static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void
 
     case LWS_CALLBACK_RECEIVE:
         printf("LWS_CALLBACK_RECEIVE\n");
-        ut_cp_message_t *msg = malloc(sizeof(ut_cp_callback_t));
-        msg->message = malloc((int)len + 1);
-        msg->size = (int)len;
-        msg->status = DATA_RECIEVED;
-        //sprintf(msg, "%.*s", (int)len, (char *)in);
-        strncpy(msg->message, (const char*)in, len);
-        msg->message[len] = '\0';
-        printf("Received message: %s\n", msg->message);
-        enqueue_message(msg);
+        ut_cp_message_t msg;
+        msg.message = malloc((int)len + 1);
+        printf("\n1. msg->message pointer =%p\n", msg.message);
+        msg.size = (int)len;
+        msg.status = DATA_RECIEVED;
+        memset(msg.message, 0, (int)len + 1);
+        strncpy(msg.message, (const char*)in, len);
+        msg.message[len] = '\0';
+        printf("Received message:\n %s\n", msg.message);
+        enqueue_message(&msg);
         // Echo back received message
         lws_write(wsi, in, len, LWS_WRITE_TEXT);
         break;
@@ -180,7 +249,7 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( int monitorPort )
         fprintf(stderr, "Error creating libwebsockets context\n");
         return NULL;
     }
-    pthread_create(&pInstance->thread, NULL, thread_function, NULL);
+    pthread_create(&pInstance->thread, NULL, thread_function, &pInstance->thread);
 
     return (ut_controlPlane_instance_t *)pInstance;
 
@@ -188,12 +257,18 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( int monitorPort )
 
 void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance )
 {
+
     ut_cp_instance_internal_t *pInternal = validateCPInstance(pInstance);
 
     if (pInternal == NULL)
     {
         return;
     }
+
+    ut_cp_message_t msg;
+    msg.status = EXIT_REQUESTED;
+    printf("Received message: %d\n", msg.status);
+    enqueue_message(&msg);
 
     if (pInternal->context != NULL)
     {
@@ -215,12 +290,35 @@ void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance )
 
 void UT_ControlPlane_Service( ut_controlPlane_instance_t *pInstance )
 {
+    time_t start_time = time(NULL);
+    const int timeout_duration = 30;  // in seconds
+    int n = 0;
+    
     ut_cp_instance_internal_t *pInternal = validateCPInstance(pInstance);
+    if (pInternal == NULL)
+    {
+        return;
+    }
+    
 
-    while (1)
+    while (g_status)
     {
         lws_service(pInternal->context, 50);
+        if (difftime(time(NULL), start_time) >= timeout_duration) {
+            printf("Timeout reached, exiting\n");
+            break;
+        }
     }
+}
+
+void testCallback(char *key, ut_kvp_instance_t *instance)
+{
+    printf("\n*************testCallback is called********************\n");
+}
+
+void testRMFCallback(char *key, ut_kvp_instance_t *instance)
+{
+    printf("\n**************testRMFCallback is called****************\n");
 }
 
 void main()
@@ -233,6 +331,8 @@ void main()
         printf("Contorl panel instance not created\n");
         return;
     }
+    UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "hdmicec/command", &testCallback);
+    UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "rmfAudio/a", &testRMFCallback);
     UT_ControlPlane_Service(instance_t);
     UT_ControlPlane_Exit(instance_t);
     printf("CP exit \n");
@@ -240,9 +340,17 @@ void main()
     return;
 }
 
-// void UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction)
-// {
-// }
+CallbackListStatus_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction)
+{
+    if ( callback_entry_index >=UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES ) 
+    { 
+        return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL;
+    } 
+    strncpy(callbackList[callback_entry_index].key, key,UT_CONTROL_PLANE_MAX_KEY_SIZE); 
+    callbackList[callback_entry_index].pCallback = callbackFunction; 
+    callback_entry_index++;
+    return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_OK;
+}
 
 /** Static Functions */
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance)
