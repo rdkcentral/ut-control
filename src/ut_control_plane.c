@@ -257,7 +257,7 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( int monitorPort )
         fprintf(stderr, "Error creating libwebsockets context\n");
         return NULL;
     }
-    pthread_create(&pInstance->thread, NULL, thread_function, &pInstance->thread);
+    pthread_create(&pInstance->thread, NULL, thread_function, (void *)&pInstance->thread);
 
     signal(SIGINT, cp_sigint_handler);
 

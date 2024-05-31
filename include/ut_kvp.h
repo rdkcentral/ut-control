@@ -39,6 +39,7 @@ typedef enum
     UT_KVP_STATUS_MAX                /**!< Out of range marker (not a valid status). */
 } ut_kvp_status_t;
 
+
 /**! Handle to a KVP instance. */
 typedef void ut_kvp_instance_t;    
 
@@ -66,6 +67,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
  *
  * @param[in] pInstance - Handle to the KVP instance where the parsed data will be stored.
  * @param[in] fileName - Null-terminated string containing the path to the KVP file.
+ * @param[in] is_malloced - Bool value that denotes if the string is malloced buffer or not
  *
  * @returns Status of the operation (`ut_kvp_status_t`):
  * @retval UT_KVP_STATUS_SUCCESS - The file was opened and parsed successfully.
@@ -74,7 +76,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
  * @retval UT_KVP_STATUS_PARSING_ERROR - An error occurred while parsing the file contents.
  * @retval UT_KVP_STATUS_INVALID_INSTANCE - The provided `pInstance` is not a valid KVP instance.
  */
-ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char* fileName);
+ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName, bool is_malloced);
 
 /**!
  * @brief Closes a previously opened KVP profile and frees its memory.

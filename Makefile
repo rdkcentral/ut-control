@@ -36,6 +36,7 @@ BUILD_LIBS = yes
 
 CFLAGS += -fPIC -Wall    # Flags for compilation
 LDFLAGS = -shared
+CFLAGS += -DNDEBUG
 
 # Enable libyaml Requirements
 LIBFYAML_DIR = ${TOP_DIR}/framework/libfyaml-master

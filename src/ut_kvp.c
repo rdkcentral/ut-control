@@ -87,7 +87,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
     pInternal = NULL;
 }
 
-ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
+ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName, bool is_malloced)
 {
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
@@ -103,16 +103,23 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
-    if (access(fileName, F_OK) != 0)
+    if(is_malloced)
     {
-        printf( "[%s] cannot be accesed", fileName );
-        return UT_KVP_STATUS_FILE_OPEN_ERROR;
+        pInternal->fy_handle = fy_document_build_from_malloc_string(NULL, fileName, -1);
+    }
+    else
+    {
+        if (access(fileName, F_OK) != 0)
+        {
+            printf("[%s] cannot be accesed", fileName);
+            return UT_KVP_STATUS_FILE_OPEN_ERROR;
+        }
+        pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
     }
 
-    pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
     if (NULL == pInternal->fy_handle)
     {
-        UT_LOG_ERROR("Unable to parse file");
+        UT_LOG_ERROR("Unable to parse file/memory");
         ut_kvp_close( pInstance );
         return UT_KVP_STATUS_PARSING_ERROR;
     }
