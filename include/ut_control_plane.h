@@ -25,6 +25,7 @@
 typedef enum
 {
     UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL = 0,
+    UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_INVALID_HANDLE,
     UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_OK
 }CallbackListStatus_t;
 
@@ -35,7 +36,7 @@ typedef void ut_controlPlane_instance_t;
 typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance );
 
 /* Init the control plane and create instance */
-ut_controlPlane_instance_t* UT_ControlPlane_Init( int monitorPort );
+ut_controlPlane_instance_t* UT_ControlPlane_Init();
 
 /* pInstance, will be freed on return from the callback */
 CallbackListStatus_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction);
@@ -49,6 +50,8 @@ typedef struct
   ut_control_callback_t pCallback;
 }CallbackEntry_t;
 
-static CallbackEntry_t callbackList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
+static CallbackEntry_t callbackEntryList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
 static uint32_t callback_entry_index=0;
+static ut_control_callback_t callbackList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
+static uint32_t callback_list_index=0;
 static uint32_t lastFreeCallbackSlot=0; /* Must always be < UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES */

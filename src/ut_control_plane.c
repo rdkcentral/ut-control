@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <stdio.h>
+#include <signal.h>
 
 /* Application Includes */
 #include <ut_control_plane.h>
@@ -73,6 +74,7 @@ pthread_cond_t queue_condition = PTHREAD_COND_INITIALIZER;
 volatile static eMessage_t g_status = SERVER_START;
 
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance);
+static void cp_sigint_handler(int sig);
 
 void enqueue_message(ut_cp_message_t *data)
 {
@@ -105,18 +107,21 @@ ut_cp_message_t* dequeue_message()
     return msg;
 }
 
-ut_control_callback_t get_callback_from_list(char* key)
+ut_control_callback_t *get_callback_from_list(char* key)
 {
     for(uint32_t i = 0; i < callback_entry_index; i++)
     {
-        printf("\nkey = %s", key);
-        printf("\n%s\n", callbackList[i].key);
-        printf("\n%p\n", callbackList[i].pCallback);
-        if(!strcmp(key, callbackList[i].key))
+        printf("\nkey = %s\n", key);
+        printf("\nc-key = %s\n", callbackEntryList[i].key);
+        printf("\nc-cb = %p\n", callbackEntryList[i].pCallback);
+        if(strstr(key, callbackEntryList[i].key))
         {
-            return callbackList[i].pCallback;
+            //return callbackEntryList[i].pCallback;
+            callbackList[callback_list_index] = callbackEntryList[i].pCallback;
+            callback_list_index++;
         }
     }
+    return callbackList;
 
 }
 
@@ -124,7 +129,7 @@ void *thread_function(void *data)
 {
     pthread_t *thread_id = (pthread_t *)data;
     char* val;
-    ut_control_callback_t callback = NULL;
+    ut_control_callback_t *callbacks = NULL;
     while (1)
     {
         ut_cp_message_t *msg = dequeue_message();
@@ -133,7 +138,7 @@ void *thread_function(void *data)
         switch (msg->status)
         {
         case EXIT_REQUESTED:
-            printf("EXIT REQUESTED\n");
+            printf("EXIT REQUESTED in thread. Thread going to exit\n");
             pthread_exit(thread_id);
             /* code */
             break;
@@ -148,10 +153,13 @@ void *thread_function(void *data)
             }
             val = strstr(msg->message, "key: ") + strlen("key: ");
             printf("val = %s\n", val);
-            callback = get_callback_from_list(val);
-            if(callback)
+            callbacks = get_callback_from_list(val);
+            if(callbacks)
             {
-                callback(NULL, NULL);
+                for(int i = 0; i < callback_list_index; i++)
+                {
+                    callbacks[i](NULL, NULL);
+                }
             }
             if(msg->message)
             {
@@ -239,7 +247,7 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( int monitorPort )
 
     pInstance->magic = UT_CP_MAGIC;
 
-    pInstance->info.port = 8080;
+    pInstance->info.port = monitorPort;
     pInstance->info.iface = NULL;
     pInstance->info.protocols = protocols;
 
@@ -250,6 +258,8 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( int monitorPort )
         return NULL;
     }
     pthread_create(&pInstance->thread, NULL, thread_function, &pInstance->thread);
+
+    signal(SIGINT, cp_sigint_handler);
 
     return (ut_controlPlane_instance_t *)pInstance;
 
@@ -290,24 +300,15 @@ void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance )
 
 void UT_ControlPlane_Service( ut_controlPlane_instance_t *pInstance )
 {
-    time_t start_time = time(NULL);
-    const int timeout_duration = 30;  // in seconds
-    int n = 0;
-    
     ut_cp_instance_internal_t *pInternal = validateCPInstance(pInstance);
     if (pInternal == NULL)
     {
         return;
     }
-    
 
     while (g_status)
     {
-        lws_service(pInternal->context, 50);
-        if (difftime(time(NULL), start_time) >= timeout_duration) {
-            printf("Timeout reached, exiting\n");
-            break;
-        }
+        lws_service(pInternal->context, 1000);
     }
 }
 
@@ -333,6 +334,7 @@ void main()
     }
     UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "hdmicec/command", &testCallback);
     UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "rmfAudio/a", &testRMFCallback);
+    UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "hdmicec/command", &testRMFCallback);
     UT_ControlPlane_Service(instance_t);
     UT_ControlPlane_Exit(instance_t);
     printf("CP exit \n");
@@ -342,13 +344,23 @@ void main()
 
 CallbackListStatus_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction)
 {
+    ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
+
+    if ( pInstance == NULL )
+    {
+        //assert(pInternal == NULL);
+        printf("\nInvalid Handle");
+        return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_INVALID_HANDLE;
+    }
+
     if ( callback_entry_index >=UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES ) 
     { 
         return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL;
     } 
-    strncpy(callbackList[callback_entry_index].key, key,UT_CONTROL_PLANE_MAX_KEY_SIZE); 
-    callbackList[callback_entry_index].pCallback = callbackFunction; 
+    strncpy(callbackEntryList[callback_entry_index].key, key,UT_CONTROL_PLANE_MAX_KEY_SIZE);
+    callbackEntryList[callback_entry_index].pCallback = callbackFunction;
     callback_entry_index++;
+    printf("callback_entry_index : %d\n", callback_entry_index);
     return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_OK;
 }
 
@@ -372,4 +384,9 @@ static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t 
     }
 
     return pInternal;
+}
+
+static void cp_sigint_handler(int sig)
+{
+    g_status = EXIT_REQUESTED;
 }
