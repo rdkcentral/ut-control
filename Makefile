@@ -24,13 +24,13 @@ NC='\033[0m'
 
 $(info $(shell echo -e ${GREEN}TARGET_DYNAMIC_LIB [$(TARGET_DYNAMIC_LIB)]${NC}))
 $(info $(shell echo -e ${GREEN}TARGET_STATIC_LIB [$(TARGET_STATIC_LIB)]${NC}))
+$(info $(shell echo -e ${GREEN}TARGET_BIN [$(TARGET_BIN)]${NC}))
 
 UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 export PATH := $(shell pwd)/toolchain:$(PATH)
 TOP_DIR ?= $(UT_CONTROL_DIR)
 BUILD_DIR ?= $(TOP_DIR)/obj
 BIN_DIR ?= $(TOP_DIR)/bin
-XCFLAGS := $(KCFLAGS)
 LIB_DIR := $(TOP_DIR)/lib
 BUILD_LIBS = yes
 
@@ -113,7 +113,7 @@ CC := gcc -ggdb -o0 -Wall
 AR := ar
 endif
 
-.PHONY: clean list build lib all
+.PHONY: clean list build lib test all
 
 lib : static_lib dynamic_lib
 # Rule to create the shared library
@@ -125,6 +125,12 @@ static_lib: $(OBJS)
 	@echo -e ${GREEN}Building static lib [${YELLOW}$(LIB_DIR)/$(TARGET_STATIC_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
 	@$(AR) rcs $(LIB_DIR)/$(TARGET_STATIC_LIB) $^
+
+test: framework lib
+	@echo -e ${GREEN}Linking $@ $(BUILD_DIR)/$(TARGET_BIN)${NC}
+	@$(CC) $(OBJS) -o $(BUILD_DIR)/$(TARGET_BIN) $(XLDFLAGS)
+	@$(MKDIR_P) $(BIN_DIR)
+	@cp $(BUILD_DIR)/$(TARGET_BIN) $(BIN_DIR)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
@@ -154,6 +160,7 @@ list:
 	@echo SRC_DIRS: ${SRC_DIRS}
 	@echo CFLAGS: ${CFLAGS}
 	@echo LDFLAGS: ${LDFLAGS}
+	@echo XLDFLAGS: ${XLDFLAGS}
 	@echo TARGET_DYNAMIC_LIB: ${TARGET_DYNAMIC_LIB}
 	@echo TARGET_STATIC_LIB: ${TARGET_STATIC_LIB}
 

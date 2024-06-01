@@ -322,6 +322,7 @@ void testRMFCallback(char *key, ut_kvp_instance_t *instance)
     printf("\n**************testRMFCallback is called****************\n");
 }
 
+#if 0
 void main()
 {
     printf("CP enter\n");
@@ -341,6 +342,7 @@ void main()
 
     return;
 }
+#endif
 
 CallbackListStatus_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction)
 {
