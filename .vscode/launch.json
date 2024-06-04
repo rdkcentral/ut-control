@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "${workspaceFolder}/src",
-      "program": "${workspaceFolder}/src/a.out",
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/obj/ut-control-test",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

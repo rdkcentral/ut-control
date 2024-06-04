@@ -21,10 +21,10 @@
 #include <pthread.h>
 #include <time.h>
 #include <stdio.h>
-#include <signal.h>
 
 /* Application Includes */
 #include <ut_control_plane.h>
+#include <ut_kvp.h>
 
 /* External libraries */
 #include <libwebsockets.h>
@@ -74,7 +74,11 @@ pthread_cond_t queue_condition = PTHREAD_COND_INITIALIZER;
 volatile static eMessage_t g_status = SERVER_START;
 
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance);
-static void cp_sigint_handler(int sig);
+static CallbackEntry_t callbackEntryList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
+static uint32_t callback_entry_index=0;
+static ut_control_callback_t callbackList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
+static uint32_t callback_list_index=0;
+//static uint32_t lastFreeCallbackSlot=0; /* Must always be < UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES */
 
 void enqueue_message(ut_cp_message_t *data)
 {
@@ -107,28 +111,36 @@ ut_cp_message_t* dequeue_message()
     return msg;
 }
 
-ut_control_callback_t *get_callback_from_list(char* key)
+void *get_callback_from_list(char* message)
 {
-    for(uint32_t i = 0; i < callback_entry_index; i++)
+    ut_kvp_instance_t *pkvpInstance = NULL;
+    ut_kvp_status_t status;
+    char result_kvp[UT_KVP_MAX_ELEMENT_SIZE] = {0xff};
+
+    pkvpInstance = ut_kvp_createInstance();
+    status = ut_kvp_open(pkvpInstance, message, true);
+    if (status != UT_KVP_STATUS_SUCCESS)
     {
-        printf("\nkey = %s\n", key);
+        printf("\nut_kvp_open() - Read Failure\n");
+        return NULL;
+    }
+    for (uint32_t i = 0; i < callback_entry_index; i++)
+    {
         printf("\nc-key = %s\n", callbackEntryList[i].key);
         printf("\nc-cb = %p\n", callbackEntryList[i].pCallback);
-        if(strstr(key, callbackEntryList[i].key))
+        if (UT_KVP_STATUS_SUCCESS == ut_kvp_getStringField(pkvpInstance, callbackEntryList[i].key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE))
         {
-            //return callbackEntryList[i].pCallback;
+            // return callbackEntryList[i].pCallback;
             callbackList[callback_list_index] = callbackEntryList[i].pCallback;
             callback_list_index++;
         }
     }
     return callbackList;
-
 }
 
 void *thread_function(void *data)
 {
     pthread_t *thread_id = (pthread_t *)data;
-    char* val;
     ut_control_callback_t *callbacks = NULL;
     while (1)
     {
@@ -151,9 +163,11 @@ void *thread_function(void *data)
             {
                 break;
             }
-            val = strstr(msg->message, "key: ") + strlen("key: ");
-            printf("val = %s\n", val);
-            callbacks = get_callback_from_list(val);
+            //UT_ASSERT_STRING_EQUAL(result_kvp, checkField);
+            //UT_LOG( "checkStringDeadBeefNoQuotes[%s]", result_kvp );
+            //val = strstr(msg->message, "key: ") + strlen("key: ");
+            //printf("val = %s\n", val);
+            callbacks = (ut_control_callback_t *)get_callback_from_list(msg->message);
             if(callbacks)
             {
                 for(int i = 0; i < callback_list_index; i++)
@@ -257,9 +271,7 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( int monitorPort )
         fprintf(stderr, "Error creating libwebsockets context\n");
         return NULL;
     }
-    pthread_create(&pInstance->thread, NULL, thread_function, (void *)&pInstance->thread);
-
-    signal(SIGINT, cp_sigint_handler);
+    pthread_create(&pInstance->thread, NULL, thread_function, (void *)pInstance->thread);
 
     return (ut_controlPlane_instance_t *)pInstance;
 
@@ -322,8 +334,8 @@ void testRMFCallback(char *key, ut_kvp_instance_t *instance)
     printf("\n**************testRMFCallback is called****************\n");
 }
 
-#if 0
-void main()
+#if 1
+void control_plane_main()
 {
     printf("CP enter\n");
     ut_controlPlane_instance_t *instance_t = UT_ControlPlane_Init(8080);
@@ -335,7 +347,7 @@ void main()
     }
     UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "hdmicec/command", &testCallback);
     UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "rmfAudio/a", &testRMFCallback);
-    UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "hdmicec/command", &testRMFCallback);
+    //UT_ControlPlane_RegisterCallbackOnMessage(instance_t, "hdmicec/command", &testRMFCallback);
     UT_ControlPlane_Service(instance_t);
     UT_ControlPlane_Exit(instance_t);
     printf("CP exit \n");
@@ -348,7 +360,7 @@ CallbackListStatus_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_i
 {
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
 
-    if ( pInstance == NULL )
+    if ( pInternal == NULL )
     {
         //assert(pInternal == NULL);
         printf("\nInvalid Handle");
@@ -388,7 +400,7 @@ static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t 
     return pInternal;
 }
 
-static void cp_sigint_handler(int sig)
+void cp_sigint_handler(int sig)
 {
     g_status = EXIT_REQUESTED;
 }

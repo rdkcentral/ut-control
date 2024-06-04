@@ -53,7 +53,7 @@ function check_next_revision()
 if [ -d "./ut-core" ]; then
     # ut-core exists so run the makefile from ut
     check_next_revision
-    make -C . -f Makefile $@
+    #make test
 else
     echo "Cloning Unit Test Core System"
     #TODO: Correct the git urls

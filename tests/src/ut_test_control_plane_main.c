@@ -15,26 +15,19 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
-#include <stdlib.h>
+#include <signal.h>
+
 #include <ut.h>
 
-extern void register_cp_functions(void);
+extern void register_cp_function(void);
+extern void cp_sigint_handler(int sig);
 
-/**
- * @brief Main launch function for the test app
- * 
- * @param argc - param count from the command line
- * @param argv  - param list from the command line
- * @return int - 0 on success, otherwise failure
- */
-int main(int argc, char** argv) 
+int main(int argc, char** argv)
 {
-    /* Register tests as required, then call the UT-main to support switches and triggering */
     UT_init( argc, argv );
-    register_cp_functions();
-
-    return 0;
+    signal(SIGINT, cp_sigint_handler);
+    register_cp_function();
+    UT_run_tests();
 }
-

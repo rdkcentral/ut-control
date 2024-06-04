@@ -35,15 +35,17 @@ CUNIT_DIR +=  $(UT_CONTROL_TEST_DIR)/ut-core/framework/CUnit-2.1-3/CUnit
 CUNIT_SRC_DIRS += $(CUNIT_DIR)/Sources
 INC_DIRS += $(CUNIT_DIR)/Headers
 SRC_DIRS += $(CUNIT_SRC_DIRS)/Framework
+SRC_DIRS += $(UT_DIR)/src
 INC_DIRS += $(UT_DIR)/include
 INC_DIRS += $(UT_DIR)/src
-SRC_DIRS += $(UT_DIR)/src
+INC_DIRS += $(UT_CONTROL_TEST_DIR)/../include
 
 INC_DIRS += $(UT_CONTROL_TEST_DIR)/include
+INC_DIRS += $(UT_DIR)/include
 SRC_DIRS += $(UT_CONTROL_TEST_DIR)/src
 
-XLDFLAGS += -shared -L $(UT_CONTROL_TEST_DIR)/../lib -lutcontrollibrary -pthread
-export LD_LIBRARY_PATH=$(UT_CONTROL_TEST_DIR)/../lib
+XLDFLAGS += -L $(UT_CONTROL_TEST_DIR)/lib -lutcontrollibrary -pthread
+export LD_LIBRARY_PATH=$(UT_CONTROL_TEST_DIR)/lib/
 
 VERSION=$(shell cd $(UT_DIR) && git describe --tags | head -n1)
 
@@ -65,6 +67,16 @@ export XLDFLAGS
 
 .PHONY: clean list build test all
 
+test: build
+	@make -C ../ test TARGET=linux
+
+build:
+	$(eval SHELL:=/usr/bin/env bash)
+	@echo -e ${GREEN}"Ensure ut-core is present"${NC}
+	cd ${UT_CONTROL_TEST_DIR}
+	./build.sh
+	@echo -e ${GREEN}Completed${NC}
+
 list:
 	@echo ${GREEN}List [$@]${NC}
 	@echo INC_DIRS: ${INC_DIRS}
@@ -78,15 +90,13 @@ list:
 
 clean:
 	@echo ${GREEN}Clean [$@]${NC}
+	@$(RM) -rf $(UT_CONTROL_TEST_DIR)/lib
 	@make -C ../ clean TARGET=linux
 
 cleanall:
 	@echo ${GREEN}Clean [$@]${NC}
 	@${RM} -rf $(UT_DIR)
 	@make -C ../ cleanall TARGET=linux
-
-test:
-	@make -C ../ test TARGET=linux
 
 
 

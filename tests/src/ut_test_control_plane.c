@@ -26,43 +26,21 @@
 /* Module Includes */
 #include <ut.h>
 #include <ut_log.h>
+
 #include <ut_control_plane.h>
 
-#define KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE "assets/no_data_file.yaml"
-#define KVP_VALID_TEST_ZERO_LENGTH_YAML_FILE "assets/zero_length.yaml"
-#define KVP_VALID_TEST_NO_FILE "assets/this_does_not_exist.yaml"
-#define KVP_VALID_TEST_YAML_FILE "assets/test_kvp.yaml"
-#define KVP_VALID_TEST_JSON_FILE "assets/test_kvp.json"
+static UT_test_suite_t *gpAssertSuite1 = NULL;
 
-//static ut_kvp_instance_t *gpMainTestInstance = NULL;
-static UT_test_suite_t *gpKVPSuite = NULL;
-
-//static int test_ut_kvp_createGlobalYAMLInstance(void);
-
-
-void test_ut_kvp_testCreateDestroy(void)
+void test_ut_control_open()
 {
-   
+    control_plane_main();
 }
 
-void test_ut_kvp_open( void )
+void register_cp_function()
 {
-   
-}
-
-void test_ut_kvp_open_malloced( void )
-{
-    
-}
-
-void register_cp_functions( void )
-{
-    gpKVPSuite=gpKVPSuite;
-    gpKVPSuite = UT_add_suite("ut-kvp - test functions ", NULL, NULL);
-    assert(gpKVPSuite != NULL);
-
-    UT_add_test(gpKVPSuite, "kvp create / destroy", test_ut_kvp_testCreateDestroy);
-    UT_add_test(gpKVPSuite, "kvp read", test_ut_kvp_open);
-    UT_add_test(gpKVPSuite, "kvp read with malloced data", test_ut_kvp_open_malloced);
-
+    gpAssertSuite1 = UT_add_suite("ut-cp - assert open / close", NULL, NULL);
+    assert(gpAssertSuite1 != NULL);
+    UT_add_test(gpAssertSuite1, "kvp profile open()", test_ut_control_open);
+    //UT_add_test(gpAssertSuite1, "kvp profile getInstance()", test_ut_kvp_get_instance);
+    //UT_add_test(gpAssertSuite1, "kvp profile close()", test_ut_kvp_profile_close);
 }

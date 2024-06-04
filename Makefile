@@ -32,12 +32,10 @@ TOP_DIR ?= $(UT_CONTROL_DIR)
 BUILD_DIR ?= $(TOP_DIR)/obj
 BIN_DIR ?= $(TOP_DIR)/bin
 LIB_DIR := $(TOP_DIR)/lib
+LIB_TEST_DIR := $(TOP_DIR)/tests/lib
 BUILD_LIBS = yes
 
-CFLAGS += -fPIC -Wall    # Flags for compilation
-LDFLAGS = -shared
-CFLAGS += -DNDEBUG
-
+ifneq ($(TARGET_BIN),ut-control-test)
 # Enable libyaml Requirements
 LIBFYAML_DIR = ${TOP_DIR}/framework/libfyaml-master
 ASPRINTF_DIR = ${TOP_DIR}/framework/asprintf/asprintf.c-master/
@@ -59,6 +57,11 @@ LDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -l:libwebsockets.a
 SRC_DIRS += ${TOP_DIR}/src
 INC_DIRS += ${TOP_DIR}/include
 #CFLAGS += -DUT_LOG_ENABLED
+
+CFLAGS += -fPIC -Wall -shared   # Flags for compilation
+#LDFLAGS = -shared
+CFLAGS += -DNDEBUG
+endif
 
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
 
@@ -91,6 +94,7 @@ export CFLAGS
 export LDFLAGS
 export BUILD_LIBS
 export LDFLAGS
+export LD_LIBRARY_PATH
 
 MKDIR_P ?= @mkdir -p
 
@@ -120,13 +124,16 @@ lib : static_lib dynamic_lib
 dynamic_lib: ${OBJS}
 	@echo -e ${GREEN}Building dyanamic lib [${YELLOW}$(LIB_DIR)/$(TARGET_DYNAMIC_LIB)${GREEN}]${NC}
 	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $^ $(LDFLAGS)
+	@cp $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $(LIB_TEST_DIR)
 
 static_lib: $(OBJS)
 	@echo -e ${GREEN}Building static lib [${YELLOW}$(LIB_DIR)/$(TARGET_STATIC_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
+	@$(MKDIR_P) $(LIB_TEST_DIR)
 	@$(AR) rcs $(LIB_DIR)/$(TARGET_STATIC_LIB) $^
+	@cp $(LIB_DIR)/$(TARGET_STATIC_LIB) $(LIB_TEST_DIR)
 
-test: framework lib
+test: ${OBJS}
 	@echo -e ${GREEN}Linking $@ $(BUILD_DIR)/$(TARGET_BIN)${NC}
 	@$(CC) $(OBJS) -o $(BUILD_DIR)/$(TARGET_BIN) $(XLDFLAGS)
 	@$(MKDIR_P) $(BIN_DIR)
@@ -145,7 +152,8 @@ all: framework linux
 # Ensure the framework is built
 framework: $(eval SHELL:=/usr/bin/env bash)
 	@echo -e ${GREEN}"Ensure framework is present"${NC}
-	${TOP_DIR}/install.sh
+	cd ${UT_CONTROL_DIR}
+	./install.sh
 	@echo -e ${GREEN}Completed${NC}
 
 arm:
@@ -163,6 +171,7 @@ list:
 	@echo XLDFLAGS: ${XLDFLAGS}
 	@echo TARGET_DYNAMIC_LIB: ${TARGET_DYNAMIC_LIB}
 	@echo TARGET_STATIC_LIB: ${TARGET_STATIC_LIB}
+	@echo LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}
 
 clean:
 	@echo -e ${GREEN}Performing Clean${NC}
