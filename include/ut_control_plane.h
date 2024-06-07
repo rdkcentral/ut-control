@@ -22,12 +22,17 @@
 #define UT_CONTROL_PLANE_MAX_KEY_SIZE (64)
 #define UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES (32)
 
+
+ // UT_CONTROL_PLANE_STATUS_OK = 0,
+ // UT_CONTROL_PLANE_INVALID_HANDLE,
+
 typedef enum
 {
-    UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL = 0,
-    UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_INVALID_HANDLE,
-    UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_OK
-}CallbackListStatus_t;
+  UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL = 0,
+  UT_CONTROL_PLANE_INVALID_PARAM,
+  UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_INVALID_HANDLE,
+  UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_OK
+}ut_control_plane_status_t;
 
 /**! Handle to a control plane instance. */
 typedef void ut_controlPlane_instance_t;
@@ -36,23 +41,19 @@ typedef void ut_controlPlane_instance_t;
 typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance );
 
 /* Init the control plane and create instance */
-ut_controlPlane_instance_t* UT_ControlPlane_Init();
+ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
 
 /* pInstance, will be freed on return from the callback */
-CallbackListStatus_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction);
+ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction);
+
+/* Start the control Plane */
+void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance);
 
 /* Exit the controlPlane instance and release */
 void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance );
 
 //TODO: to be deleted
-void control_plane_main();
-void testCallback(char *key, ut_kvp_instance_t *instance);
-void testRMFCallback(char *key, ut_kvp_instance_t *instance);
-void UT_ControlPlane_Service( ut_controlPlane_instance_t *pInstance );
-void cp_sigint_handler(int sig);
+//void control_plane_main();
+///void testCallback(char *key, ut_kvp_instance_t *instance);
+//void testRMFCallback(char *key, ut_kvp_instance_t *instance);
 
-typedef struct
-{
-  char key[UT_CONTROL_PLANE_MAX_KEY_SIZE];
-  ut_control_callback_t pCallback;
-}CallbackEntry_t;

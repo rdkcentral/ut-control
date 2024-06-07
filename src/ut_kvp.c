@@ -87,7 +87,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
     pInternal = NULL;
 }
 
-ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName, bool is_malloced)
+ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 {
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
@@ -103,24 +103,46 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName, bool i
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
-    if(is_malloced)
+    if (access(fileName, F_OK) != 0)
     {
-        pInternal->fy_handle = fy_document_build_from_malloc_string(NULL, fileName, -1);
+        printf("[%s] cannot be accesed", fileName);
+        return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
-    else
-    {
-        if (access(fileName, F_OK) != 0)
-        {
-            printf("[%s] cannot be accesed", fileName);
-            return UT_KVP_STATUS_FILE_OPEN_ERROR;
-        }
-        pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
-    }
+    pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
 
     if (NULL == pInternal->fy_handle)
     {
         UT_LOG_ERROR("Unable to parse file/memory");
         ut_kvp_close( pInstance );
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    return UT_KVP_STATUS_SUCCESS;
+}
+
+ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length )
+{
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
+    if (pInstance == NULL)
+    {
+        return UT_KVP_STATUS_INVALID_INSTANCE;
+    }
+
+    if (pData == NULL)
+    {
+        assert( pData != NULL );
+        UT_LOG_ERROR( "Invalid Param [string]" );
+        return UT_KVP_STATUS_INVALID_PARAM;
+    }
+
+    pInternal->fy_handle = fy_document_build_from_malloc_string(NULL, pData, length);
+
+    if (NULL == pInternal->fy_handle)
+    {
+        UT_LOG_ERROR("Unable to parse file/memory");
+        ut_kvp_close( pInstance );
+        free(pData);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
@@ -141,6 +163,36 @@ void ut_kvp_close(ut_kvp_instance_t *pInstance)
         fy_document_destroy(pInternal->fy_handle);
         pInternal->fy_handle = NULL;
     }
+}
+
+void ut_kvp_print( ut_kvp_instance_t *pInstance )
+{
+     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+     char *kvp_yaml_output = NULL;
+
+     if (pInternal == NULL)
+    {
+        return;
+    }
+
+    if ( pInternal->fy_handle == NULL)
+    {
+        return;
+    }
+
+    kvp_yaml_output = fy_emit_document_to_string(pInternal->fy_handle, FYECF_DEFAULT);
+    if (kvp_yaml_output == NULL)
+    {
+        UT_LOG_ERROR("Failed to emit YAML document\n");
+        return;
+    }
+
+    // Print the emitted YAML string
+    printf("%s\n", kvp_yaml_output);
+
+    // Free the emitted YAML string
+    free(kvp_yaml_output);
+
 }
 
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pzResult)
@@ -181,7 +233,7 @@ static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char 
     fy_result = fy_document_scanf(pInternal->fy_handle, zEntry, pzResult);
     if ( fy_result <= 0 )
     {
-        assert( fy_result > 0 );
+        //assert( fy_result > 0 );
         UT_LOG_ERROR("Parsing Error");
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -198,7 +250,7 @@ bool ut_kvp_getBoolField( ut_kvp_instance_t *pInstance, const char *pszKey )
     status = ut_kvp_getField(pInstance, pszKey, result);
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
-        assert(status == UT_KVP_STATUS_SUCCESS);
+        //assert(status == UT_KVP_STATUS_SUCCESS);
         return false;
     }
 
@@ -219,7 +271,7 @@ static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *psz
     status = ut_kvp_getField(pInstance, pszKey, result);
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
-        assert(status != UT_KVP_STATUS_SUCCESS);
+        //assert(status != UT_KVP_STATUS_SUCCESS);
         return 0;
     }
 
@@ -292,7 +344,7 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
     status = ut_kvp_getField(pInstance, pszKey, result);
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
-        assert(status != UT_KVP_STATUS_SUCCESS);
+        //assert(status != UT_KVP_STATUS_SUCCESS);
         return 0;
     }
 
@@ -378,7 +430,7 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     node = fy_node_by_path(root, pszKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
-        assert( node != NULL );
+        //assert( node != NULL );
         UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
         return UT_KVP_STATUS_KEY_NOT_FOUND;
     }
@@ -389,7 +441,7 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
         pString = fy_node_get_scalar0(node);
         if ( pString == NULL )
         {
-            assert( pString != NULL );
+            //assert( pString != NULL );
             UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
             return UT_KVP_STATUS_KEY_NOT_FOUND;
         }

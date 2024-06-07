@@ -57,7 +57,11 @@
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
-    "lws-service.h": "c"
+    "lws-service.h": "c",
+    "ut_kvp.h": "c",
+    "string": "c",
+    "libfyaml.h": "c",
+    "ut_control_plane.h": "c"
   },
   "cmake.configureOnOpen": true
 }

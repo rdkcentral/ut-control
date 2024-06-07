@@ -94,7 +94,7 @@ export CFLAGS
 export LDFLAGS
 export BUILD_LIBS
 export LDFLAGS
-export LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$(LIB_DIR)
 
 MKDIR_P ?= @mkdir -p
 
@@ -119,17 +119,14 @@ endif
 
 .PHONY: clean list build lib test all
 
-lib : static_lib dynamic_lib
-# Rule to create the shared library
-dynamic_lib: ${OBJS}
+# Rule to create the shared and static library
+lib : ${OBJS}
 	@echo -e ${GREEN}Building dyanamic lib [${YELLOW}$(LIB_DIR)/$(TARGET_DYNAMIC_LIB)${GREEN}]${NC}
-	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $^ $(LDFLAGS)
-	@cp $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $(LIB_TEST_DIR)
-
-static_lib: $(OBJS)
 	@echo -e ${GREEN}Building static lib [${YELLOW}$(LIB_DIR)/$(TARGET_STATIC_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
 	@$(MKDIR_P) $(LIB_TEST_DIR)
+	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $^ $(LDFLAGS)
+	@cp $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $(LIB_TEST_DIR)
 	@$(AR) rcs $(LIB_DIR)/$(TARGET_STATIC_LIB) $^
 	@cp $(LIB_DIR)/$(TARGET_STATIC_LIB) $(LIB_TEST_DIR)
 
@@ -150,10 +147,10 @@ $(BUILD_DIR)/%.o: %.c
 all: framework linux
 
 # Ensure the framework is built
-framework: $(eval SHELL:=/usr/bin/env bash)
+framework:
 	@echo -e ${GREEN}"Ensure framework is present"${NC}
 	cd ${UT_CONTROL_DIR}
-	./install.sh
+	@./install.sh
 	@echo -e ${GREEN}Completed${NC}
 
 arm:

@@ -1,0 +1,12 @@
+{
+  "test": {
+    "myCommand": "somevalue",
+    "x": 1,
+    "on": true
+  },
+  "test2": {
+    "myCommand1": "somevalue1",
+    "y": 2,
+    "off": false
+  }
+}

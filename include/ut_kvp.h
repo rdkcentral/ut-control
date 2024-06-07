@@ -76,7 +76,24 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
  * @retval UT_KVP_STATUS_PARSING_ERROR - An error occurred while parsing the file contents.
  * @retval UT_KVP_STATUS_INVALID_INSTANCE - The provided `pInstance` is not a valid KVP instance.
  */
-ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName, bool is_malloced);
+ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName);
+
+/**!
+ * @brief Opens and parses a Key-Value Pair (KVP) file into a KVP instance.
+ *
+ * This function opens the specified KVP file, reads its contents, and parses the key-value pairs into the given KVP instance.
+ *
+ * @param[in] pInstance - Handle to the KVP instance where the parsed data will be stored.
+ * @param[in] pData - point to memory containing KVP Data.
+ * @param[in] length - size of the KVP data
+ *
+ * @returns Status of the operation (`ut_kvp_status_t`):
+ * @retval UT_KVP_STATUS_SUCCESS - The file was opened and parsed successfully.
+ * @retval UT_KVP_STATUS_INVALID_PARAM - One or more parameters are invalid (e.g., null pointer).
+ * @retval UT_KVP_STATUS_PARSING_ERROR - An error occurred while parsing the file contents.
+ * @retval UT_KVP_STATUS_INVALID_INSTANCE - The provided `pInstance` is not a valid KVP instance.
+ */
+ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length);
 
 /**!
  * @brief Closes a previously opened KVP profile and frees its memory.
@@ -157,7 +174,25 @@ uint64_t ut_kvp_getUInt64Field(ut_kvp_instance_t *pInstance, const char *pszKey)
  * @retval UT_KVP_STATUS_NULL_PARAM - A null parameter was passed.
  * @retval UT_KVP_STATUS_INVALID_INSTANCE - An invalid KVP instance handle was passed.
  */
-ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize ); 
+ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize );
+
+/**
+ * @brief Print the complete kvp data
+ *
+ * Where the data is invalid, no output will occur
+ *
+ * @param pInstance - pointer to the instance to print
+ */
+void ut_kvp_print( ut_kvp_instance_t *pInstance );
+
+/**
+ * @brief Get the data block from the instance
+ *
+ * Return the complete data block as a string
+ *
+ * @param pInstance - pointer to the instance to print
+ */
+uint8_t *ut_kvp_getData( ut_kvp_instance_t *pInstance, uint32_t *pReturnedLength );
 
 /* TODO:
  * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`, `ut_kvp_getInt64Field`).

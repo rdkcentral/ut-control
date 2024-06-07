@@ -22,12 +22,10 @@
 #include <ut.h>
 
 extern void register_cp_function(void);
-extern void cp_sigint_handler(int sig);
 
 int main(int argc, char** argv)
 {
     UT_init( argc, argv );
-    signal(SIGINT, cp_sigint_handler);
     register_cp_function();
     UT_run_tests();
 }
