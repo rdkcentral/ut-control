@@ -46,8 +46,8 @@ else
 #    ./bootstrap.sh
 #    ./configure --prefix=${LIBYAML_DIR}
 #    make
-    popd > /dev/null
 fi
+popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${ASPRINTF_DIR}" ]; then
@@ -59,12 +59,12 @@ else
     unzip master.zip
     rm asprintf.c-master/test.c
 fi
+popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBWEBSOCKETS_DIR}" ]; then
     echo "Framework libyaml already exists"
 else
-    pushd ${FRAMEWORK_DIR} > /dev/null
     echo "Clone libwebsockets in ${LIBWEBSOCKETS_DIR}"
     wget https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.3.3.zip --no-check-certificate
     unzip v4.3.3.zip

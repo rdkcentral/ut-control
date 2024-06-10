@@ -62,7 +62,7 @@ else
     git clone https://github.com/rdkcentral/ut-core.git -b feature/gh20-ut-control-panel
     cd ./ut-core
     #git checkout ${UT_CORE_PROJECT_VERSION}
-    ./build.sh test_lib
+    ./build.sh no_ut_control
     #cd ..
     #./${0} $@
 fi
