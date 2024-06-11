@@ -14,8 +14,8 @@
 # * limitations under the License.
 # *
 
-TARGET_DYNAMIC_LIB ?= libutcontrollibrary.so
-TARGET_STATIC_LIB ?= libutcontrollibrary.a
+TARGET_DYNAMIC_LIB ?= libut_control.so
+TARGET_STATIC_LIB ?= libut_control.a
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
