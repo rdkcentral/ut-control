@@ -1,3 +1,6 @@
+#* ******************************************************************************
+# * If not stated otherwise in this file or this component's LICENSE file the
+# * following copyright and licenses apply:
 # *
 # * Copyright 2023 RDK Management
 # *
@@ -13,95 +16,61 @@
 # * See the License for the specific language governing permissions and
 # * limitations under the License.
 # *
+#* ******************************************************************************
+#*
+#*   ** Project      : ut
+#*   ** @addtogroup  : ut
+#*   ** @file        : makefile
+#*   ** @date        : 20/05/2022
+#*   **
+#*   ** @brief       : Makefile for UT
+#*   **
+#*
+#* ******************************************************************************
+ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+BIN_DIR := $(ROOT_DIR)/bin
+TOP_DIR := $(ROOT_DIR)
 
-TARGET_BIN?= ut-control-test
+SRC_DIRS = $(ROOT_DIR)/src
+INC_DIRS := $(ROOT_DIR)/../include
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
-
-$(info $(shell echo -e ${GREEN}TARGET_DYNAMIC_LIB [$(TARGET_DYNAMIC_LIB)]${NC}))
-
-UT_CONTROL_TEST_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-export PATH := $(shell pwd)/toolchain:$(PATH)
-TOP_DIR ?= $(UT_CONTROL_TEST_DIR)
-BIN_DIR ?= $(TOP_DIR)/bin
-UT_DIR ?= $(UT_CONTROL_TEST_DIR)/ut-core
-
-# Enable CUnit Requirements
-CFLAGS += -DUT_CUNIT
-CUNIT_DIR +=  $(UT_CONTROL_TEST_DIR)/ut-core/framework/CUnit-2.1-3/CUnit
-CUNIT_SRC_DIRS += $(CUNIT_DIR)/Sources
-INC_DIRS += $(CUNIT_DIR)/Headers
-SRC_DIRS += $(CUNIT_SRC_DIRS)/Framework
-SRC_DIRS += $(UT_DIR)/src
-INC_DIRS += $(UT_DIR)/include
-INC_DIRS += $(UT_DIR)/src
-INC_DIRS += $(UT_CONTROL_TEST_DIR)/../include
-
-INC_DIRS += $(UT_CONTROL_TEST_DIR)/include
-INC_DIRS += $(UT_DIR)/include
-SRC_DIRS += $(UT_CONTROL_TEST_DIR)/src
-
-XLDFLAGS += -L $(UT_CONTROL_TEST_DIR)/../lib -lut_control -pthread
-export LD_LIBRARY_PATH=$(UT_CONTROL_TEST_DIR)/../lib/
-
-VERSION=$(shell cd $(UT_DIR) && git describe --tags | head -n1)
-
-$(info VERSION [$(VERSION)])
-
-XCFLAGS += $(CFLAGS) $(INC_FLAGS) -D UT_VERSION=\"$(VERSION)\"
-
-MKDIR_P ?= @mkdir -p
+ifeq ($(TARGET),)
+$(info TARGET FORCED TO Linux)
+TARGET=linux
+endif
 
 $(info TARGET [$(TARGET)])
 
+ifeq ($(TARGET),arm)
+HAL_LIB_DIR := $(ROOT_DIR)/libs
+endif
+
+YLDFLAGS += -L $(ROOT_DIR)/../lib -lut_control -pthread
+TARGET_EXEC = ut_control_test
+
+.PHONY: clean list all
+
+export YLDFLAGS
+export BIN_DIR
 export SRC_DIRS
 export INC_DIRS
-export LDFLAGS
-export TARGET_BIN
-export CFLAGS
-export XCFLAGS
-export XLDFLAGS
+export TARGET
+export TOP_DIR
+export HAL_LIB_DIR
+export TARGET_EXEC
 
-.PHONY: clean list build test all
-
-test: build
-	@make -C ../ test TARGET=linux
+.PHONY: clean list build skeleton
 
 build:
-	$(eval SHELL:=/usr/bin/env bash)
-	@echo -e ${GREEN}"Ensure ut-core is present"${NC}
-	cd ${UT_CONTROL_TEST_DIR}
-	./build.sh
-	@echo -e ${GREEN}Completed${NC}
+	@echo UT [$@]
+	make -C ./ut-core
+	@cp $(ROOT_DIR)/../lib/lib* ${BIN_DIR}
+	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 
 list:
-	@echo ${GREEN}List [$@]${NC}
-	@echo INC_DIRS: ${INC_DIRS}
-	@echo SRC_DIRS: ${SRC_DIRS}
-	@echo CFLAGS: ${CFLAGS}
-	@echo XLDFLAGS: ${XLDFLAGS}
-	@echo TARGET_BIN: ${TARGET_BIN}
-	@echo CFLAGS: ${CFLAGS}
-	@echo XCFLAGS: ${XCFLAGS}
-	@make -C ../ list TARGET=linux
-
-clean:
-	@echo ${GREEN}Clean [$@]${NC}
-	@$(RM) -rf $(UT_CONTROL_TEST_DIR)/lib
-	@make -C ../ clean TARGET=linux
+	@echo UT [$@]
+	make -C ./ut-core list
 
 cleanall:
-	@echo ${GREEN}Clean [$@]${NC}
-	@${RM} -rf $(UT_DIR)
-	@make -C ../ cleanall TARGET=linux
-
-
-
-
-
-
-
-
+	@echo UT [$@]
+	make -C ./ut-core clean

@@ -59,7 +59,7 @@ else
     #TODO: Correct the git urls
     #git clone ${TEST_REPO} ut-core
     #check_next_revision
-    git clone https://github.com/rdkcentral/ut-core.git -b feature/gh20-ut-control-panel
+    git clone https://github.com/rdkcentral/ut-core.git
     cd ./ut-core
     #git checkout ${UT_CORE_PROJECT_VERSION}
     ./build.sh no_ut_control

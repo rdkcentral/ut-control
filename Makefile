@@ -14,17 +14,14 @@
 # * limitations under the License.
 # *
 
-TARGET_DYNAMIC_LIB ?= libut_control.so
-TARGET_STATIC_LIB ?= libut_control.a
+TARGET_LIB ?= libut_control.so
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-$(info $(shell echo -e ${GREEN}TARGET_DYNAMIC_LIB [$(TARGET_DYNAMIC_LIB)]${NC}))
-$(info $(shell echo -e ${GREEN}TARGET_STATIC_LIB [$(TARGET_STATIC_LIB)]${NC}))
-$(info $(shell echo -e ${GREEN}TARGET_BIN [$(TARGET_BIN)]${NC}))
+$(info $(shell echo -e ${GREEN}TARGET_LIB [$(TARGET_LIB)]${NC}))
 
 UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 export PATH := $(shell pwd)/toolchain:$(PATH)
@@ -34,7 +31,6 @@ BIN_DIR ?= $(TOP_DIR)/bin
 LIB_DIR := $(TOP_DIR)/lib
 BUILD_LIBS = yes
 
-ifneq ($(TARGET_BIN),ut-control-test)
 # Enable libyaml Requirements
 LIBFYAML_DIR = ${TOP_DIR}/framework/libfyaml-master
 ASPRINTF_DIR = ${TOP_DIR}/framework/asprintf/asprintf.c-master/
@@ -55,12 +51,9 @@ LDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -l:libwebsockets.a
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
 INC_DIRS += ${TOP_DIR}/include
-#CFLAGS += -DUT_LOG_ENABLED
 
 CFLAGS += -fPIC -Wall -shared   # Flags for compilation
-#LDFLAGS = -shared
 CFLAGS += -DNDEBUG
-endif
 
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
 
@@ -71,39 +64,15 @@ INC_DIRS += $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 XCFLAGS += $(CFLAGS) $(INC_FLAGS)
 
-#VERSION=$(shell git describe --tags | head -n1)
-
-#$(info VERSION [$(VERSION)])
-
 # Final conversions
 DEPS += $(OBJS:.o=.d)
 
-# Here is a list of exports from this makefile to the next
-export BIN_DIR
-export SRC_DIRS
-export INC_DIRS
-export BUILD_DIR
-export LIB_DIR
-#export TOP_DIR
-export TARGET
-export TARGET_EXEC
-export TARGET_DYNAMIC_LIB
-export TARGET_STATIC_LIB
-export CFLAGS
-export LDFLAGS
-export BUILD_LIBS
-export LDFLAGS
-export LD_LIBRARY_PATH=$(LIB_DIR)
-
 MKDIR_P ?= @mkdir -p
-
-TARGET = linux
-
+TARGET ?= linux
 $(info TARGET [$(TARGET)])
 
 # defaults for target arm
 ifeq ($(TARGET),arm)
-CUNIT_VARIANT=arm-rdk-linux-gnueabi
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
@@ -111,26 +80,16 @@ endif
 
 # Defaults for target linux
 ifeq ($(TARGET),linux)
-CUNIT_VARIANT=i686-pc-linux-gnu
 CC := gcc -ggdb -o0 -Wall
-AR := ar
 endif
 
-.PHONY: clean list build lib test all
+.PHONY: clean list lib test all
 
 # Rule to create the shared and static library
 lib : ${OBJS}
-	@echo -e ${GREEN}Building dyanamic lib [${YELLOW}$(LIB_DIR)/$(TARGET_DYNAMIC_LIB)${GREEN}]${NC}
-	@echo -e ${GREEN}Building static lib [${YELLOW}$(LIB_DIR)/$(TARGET_STATIC_LIB)${GREEN}]${NC}
+	@echo -e ${GREEN}Building static lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
-	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $^ $(LDFLAGS)
-	@$(AR) rcs $(LIB_DIR)/$(TARGET_STATIC_LIB) $^
-
-test: ${OBJS}
-	@echo -e ${GREEN}Linking $@ $(BUILD_DIR)/$(TARGET_BIN)${NC}
-	@$(CC) $(OBJS) -o $(BUILD_DIR)/$(TARGET_BIN) $(XLDFLAGS)
-	@$(MKDIR_P) $(BIN_DIR)
-	@cp $(BUILD_DIR)/$(TARGET_BIN) $(BIN_DIR)
+	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(LDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
@@ -138,22 +97,15 @@ $(BUILD_DIR)/%.o: %.c
 	@$(MKDIR_P) $(dir $@)
 	@$(CC) $(XCFLAGS) -c $< -o $@
 
-.PHONY: clean list arm linux framework lib
+.PHONY: clean list framework lib
 
-all: framework linux
+all: framework lib
 
 # Ensure the framework is built
 framework:
 	@echo -e ${GREEN}"Ensure framework is present"${NC}
-	cd ${UT_CONTROL_DIR}
-	@./configure.sh
+	${UT_CONTROL_DIR}/configure.sh
 	@echo -e ${GREEN}Completed${NC}
-
-arm:
-	make TARGET=arm
-
-linux: framework
-	make TARGET=linux
 
 list:
 	@echo ${GREEN}List [$@]${NC}
@@ -161,16 +113,13 @@ list:
 	@echo SRC_DIRS: ${SRC_DIRS}
 	@echo CFLAGS: ${CFLAGS}
 	@echo LDFLAGS: ${LDFLAGS}
-	@echo XLDFLAGS: ${XLDFLAGS}
-	@echo TARGET_DYNAMIC_LIB: ${TARGET_DYNAMIC_LIB}
-	@echo TARGET_STATIC_LIB: ${TARGET_STATIC_LIB}
-	@echo LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}
+	@echo TARGET_LIB: ${TARGET_LIB}
 
 clean:
 	@echo -e ${GREEN}Performing Clean${NC}
-	@$(RM) -rf $(BUILD_DIR) $(LIB_DIR)
+	@$(RM) -rf $(BUILD_DIR)
 	@echo -e ${GREEN}Clean Completed${NC}
 
-cleanall:
+cleanall: clean
 	@echo -e ${GREEN}Performing Clean on frameworks [$(TOP_DIR)/framework]${NC}
 	@${RM} -rf $(TOP_DIR)/framework

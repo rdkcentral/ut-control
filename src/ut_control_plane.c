@@ -43,16 +43,15 @@ typedef struct
     struct lws_context_creation_info info;
     struct lws_context *context;
     struct lws *wsi;
-    pthread_t thread;
-    pthread_t thread2;
+    pthread_t state_machine_thread_handle;
+    pthread_t ws_thread_handle;
     volatile bool exit_request;
 } ut_cp_instance_internal_t;
 
 typedef enum
 {
-    SERVER_START = 0,
-    EXIT_REQUESTED,
-    DATA_RECIEVED
+    DATA_RECIEVED = 0,
+    EXIT_REQUESTED
 }eMessage_t;
 typedef struct
 {
@@ -146,7 +145,7 @@ void call_callback_on_match(cp_message_t *mssg)
 #include <time.h>
 #include <inttypes.h>
 
-void *service_webrequests(void *data)
+void *service_ws_requests(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
      if (pInternal == NULL)
@@ -165,7 +164,7 @@ void *service_webrequests(void *data)
     return NULL;
 }
 
-void *service_wsserver_states(void *data)
+void *service_state_machine(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
 
@@ -173,8 +172,8 @@ void *service_wsserver_states(void *data)
     {
         return NULL;
     }
-    pthread_create(&pInternal->thread2, NULL, service_webrequests, data );
-    UT_CONTROL_PLANE_DEBUG("pthread id 2 = %ld\n", pInternal->thread2);
+    pthread_create(&pInternal->ws_thread_handle, NULL, service_ws_requests, data );
+    UT_CONTROL_PLANE_DEBUG("pthread id 2 = %ld\n", pInternal->ws_thread_handle);
 
     while (!pInternal->exit_request)
     {
@@ -183,28 +182,24 @@ void *service_wsserver_states(void *data)
 
         switch (msg->status)
         {
-        case SERVER_START:
-            UT_CONTROL_PLANE_DEBUG("SERVER START message\n");
-        break;
-
         case EXIT_REQUESTED:
             UT_CONTROL_PLANE_DEBUG("EXIT REQUESTED in thread1. Thread1 going to exit\n");
             pInternal->exit_request = true;
-        break;
+            break;
 
         case DATA_RECIEVED:
             UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
             call_callback_on_match(msg);
             break;
 
-            default:
+        default:
             break;
         }
     }
 
-    if (pthread_join(pInternal->thread2, NULL) != 0)
+    if (pthread_join(pInternal->ws_thread_handle, NULL) != 0)
     {
-        UT_CONTROL_PLANE_ERROR("thread2 Failed to join from instance : %p \n", pInternal);
+        UT_CONTROL_PLANE_ERROR("ws_thread_handle Failed to join from instance : %p \n", pInternal);
         /*TODO: need to confirm if this return is required*/
         return NULL;
     }
@@ -274,6 +269,7 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
     pInstance->info.port = monitorPort;
     pInstance->info.iface = NULL;
     pInstance->info.protocols = protocols;
+    pInstance->info.user = pInstance;
 
     pInstance->context = lws_create_context(&pInstance->info);
     if (pInstance->context == NULL)
@@ -304,15 +300,15 @@ void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance )
         return;
     }
 
-    if (pInternal->thread2 && pInternal->thread )
+    if (pInternal->state_machine_thread_handle )
     {
         cp_message_t msg;
         msg.status = EXIT_REQUESTED;
         printf("EXIT_REQUESTED message from [%s] \n", __func__);
         enqueue_message(&msg);
-        if (pthread_join(pInternal->thread, NULL) != 0)
+        if (pthread_join(pInternal->state_machine_thread_handle, NULL) != 0)
         {
-            UT_CONTROL_PLANE_ERROR("Failed to join thread(1st) from instance = %p\n", pInternal);
+            UT_CONTROL_PLANE_ERROR("Failed to join state_machine_thread_handle(1st) from instance = %p\n", pInternal);
             /*TODO: need to confirm if this return is required*/
             //lws_context_destroy(pInternal->context);
             //free(pInternal);
@@ -339,8 +335,8 @@ void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance)
         return;
     }
 
-    pthread_create(&pInternal->thread, NULL, service_wsserver_states, (void*) pInternal );
-    UT_CONTROL_PLANE_DEBUG("pthread id = %ld\n", pInternal->thread);
+    pthread_create(&pInternal->state_machine_thread_handle, NULL, service_state_machine, (void*) pInternal );
+    UT_CONTROL_PLANE_DEBUG("pthread id = %ld\n", pInternal->state_machine_thread_handle);
 
 }
 

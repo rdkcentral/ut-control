@@ -1,7 +1,9 @@
 # User defined
+.lastlogin
 framework/**
 workspace
 bin/*
+lib/*
 .vscode/*.log
 *.log
 *.xml

@@ -31,7 +31,7 @@
 #define UT_LOG_ERROR(format, ...) printf(format)
 #endif
 
-#include <//assert.h>
+#include <assert.h>
 
 /* External libraries */
 #include <libfyaml.h>
