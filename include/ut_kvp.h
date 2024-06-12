@@ -185,16 +185,27 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
  */
 void ut_kvp_print( ut_kvp_instance_t *pInstance );
 
-/**
+/**!
+ * @brief Gets count of the number of entries in a list
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Null-terminated string representing the key to search for.
+ *
+ * @returns The `uint32_t` value on success, or 0 on error (check logs for details).
+ */
+uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey);
+
+/* TODO:
+ * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`,
+ `ut_kvp_getInt64Field`
+ * - Also Implement following:
+ **
  * @brief Get the data block from the instance
  *
  * Return the complete data block as a string
  *
  * @param pInstance - pointer to the instance to print
- */
-uint8_t *ut_kvp_getData( ut_kvp_instance_t *pInstance, uint32_t *pReturnedLength );
-
-/* TODO:
- * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`, `ut_kvp_getInt64Field`).
+ *
+ * uint8_t *ut_kvp_getData( ut_kvp_instance_t *pInstance, uint32_t *pReturnedLength );
  */
 #endif /* __UT_KVP_H__ */

@@ -42,8 +42,10 @@ typedef struct
     uint32_t magic;
     struct lws_context_creation_info info;
     struct lws_context *context;
+    struct lws *wsi;
     pthread_t thread;
     pthread_t thread2;
+    volatile bool exit_request;
 } ut_cp_instance_internal_t;
 
 typedef enum
@@ -54,34 +56,27 @@ typedef enum
 }eMessage_t;
 typedef struct
 {
- eMessage_t status;
- char *message;
- uint32_t size;
-}cp_message_t;
+    eMessage_t status;
+    char *message;
+    uint32_t size;
+} cp_message_t;
 
 #define MAX_CALLBACKS 10
 #define MAX_MESSAGE_LEN 256
 #define MAX_MESSAGES 100
 
-typedef struct{
-    char key[100];
-    void (*callback)(void *);
-}ut_cp_callback_t;
-
-ut_cp_callback_t callback_list[MAX_CALLBACKS];
-int num_callbacks = 0;
+uint32_t num_callbacks = 0;
 
 #define UT_CP_MAGIC (0xdeadbeef)
 
 cp_message_t message_queue[MAX_MESSAGES];
-int message_count = 0;
+uint32_t message_count = 0;
 
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t queue_condition = PTHREAD_COND_INITIALIZER;
 
 static CallbackEntry_t callbackEntryList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
 static uint32_t callback_entry_index=0;
-static volatile bool exit_request = false;
 
 //static uint32_t lastFreeCallbackSlot=0; /* Must always be < UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES */
 
@@ -132,6 +127,7 @@ void call_callback_on_match(cp_message_t *mssg)
     if (status != UT_KVP_STATUS_SUCCESS)
     {
         UT_CONTROL_PLANE_ERROR("\nut_kvp_open() - Read Failure\n");
+        ut_kvp_destroyInstance(pkvpInstance);
         return;
     }
     for (uint32_t i = 0; i < callback_entry_index; i++)
@@ -143,11 +139,14 @@ void call_callback_on_match(cp_message_t *mssg)
             entry.pCallback(entry.key, pkvpInstance);
         }
     }
-    ut_kvp_close(pkvpInstance);
+    ut_kvp_destroyInstance(pkvpInstance);
     return;
 }
 
-void *thread_function2(void *data)
+#include <time.h>
+#include <inttypes.h>
+
+void *service_webrequests(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
      if (pInternal == NULL)
@@ -156,15 +155,17 @@ void *thread_function2(void *data)
     }
 
 
-    while (!exit_request)
+    while (!pInternal->exit_request)
     {
+        //TODO: Needs to be fixed in future
         lws_service(pInternal->context, 0);
+        usleep(500);
     }
 
     return NULL;
 }
 
-void *thread_function(void *data)
+void *service_wsserver_states(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
 
@@ -172,9 +173,10 @@ void *thread_function(void *data)
     {
         return NULL;
     }
-    pthread_create(&pInternal->thread2, NULL, thread_function2, data );
+    pthread_create(&pInternal->thread2, NULL, service_webrequests, data );
+    UT_CONTROL_PLANE_DEBUG("pthread id 2 = %ld\n", pInternal->thread2);
 
-    while (!exit_request)
+    while (!pInternal->exit_request)
     {
         cp_message_t *msg;
         msg = dequeue_message();
@@ -187,7 +189,7 @@ void *thread_function(void *data)
 
         case EXIT_REQUESTED:
             UT_CONTROL_PLANE_DEBUG("EXIT REQUESTED in thread1. Thread1 going to exit\n");
-            exit_request = true;
+            pInternal->exit_request = true;
         break;
 
         case DATA_RECIEVED:
@@ -265,26 +267,24 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
     if ( pInstance == NULL )
     {
         //assert( pInstance != NULL );
-        printf("Malloc was not able to provide memory\n");
+        UT_CONTROL_PLANE_ERROR("Malloc was not able to provide memory\n");
         return NULL;
     }
-
-    pInstance->magic = UT_CP_MAGIC;
 
     pInstance->info.port = monitorPort;
     pInstance->info.iface = NULL;
     pInstance->info.protocols = protocols;
 
     pInstance->context = lws_create_context(&pInstance->info);
-    if (!pInstance->context)
+    if (pInstance->context == NULL)
     {
-        printf("Error creating libwebsockets context\n");
-        pInstance->magic = !UT_CP_MAGIC;
+        UT_CONTROL_PLANE_ERROR("Error creating libwebsockets context\n");
         free( pInstance );
         return NULL;
     }
 
-    exit_request = false;
+    pInstance->exit_request = false;
+    pInstance->magic = UT_CP_MAGIC;
 
     return (ut_controlPlane_instance_t *)pInstance;
 }
@@ -298,22 +298,27 @@ void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance )
         return;
     }
 
-    cp_message_t msg;
-    msg.status = EXIT_REQUESTED;
-    UT_CONTROL_PLANE_DEBUG("EXIT_REQUESTED message from [%s] \n", __func__);
-    enqueue_message(&msg);
-    UT_CONTROL_PLANE_DEBUG("msg count inside CP_exit = %d\n", message_count);
-
-    // Wait for the thread to finish
-    if (pthread_join(pInternal->thread, NULL) != 0)
+    if (pInternal->context == NULL)
     {
-        UT_CONTROL_PLANE_ERROR("Failed to join thread(1st) from instance = %p\n", pInternal);
-        /*TODO: need to confirm if this return is required*/
-        //lws_context_destroy(pInternal->context);
-        //free(pInternal);
-        //return;
+        UT_CONTROL_PLANE_ERROR("libwebsockets context was not created\n");
+        return;
     }
-    UT_CONTROL_PLANE_DEBUG("Thread 1 is also exited from instance : %p\n", pInternal);
+
+    if (pInternal->thread2 && pInternal->thread )
+    {
+        cp_message_t msg;
+        msg.status = EXIT_REQUESTED;
+        printf("EXIT_REQUESTED message from [%s] \n", __func__);
+        enqueue_message(&msg);
+        if (pthread_join(pInternal->thread, NULL) != 0)
+        {
+            UT_CONTROL_PLANE_ERROR("Failed to join thread(1st) from instance = %p\n", pInternal);
+            /*TODO: need to confirm if this return is required*/
+            //lws_context_destroy(pInternal->context);
+            //free(pInternal);
+            // return;
+        }
+    }
 
     if (pInternal->context != NULL)
     {
@@ -334,7 +339,8 @@ void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance)
         return;
     }
 
-    pthread_create(&pInternal->thread, NULL, thread_function, (void*) pInternal );
+    pthread_create(&pInternal->thread, NULL, service_wsserver_states, (void*) pInternal );
+    UT_CONTROL_PLANE_DEBUG("pthread id = %ld\n", pInternal->thread);
 
 }
 
@@ -344,31 +350,32 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
 
     if ( pInternal == NULL )
     {
-        UT_CONTROL_PLANE_ERROR("Invalid Handle");
-        return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_INVALID_HANDLE;
+        UT_CONTROL_PLANE_ERROR("Invalid Handle\n");
+        return UT_CONTROL_PLANE_STATUS_INVALID_HANDLE;
     }
 
     if ( key == NULL )
     {
-        UT_CONTROL_PLANE_ERROR("Invalid Handle");
-        return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_INVALID_HANDLE;
+        UT_CONTROL_PLANE_ERROR("Invalid Param\n");
+        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
     if ( callbackFunction == NULL )
     {
-        return UT_CONTROL_PLANE_INVALID_PARAM;
+        UT_CONTROL_PLANE_ERROR("NULL callbackFunction\n");
+        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
 
     if ( callback_entry_index >=UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES ) 
     { 
-        return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL;
+        return UT_CONTROL_PLANE_STATUS_LIST_FULL;
     } 
     strncpy(callbackEntryList[callback_entry_index].key, key,UT_CONTROL_PLANE_MAX_KEY_SIZE);
     callbackEntryList[callback_entry_index].pCallback = callbackFunction;
     callback_entry_index++;
-    printf("callback_entry_index : %d\n", callback_entry_index);
-    return UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_OK;
+    UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", callback_entry_index);
+    return UT_CONTROL_PLANE_STATUS_LIST_OK;
 }
 
 /** Static Functions */

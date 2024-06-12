@@ -44,8 +44,8 @@ INC_DIRS += $(UT_CONTROL_TEST_DIR)/include
 INC_DIRS += $(UT_DIR)/include
 SRC_DIRS += $(UT_CONTROL_TEST_DIR)/src
 
-XLDFLAGS += -L $(UT_CONTROL_TEST_DIR)/lib -lutcontrollibrary -pthread
-export LD_LIBRARY_PATH=$(UT_CONTROL_TEST_DIR)/lib/
+XLDFLAGS += -L $(UT_CONTROL_TEST_DIR)/../lib -lut_control -pthread
+export LD_LIBRARY_PATH=$(UT_CONTROL_TEST_DIR)/../lib/
 
 VERSION=$(shell cd $(UT_DIR) && git describe --tags | head -n1)
 

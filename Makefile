@@ -32,7 +32,6 @@ TOP_DIR ?= $(UT_CONTROL_DIR)
 BUILD_DIR ?= $(TOP_DIR)/obj
 BIN_DIR ?= $(TOP_DIR)/bin
 LIB_DIR := $(TOP_DIR)/lib
-LIB_TEST_DIR := $(TOP_DIR)/tests/lib
 BUILD_LIBS = yes
 
 ifneq ($(TARGET_BIN),ut-control-test)
@@ -124,11 +123,8 @@ lib : ${OBJS}
 	@echo -e ${GREEN}Building dyanamic lib [${YELLOW}$(LIB_DIR)/$(TARGET_DYNAMIC_LIB)${GREEN}]${NC}
 	@echo -e ${GREEN}Building static lib [${YELLOW}$(LIB_DIR)/$(TARGET_STATIC_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
-	@$(MKDIR_P) $(LIB_TEST_DIR)
 	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $^ $(LDFLAGS)
-	@cp $(LIB_DIR)/$(TARGET_DYNAMIC_LIB) $(LIB_TEST_DIR)
 	@$(AR) rcs $(LIB_DIR)/$(TARGET_STATIC_LIB) $^
-	@cp $(LIB_DIR)/$(TARGET_STATIC_LIB) $(LIB_TEST_DIR)
 
 test: ${OBJS}
 	@echo -e ${GREEN}Linking $@ $(BUILD_DIR)/$(TARGET_BIN)${NC}
@@ -150,7 +146,7 @@ all: framework linux
 framework:
 	@echo -e ${GREEN}"Ensure framework is present"${NC}
 	cd ${UT_CONTROL_DIR}
-	@./install.sh
+	@./configure.sh
 	@echo -e ${GREEN}Completed${NC}
 
 arm:

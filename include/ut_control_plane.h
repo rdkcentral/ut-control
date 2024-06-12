@@ -17,43 +17,62 @@
  * limitations under the License.
  */
 
+
 #include <ut_kvp.h>
 
-#define UT_CONTROL_PLANE_MAX_KEY_SIZE (64)
-#define UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES (32)
+#define UT_CONTROL_PLANE_MAX_KEY_SIZE (64)  /*!< Maximum length for a control plane key (bytes). */
+#define UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES (32) /*!< Maximum number of registered callback entries. */
 
 
- // UT_CONTROL_PLANE_STATUS_OK = 0,
- // UT_CONTROL_PLANE_INVALID_HANDLE,
-
+/**!
+ * @brief Status codes for control plane operations.
+ */
 typedef enum
 {
-  UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL = 0,
-  UT_CONTROL_PLANE_INVALID_PARAM,
-  UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_INVALID_HANDLE,
-  UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_OK
-}ut_control_plane_status_t;
+    UT_CONTROL_PLANE_STATUS_LIST_FULL = 0,        /*!< Callback list is full. */
+    UT_CONTROL_PLANE_STATUS_INVALID_HANDLE,       /*!< Invalid control plane instance handle. */
+    UT_CONTROL_PLANE_STATUS_LIST_OK,              /*!< Callback operation successful. */
+    UT_CONTROL_PLANE_STATUS_INVALID_PARAM,        /*!< Invalid parameter passed. */
+    UT_CONTROL_PLANE_STATUS_OK = 0                /*!< Operation successful. */
+} ut_control_plane_status_t;
 
-/**! Handle to a control plane instance. */
-typedef void ut_controlPlane_instance_t;
+typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
-/* Callback function that will be triggered */
+/** @brief  Callback function type for handling control plane messages. */
 typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance );
 
-/* Init the control plane and create instance */
+/**
+ * @brief Initializes a control plane instance.
+ * @param monitorPort - Port number to monitor for incoming messages.
+ * @returns Handle to the created control plane instance, or NULL on failure.
+ */
 ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
 
-/* pInstance, will be freed on return from the callback */
-ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction);
+/**
+ * @brief Registers a callback function for a specific message key.
+ * @param pInstance - Handle to the control plane instance.
+ * @param key - Null-terminated string representing the message key to trigger the callback.
+ * @param callbackFunction - Callback function to be invoked when the key is received.
+ * @returns Status of the registration operation (`ut_control_plane_status_t`).
+ * @retval UT_CONTROL_PLANE_STATUS_OK - Success
+ * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE  - Invalid control plane instance handle.
+ * @retavl UT_CONTROL_PLANE_STATUC_INVALID_PARAM - Invalid parameter passed
+ * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL,  - Callback list is full
+ */
+ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(
+    ut_controlPlane_instance_t *pInstance,
+    char *key,
+    ut_control_callback_t callbackFunction
+);
 
-/* Start the control Plane */
+/**
+ * @brief Starts the control plane to listen for incoming messages.
+ * @param pInstance - Handle to the control plane instance.
+ */
 void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance);
 
-/* Exit the controlPlane instance and release */
+/**
+ * @brief Releases resources and destroys a control plane instance.
+ * @param pInstance - Handle to the control plane instance to be destroyed.
+ */
 void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance );
-
-//TODO: to be deleted
-//void control_plane_main();
-///void testCallback(char *key, ut_kvp_instance_t *instance);
-//void testRMFCallback(char *key, ut_kvp_instance_t *instance);
-

@@ -35,11 +35,7 @@ static UT_test_suite_t *gpAssertSuite1 = NULL;
 static UT_test_suite_t *gpAssertSuite2 = NULL;
 
 static ut_controlPlane_instance_t *gInstance = NULL;
-
-void wait_for_1_second()
-{
-    sleep(1);
-}
+static bool gMessageRecieved = false;
 
 void test_ut_control_testInitExit()
 {
@@ -50,27 +46,19 @@ void test_ut_control_testInitExit()
     UT_ASSERT( pInstance == NULL );
 
     pInstance = UT_ControlPlane_Init(8080);
-    UT_ControlPlane_Start(pInstance);
     UT_ASSERT( pInstance != NULL );
 
-    wait_for_1_second();
-
     pInstance1 = UT_ControlPlane_Init(9000);
-    UT_ControlPlane_Start(pInstance1);
     UT_ASSERT( pInstance1 != NULL);
 
     UT_ASSERT( pInstance != pInstance1 );
-    wait_for_1_second();
 
     UT_ControlPlane_Exit(pInstance);
-    wait_for_1_second();
-
     UT_ControlPlane_Exit(pInstance1);
-    wait_for_1_second();
 
 }
 
-void test_ut_control_testService()
+void test_ut_control_testStart()
 {
     ut_controlPlane_instance_t *pInstance = NULL;
     ut_controlPlane_instance_t *pInstance1 = NULL;
@@ -79,18 +67,14 @@ void test_ut_control_testService()
     UT_ControlPlane_Start(NULL);
     UT_ControlPlane_Start(pInstance);
 
-    wait_for_1_second();
     pInstance1 = UT_ControlPlane_Init(9000);
     UT_ControlPlane_Start(pInstance1);
 
-    wait_for_1_second();
     UT_ASSERT( pInstance != pInstance1 );
-
     UT_ControlPlane_Exit(pInstance);
-    UT_ASSERT( pInstance != pInstance1 );
 
+    UT_ASSERT( pInstance != pInstance1 );
     UT_ASSERT( pInstance != NULL );
-    wait_for_1_second();
 
     UT_ControlPlane_Exit(pInstance1);
     UT_ASSERT( pInstance != pInstance1 );
@@ -100,17 +84,18 @@ void testCallback(char *key, ut_kvp_instance_t *instance)
 {
     printf("*******************************Inside testCallback************************\n");
     ut_kvp_print( instance );
+    gMessageRecieved = true;
 }
 
 void testRMFCallback(char *key, ut_kvp_instance_t *instance)
 {
     UT_LOG("\n**************testRMFCallback is called****************\n");
     ut_kvp_print( instance );
+    gMessageRecieved = true;
 }
 
 static void UT_ControlPlane_Sigint_Handler(int sig)
 {
-    wait_for_1_second();
     UT_ControlPlane_Exit(gInstance);
 }
 
@@ -129,18 +114,28 @@ void test_ut_control_performStart()
     UT_LOG("\n Please run this command from the command line");
     UT_LOG("\n Waiting client test/myCommand to send yaml/json file");
 
-    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2/myCommand1", &testRMFCallback);
-    UT_LOG("\nWaiting client test/myCommand2 to send yaml/json file");
+    gMessageRecieved = false;
 
     UT_ControlPlane_Start(gInstance);
+
+    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2/myCommand1", &testRMFCallback);
+    UT_LOG("\nWaiting client test/myCommand2 to send yaml/json file");
 }
 
 void wait_function()
 {
-    for(int i = 0; i < 20; i++)
-    {
-        UT_LOG("Waiting for %d sec", i);
-        sleep(1);
+    UT_LOG("Please Run the command `test1DataSend.sh` and press return;'");
+    uint32_t countdown = 15;
+
+    while (countdown > 0)
+    { 
+        if (gMessageRecieved)
+        {
+            //UT_ASSERT_STRING_EQUAL (MyExpectedMessage, MyMessageRecieved ) ;
+            break;
+        }
+        sleep(1); /* Sleep for 1 second and re-check for global message from the callback */
+        countdown--;
     }
 }
 
@@ -152,13 +147,13 @@ void test_ut_control_performExit( void )
 
 void register_cp_function()
 {
-    /* Testing my functions work ok */
+    /* L1 - ut _control function tests */
     gpAssertSuite1 = UT_add_suite("ut-cp - system control", NULL, NULL);
     assert(gpAssertSuite1 != NULL);
     UT_add_test(gpAssertSuite1, "ut-cp Init Exit", test_ut_control_testInitExit);
-    UT_add_test(gpAssertSuite1, "ut-cp websocket service", test_ut_control_testService);
+    UT_add_test(gpAssertSuite1, "ut-cp websocket service", test_ut_control_testStart);
 
-    /* Testing the functionality */
+    /* L2 - ut_control Module tests */
     gpAssertSuite2 = UT_add_suite("ut-cp - client control", NULL, NULL);
     assert(gpAssertSuite2 != NULL);
     UT_add_test(gpAssertSuite2, "ut-cp Init", test_ut_control_performInit);

@@ -31,7 +31,7 @@
 #define UT_LOG_ERROR(format, ...) printf(format)
 #endif
 
-#include <assert.h>
+#include <//assert.h>
 
 /* External libraries */
 #include <libfyaml.h>
@@ -51,6 +51,7 @@ static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance
 static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *pszKey, unsigned long maxRange );
 static bool str_to_bool(const char *string);
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pszResult);
+static void convert_dot_to_slash(const char *key, char *output);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
 {
@@ -58,7 +59,7 @@ ut_kvp_instance_t *ut_kvp_createInstance(void)
 
     if ( pInstance == NULL )
     {
-        assert( pInstance != NULL );
+        //assert( pInstance != NULL );
         return NULL;
     }
 
@@ -75,7 +76,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
 
     if ( pInternal == NULL )
     {
-        assert(pInternal == NULL);
+        //assert(pInternal == NULL);
         return;
     }
 
@@ -98,7 +99,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 
     if (fileName == NULL)
     {
-        assert( fileName != NULL );
+        //assert( fileName != NULL );
         UT_LOG_ERROR( "Invalid Param [fileName]" );
         return UT_KVP_STATUS_INVALID_PARAM;
     }
@@ -131,7 +132,7 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 
     if (pData == NULL)
     {
-        assert( pData != NULL );
+        //assert( pData != NULL );
         UT_LOG_ERROR( "Invalid Param [string]" );
         return UT_KVP_STATUS_INVALID_PARAM;
     }
@@ -197,38 +198,41 @@ void ut_kvp_print( ut_kvp_instance_t *pInstance )
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pzResult)
 {
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
-    char zEntry[UT_KVP_MAX_ELEMENT_SIZE];
+    char zEntry[UT_KVP_MAX_ELEMENT_SIZE * 2];
+    char zKey[UT_KVP_MAX_ELEMENT_SIZE];
     char *str = "%s";
     int fy_result;
 
     if (pInternal == NULL)
     {
-        assert(pInternal != NULL);
+        //assert(pInternal != NULL);
         return UT_KVP_STATUS_INVALID_INSTANCE;
     }
 
     if (pszKey == NULL)
     {
-        assert(pszKey != NULL);
+        //assert(pszKey != NULL);
         UT_LOG_ERROR("Invalid Param - pszKey");
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
     if (pzResult == NULL)
     {
-        assert(pzResult != NULL);
+        //assert(pzResult != NULL);
         UT_LOG_ERROR("Invalid Param - pzResult");
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
     if ( pInternal->fy_handle == NULL )
     {
-        assert(pInternal->fy_handle != NULL);
+        //assert(pInternal->fy_handle != NULL);
         UT_LOG_ERROR("No Data File open");
         return UT_KVP_STATUS_NO_DATA;
     }
 
-    snprintf( zEntry, UT_KVP_MAX_ELEMENT_SIZE, "%s %s", pszKey, str );
+    convert_dot_to_slash(pszKey, zKey);
+
+    snprintf( zEntry, sizeof(zEntry), "%s %s", zKey, str );
     fy_result = fy_document_scanf(pInternal->fy_handle, zEntry, pzResult);
     if ( fy_result <= 0 )
     {
@@ -287,19 +291,19 @@ static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *psz
     if (pField == pEndptr)
     {
         UT_LOG_ERROR("No conversion performed!");
-        assert(true);
+        //assert(true);
         return 0;
     }
     else if (*pEndptr != '\0')
     {
         UT_LOG_ERROR("Invalid characters in the string.");
-        assert(true);
+        //assert(true);
         return 0;
     }
     else if (errno == ERANGE || uValue > maxRange)
     {
         printf("Value out of range for maxRange [0x%lx,%ld].", maxRange, maxRange);
-        assert(true);
+        //assert(true);
         return 0;
     }
 
@@ -360,19 +364,19 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
     if (pField == pEndptr) 
     {
         UT_LOG_ERROR("No conversion performed!");
-        assert(true);
+        //assert(true);
         return 0;
     }
     else if (*pEndptr != '\0') 
     {
         UT_LOG_ERROR("Invalid characters in the string.");
-        assert(true);
+        //assert(true);
         return 0;
     } 
     else if (errno == ERANGE || u64Value > UINT64_MAX) 
     {
         UT_LOG_ERROR("Value out of range for uint64_t.");
-        assert(true);
+        //assert(true);
         return 0;
     }
 
@@ -385,25 +389,26 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     struct fy_node *node = NULL;
     struct fy_node *root = NULL;
     const char *pString = NULL;
+    char zKey[UT_KVP_MAX_ELEMENT_SIZE];
 
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
     if (pInternal == NULL)
     {
-        assert(pInternal != NULL);
+        //assert(pInternal != NULL);
         return UT_KVP_STATUS_INVALID_INSTANCE;
     }
 
     if (pszKey == NULL)
     {
-        assert(pszKey != NULL);
+        //assert(pszKey != NULL);
         UT_LOG_ERROR("Invalid Param - pszKey");
         return UT_KVP_STATUS_NULL_PARAM;
     }
 
     if ( pszReturnedString == NULL )
     {
-        assert(pszReturnedString != NULL);
+        //assert(pszReturnedString != NULL);
         UT_LOG_ERROR("Invalid Param - pszReturnedString");
         return UT_KVP_STATUS_NULL_PARAM;
     }
@@ -412,7 +417,7 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     *pszReturnedString=0;
     if ( pInternal->fy_handle == NULL )
     {
-        assert(pInternal->fy_handle != NULL);
+        //assert(pInternal->fy_handle != NULL);
         UT_LOG_ERROR("No Data File open");
         return UT_KVP_STATUS_NO_DATA;
     }
@@ -420,13 +425,15 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     root = fy_document_root(pInternal->fy_handle);
     if ( root == NULL )
     {
-        assert( root != NULL );
+        //assert( root != NULL );
         UT_LOG_ERROR("Empty document");
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
+    convert_dot_to_slash(pszKey, zKey);
+
     // Find the node corresponding to the key
-    node = fy_node_by_path(root, pszKey, -1, FYNWF_DONT_FOLLOW);
+    node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
         //assert( node != NULL );
@@ -449,6 +456,68 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     return UT_KVP_STATUS_SUCCESS;
 }
 
+uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
+{
+    struct fy_node *node = NULL;
+    struct fy_node *root = NULL;
+    uint32_t count;
+    char zKey[UT_KVP_MAX_ELEMENT_SIZE];
+
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
+    if (pInternal == NULL)
+    {
+        //assert(pInternal != NULL);
+        UT_LOG_ERROR("Invalid instance - pInstance");
+        return 0;
+    }
+
+    if (pszKey == NULL)
+    {
+        //assert(pszKey != NULL);
+        UT_LOG_ERROR("Invalid Param - pszKey");
+        return 0;
+    }
+
+    if ( pInternal->fy_handle == NULL )
+    {
+        //assert(pInternal->fy_handle != NULL);
+        UT_LOG_ERROR("No Data File open");
+        return 0;
+    }
+    // Get the root node
+    root = fy_document_root(pInternal->fy_handle);
+    if ( root == NULL )
+    {
+        /* The file has no content that can be decoded.*/
+        //assert( root != NULL );
+        UT_LOG_ERROR("Empty document");
+        return 0;
+    }
+
+    convert_dot_to_slash(pszKey, zKey);
+
+    // Find the node corresponding to the key
+    node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
+    if ( node == NULL )
+    {
+        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return 0;
+    }
+
+    if (fy_node_is_sequence(node))
+    {
+        count = fy_node_sequence_item_count(node);
+        if (count == -1)
+        {
+            UT_LOG_ERROR("fy_node_sequence_item_count() returned error\n ");
+            return 0;
+        }
+    }
+
+    return count;
+}
+
 /** Static Functions */
 static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance)
 {
@@ -456,14 +525,14 @@ static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance
 
     if ( pInstance == NULL )
     {
-        assert(pInternal == NULL);
+        //assert(pInternal == NULL);
         UT_LOG_ERROR("Invalid Handle");
         return NULL;
     }
 
     if (pInternal->magic != UT_KVP_MAGIC)
     {
-        assert(pInternal->magic != UT_KVP_MAGIC);
+        //assert(pInternal->magic != UT_KVP_MAGIC);
         UT_LOG_ERROR("Invalid Handle - magic failure");
         return NULL;
     }
@@ -482,6 +551,34 @@ static bool str_to_bool(const char *string)
         return false;
     }
     /* String is neither true or false, ensure we inform the caller*/
-    assert(true);
+    //assert(true);
     return false;
+}
+
+static void convert_dot_to_slash(const char *key, char *output)
+{
+    if(strchr(key, '.'))
+    {
+        for (int i = 0; i <= UT_KVP_MAX_ELEMENT_SIZE; i++)
+        {
+            char key_val = key[i];
+            if (key_val == '\0')
+            {
+                break;
+            }
+            if (key_val == '.')
+            {
+                output[i] = '/';
+            }
+            else
+            {
+                output[i] = key_val;
+            }
+        }
+        output[strlen(key)] = '\0';
+    }
+    else
+    {
+        snprintf( output, UT_KVP_MAX_ELEMENT_SIZE, "%s", key);
+    }
 }

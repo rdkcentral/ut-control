@@ -17,8 +17,6 @@
  * limitations under the License.
  */
 
-#include <signal.h>
-
 #include <ut.h>
 
 extern void register_cp_function(void);
