@@ -46,7 +46,7 @@ function check_next_revision()
             echo -e ${RED}--- New Version of ut-core released [${UT_NEXT_VERSION}] consider upgrading ---${NC}
         fi
     fi
-    popd
+    popd > /dev/null
 }
 
 # Check if the common document configuration is present, if not clone it

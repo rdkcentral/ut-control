@@ -30,6 +30,7 @@
 
 #define UT_CONTROL_PLANE_ERROR(f_, ...) printf((f_), ##__VA_ARGS__)
 #define UT_CONTROL_PLANE_DEBUG(f_, ...) (void)0
+//#define UT_CONTROL_PLANE_DEBUG(f_, ...) printf((f_), ##__VA_ARGS__)
 
 typedef struct
 {
@@ -46,6 +47,8 @@ typedef struct
     pthread_t state_machine_thread_handle;
     pthread_t ws_thread_handle;
     volatile bool exit_request;
+    CallbackEntry_t callbackEntryList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
+    uint32_t callback_entry_index;
 } ut_cp_instance_internal_t;
 
 typedef enum
@@ -64,8 +67,6 @@ typedef struct
 #define MAX_MESSAGE_LEN 256
 #define MAX_MESSAGES 100
 
-uint32_t num_callbacks = 0;
-
 #define UT_CP_MAGIC (0xdeadbeef)
 
 cp_message_t message_queue[MAX_MESSAGES];
@@ -73,11 +74,6 @@ uint32_t message_count = 0;
 
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t queue_condition = PTHREAD_COND_INITIALIZER;
-
-static CallbackEntry_t callbackEntryList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
-static uint32_t callback_entry_index=0;
-
-//static uint32_t lastFreeCallbackSlot=0; /* Must always be < UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES */
 
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance);
 
@@ -110,13 +106,19 @@ cp_message_t* dequeue_message()
     return msg;
 }
 
-void call_callback_on_match(cp_message_t *mssg)
+void call_callback_on_match(cp_message_t *mssg, void* data)
 {
     ut_kvp_instance_t *pkvpInstance = NULL;
     ut_kvp_status_t status;
     char result_kvp[UT_KVP_MAX_ELEMENT_SIZE] = {0xff};
+    ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
 
-    if (!mssg->message)
+    if (pInternal == NULL)
+    {
+        return;
+    }
+
+    if (mssg->message == NULL)
     {
         return;
     }
@@ -129,9 +131,9 @@ void call_callback_on_match(cp_message_t *mssg)
         ut_kvp_destroyInstance(pkvpInstance);
         return;
     }
-    for (uint32_t i = 0; i < callback_entry_index; i++)
+    for (uint32_t i = 0; i < pInternal->callback_entry_index; i++)
     {
-        CallbackEntry_t entry = callbackEntryList[i];
+        CallbackEntry_t entry = pInternal->callbackEntryList[i];
         if (UT_KVP_STATUS_SUCCESS == ut_kvp_getStringField(pkvpInstance, entry.key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE))
         {
             // call callback
@@ -141,9 +143,6 @@ void call_callback_on_match(cp_message_t *mssg)
     ut_kvp_destroyInstance(pkvpInstance);
     return;
 }
-
-#include <time.h>
-#include <inttypes.h>
 
 void *service_ws_requests(void *data)
 {
@@ -189,7 +188,7 @@ void *service_state_machine(void *data)
 
         case DATA_RECIEVED:
             UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
-            call_callback_on_match(msg);
+            call_callback_on_match(msg, data);
             break;
 
         default:
@@ -280,6 +279,7 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
     }
 
     pInstance->exit_request = false;
+    pInstance->callback_entry_index = 0;
     pInstance->magic = UT_CP_MAGIC;
 
     return (ut_controlPlane_instance_t *)pInstance;
@@ -304,7 +304,7 @@ void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance )
     {
         cp_message_t msg;
         msg.status = EXIT_REQUESTED;
-        printf("EXIT_REQUESTED message from [%s] \n", __func__);
+        UT_CONTROL_PLANE_ERROR("EXIT_REQUESTED message from [%s] \n", __func__);
         enqueue_message(&msg);
         if (pthread_join(pInternal->state_machine_thread_handle, NULL) != 0)
         {
@@ -363,14 +363,14 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
     }
 
 
-    if ( callback_entry_index >=UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES ) 
+    if ( pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES )
     { 
         return UT_CONTROL_PLANE_STATUS_LIST_FULL;
     } 
-    strncpy(callbackEntryList[callback_entry_index].key, key,UT_CONTROL_PLANE_MAX_KEY_SIZE);
-    callbackEntryList[callback_entry_index].pCallback = callbackFunction;
-    callback_entry_index++;
-    UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", callback_entry_index);
+    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,UT_CONTROL_PLANE_MAX_KEY_SIZE);
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = callbackFunction;
+    pInternal->callback_entry_index++;
+    UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", pInternal->callback_entry_index);
     return UT_CONTROL_PLANE_STATUS_LIST_OK;
 }
 
