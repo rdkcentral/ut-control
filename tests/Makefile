@@ -63,7 +63,8 @@ export TARGET_EXEC
 
 build:
 	@echo UT [$@]
-	make -C ./ut-core
+	$(ROOT_DIR)/build.sh
+	make -C ./ut-core test
 	@cp $(ROOT_DIR)/../lib/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 

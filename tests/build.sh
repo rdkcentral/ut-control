@@ -56,12 +56,10 @@ if [ -d "./ut-core" ]; then
     #make test
 else
     echo "Cloning Unit Test Core System"
-    #TODO: Correct the git urls
-    #git clone ${TEST_REPO} ut-core
-    #check_next_revision
-    git clone https://github.com/rdkcentral/ut-core.git
+    git clone ${TEST_REPO} ut-core
+    check_next_revision
     cd ./ut-core
-    #git checkout ${UT_CORE_PROJECT_VERSION}
+    git checkout ${UT_CORE_PROJECT_VERSION}
     ./build.sh no_ut_control
     #cd ..
     #./${0} $@
