@@ -36,6 +36,7 @@ static UT_test_suite_t *gpAssertSuite2 = NULL;
 
 static ut_controlPlane_instance_t *gInstance = NULL;
 static bool gMessageRecieved = false;
+static int32_t gMessageCount = 0;
 
 void test_ut_control_testInitExit()
 {
@@ -58,17 +59,21 @@ void test_ut_control_testInitExit()
 
 }
 
-void test_ut_control_testStart()
+void test_ut_control_testStartStop()
 {
     ut_controlPlane_instance_t *pInstance = NULL;
     ut_controlPlane_instance_t *pInstance1 = NULL;
-
     pInstance = UT_ControlPlane_Init(8080);
+
     UT_ControlPlane_Start(NULL);
+    UT_ControlPlane_Stop(NULL);
+
     UT_ControlPlane_Start(pInstance);
+    UT_ControlPlane_Stop(pInstance);
 
     pInstance1 = UT_ControlPlane_Init(9000);
     UT_ControlPlane_Start(pInstance1);
+    UT_ControlPlane_Stop(pInstance1);
 
     UT_ASSERT( pInstance != pInstance1 );
     UT_ControlPlane_Exit(pInstance);
@@ -84,18 +89,29 @@ void testCallback(char *key, ut_kvp_instance_t *instance)
 {
     printf("*******************************Inside testCallback************************\n");
     ut_kvp_print( instance );
-    gMessageRecieved = true;
+
+    if (gMessageCount == 5)
+    {
+        gMessageRecieved = true;
+    }
+    gMessageCount++;
 }
 
 void testRMFCallback(char *key, ut_kvp_instance_t *instance)
 {
     UT_LOG("\n**************testRMFCallback is called****************\n");
     ut_kvp_print( instance );
-    gMessageRecieved = true;
+
+    if (gMessageCount == 5)
+    {
+        gMessageRecieved = true;
+    }
+    gMessageCount++;
 }
 
 static void UT_ControlPlane_Sigint_Handler(int sig)
 {
+    UT_LOG("Signal Handler invoked\n");
     UT_ControlPlane_Exit(gInstance);
 }
 
@@ -103,7 +119,6 @@ void test_ut_control_performInit( void )
 {
     gInstance = UT_ControlPlane_Init(8080);
     UT_ASSERT(gInstance != NULL);
-
     signal(SIGINT, UT_ControlPlane_Sigint_Handler);
 }
 
@@ -139,6 +154,11 @@ void wait_function()
     }
 }
 
+void test_ut_control_performStop( void )
+{
+    UT_ControlPlane_Stop(gInstance);
+}
+
 void test_ut_control_performExit( void )
 {
     signal(SIGINT, NULL);
@@ -151,7 +171,7 @@ void register_cp_function()
     gpAssertSuite1 = UT_add_suite("L1 - ut_control function tests", NULL, NULL);
     assert(gpAssertSuite1 != NULL);
     UT_add_test(gpAssertSuite1, "ut-cp Init Exit", test_ut_control_testInitExit);
-    UT_add_test(gpAssertSuite1, "ut-cp websocket service", test_ut_control_testStart);
+    UT_add_test(gpAssertSuite1, "ut-cp websocket service", test_ut_control_testStartStop);
 
     /* L2 - ut_control Module tests */
     gpAssertSuite2 = UT_add_suite("L2 - ut_control Module tests", NULL, NULL);
@@ -159,6 +179,7 @@ void register_cp_function()
     UT_add_test(gpAssertSuite2, "ut-cp Init", test_ut_control_performInit);
     UT_add_test(gpAssertSuite2, "ut-cp Start", test_ut_control_performStart);
     UT_add_test(gpAssertSuite2, "ut-cp Wait", wait_function);
+    UT_add_test(gpAssertSuite2, "ut-cp Stop", test_ut_control_performStop);
     UT_add_test(gpAssertSuite2, "ut-cp Exit", test_ut_control_performExit);
 
 }

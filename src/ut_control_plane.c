@@ -30,13 +30,33 @@
 
 #define UT_CONTROL_PLANE_ERROR(f_, ...) printf((f_), ##__VA_ARGS__)
 #define UT_CONTROL_PLANE_DEBUG(f_, ...) (void)0
-//#define UT_CONTROL_PLANE_DEBUG(f_, ...) printf((f_), ##__VA_ARGS__)
+
+#define MAX_MESSAGE_LEN 256
+#define MAX_MESSAGES 100
+
+#define MAX_CALLBACK_ENTRIES (32) /*!< Maximum number of registered callback entries. */
+#define MAX_KEY_SIZE (64)  /*!< Maximum length for a control plane key (bytes). */
+
+#define UT_CP_MAGIC (0xdeadbeef)
 
 typedef struct
 {
-  char key[UT_CONTROL_PLANE_MAX_KEY_SIZE];
+  char key[UT_KVP_MAX_ELEMENT_SIZE];
   ut_control_callback_t pCallback;
 }CallbackEntry_t;
+
+typedef enum
+{
+    DATA_RECIEVED = 0,
+    EXIT_REQUESTED
+}eMessage_t;
+
+typedef struct
+{
+    eMessage_t status;
+    char *message;
+    uint32_t size;
+} cp_message_t;
 
 typedef struct
 {
@@ -47,76 +67,62 @@ typedef struct
     pthread_t state_machine_thread_handle;
     pthread_t ws_thread_handle;
     volatile bool exit_request;
-    CallbackEntry_t callbackEntryList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
+    CallbackEntry_t callbackEntryList[MAX_CALLBACK_ENTRIES];
     uint32_t callback_entry_index;
+    cp_message_t message_queue[MAX_MESSAGES];
+    uint32_t message_count;
+    pthread_mutex_t queue_mutex;
+    pthread_cond_t queue_condition;
 } ut_cp_instance_internal_t;
 
-typedef enum
-{
-    DATA_RECIEVED = 0,
-    EXIT_REQUESTED
-}eMessage_t;
-typedef struct
-{
-    eMessage_t status;
-    char *message;
-    uint32_t size;
-} cp_message_t;
-
-#define MAX_CALLBACKS 10
-#define MAX_MESSAGE_LEN 256
-#define MAX_MESSAGES 100
-
-#define UT_CP_MAGIC (0xdeadbeef)
-
-cp_message_t message_queue[MAX_MESSAGES];
-uint32_t message_count = 0;
-
-pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t queue_condition = PTHREAD_COND_INITIALIZER;
-
+/* Static protypes */
+static void enqueue_message(cp_message_t *data, ut_cp_instance_internal_t *pInternal );
+static cp_message_t* dequeue_message(ut_cp_instance_internal_t *pInternal);
+static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t *pInternal);
+static void *service_ws_requests(void *data);
+static void *service_state_machine(void *data);
+static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance);
 
-void enqueue_message(cp_message_t *data)
+/* Local Fucntions*/
+static void enqueue_message(cp_message_t *data, ut_cp_instance_internal_t *pInternal )
 {
-    pthread_mutex_lock(&queue_mutex);
-    if (message_count < MAX_MESSAGES) {
-        message_queue[message_count].size = data->size;
-        message_queue[message_count].status = data->status;
-        message_queue[message_count].message = data->message;
-        message_count++;
-        pthread_cond_signal(&queue_condition);
+    pthread_mutex_lock(&pInternal->queue_mutex);
+    if (pInternal->message_count < MAX_MESSAGES)
+    {
+        pInternal->message_queue[pInternal->message_count].size = data->size;
+        pInternal->message_queue[pInternal->message_count].status = data->status;
+        pInternal->message_queue[pInternal->message_count].message = data->message;
+        pInternal->message_count++;
+        pthread_cond_signal(&pInternal->queue_condition);
     }
-    pthread_mutex_unlock(&queue_mutex);
+    pthread_mutex_unlock(&pInternal->queue_mutex);
 }
 
-cp_message_t* dequeue_message()
+static cp_message_t* dequeue_message(ut_cp_instance_internal_t *pInternal)
 {
     cp_message_t *msg;
-    pthread_mutex_lock(&queue_mutex);
-    while (message_count == 0) {
-        pthread_cond_wait(&queue_condition, &queue_mutex);
+
+    pthread_mutex_lock(&pInternal->queue_mutex);
+    while (pInternal->message_count == 0)
+    {
+        pthread_cond_wait(&pInternal->queue_condition, &pInternal->queue_mutex);
     }
-    msg = &message_queue[0];
-    for (int i = 0; i < message_count - 1; i++) {
-        message_queue[i] = message_queue[i + 1];
+    msg = &pInternal->message_queue[0];
+    for (int i = 0; i < pInternal->message_count - 1; i++)
+    {
+        pInternal->message_queue[i] = pInternal->message_queue[i + 1];
     }
-    message_count--;
-    pthread_mutex_unlock(&queue_mutex);
+    pInternal->message_count--;
+    pthread_mutex_unlock(&pInternal->queue_mutex);
     return msg;
 }
 
-void call_callback_on_match(cp_message_t *mssg, void* data)
+static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t *pInternal)
 {
     ut_kvp_instance_t *pkvpInstance = NULL;
     ut_kvp_status_t status;
     char result_kvp[UT_KVP_MAX_ELEMENT_SIZE] = {0xff};
-    ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
-
-    if (pInternal == NULL)
-    {
-        return;
-    }
 
     if (mssg->message == NULL)
     {
@@ -144,7 +150,7 @@ void call_callback_on_match(cp_message_t *mssg, void* data)
     return;
 }
 
-void *service_ws_requests(void *data)
+static void *service_ws_requests(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
      if (pInternal == NULL)
@@ -163,7 +169,7 @@ void *service_ws_requests(void *data)
     return NULL;
 }
 
-void *service_state_machine(void *data)
+static void *service_state_machine(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
 
@@ -177,7 +183,7 @@ void *service_state_machine(void *data)
     while (!pInternal->exit_request)
     {
         cp_message_t *msg;
-        msg = dequeue_message();
+        msg = dequeue_message( pInternal );
 
         switch (msg->status)
         {
@@ -188,7 +194,7 @@ void *service_state_machine(void *data)
 
         case DATA_RECIEVED:
             UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
-            call_callback_on_match(msg, data);
+            call_callback_on_match(msg, pInternal);
             break;
 
         default:
@@ -208,6 +214,8 @@ void *service_state_machine(void *data)
 
 static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
+    ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t* )lws_context_user(lws_get_context(wsi));
+
     switch (reason)
     {
     case LWS_CALLBACK_ESTABLISHED:
@@ -229,7 +237,7 @@ static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void
         strncpy(msg.message, (const char*)in, len);
         msg.message[len] = '\0';
         UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
-        enqueue_message(&msg);
+        enqueue_message(&msg, pInternal);
         // Echo back received message
         //lws_write(wsi, in, len, LWS_WRITE_TEXT);
         break;
@@ -294,33 +302,12 @@ void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance )
         return;
     }
 
-    if (pInternal->context == NULL)
-    {
-        UT_CONTROL_PLANE_ERROR("libwebsockets context was not created\n");
-        return;
-    }
-
-    if (pInternal->state_machine_thread_handle )
-    {
-        cp_message_t msg;
-        msg.status = EXIT_REQUESTED;
-        UT_CONTROL_PLANE_ERROR("EXIT_REQUESTED message from [%s] \n", __func__);
-        enqueue_message(&msg);
-        if (pthread_join(pInternal->state_machine_thread_handle, NULL) != 0)
-        {
-            UT_CONTROL_PLANE_ERROR("Failed to join state_machine_thread_handle(1st) from instance = %p\n", pInternal);
-            /*TODO: need to confirm if this return is required*/
-            //lws_context_destroy(pInternal->context);
-            //free(pInternal);
-            // return;
-        }
-    }
+    UT_ControlPlane_Stop(pInstance);
 
     if (pInternal->context != NULL)
     {
         lws_context_destroy(pInternal->context);
     }
-
     memset(pInternal, 0, sizeof(ut_cp_instance_internal_t));
 
     free(pInternal);
@@ -338,6 +325,29 @@ void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance)
     pthread_create(&pInternal->state_machine_thread_handle, NULL, service_state_machine, (void*) pInternal );
     UT_CONTROL_PLANE_DEBUG("pthread id = %ld\n", pInternal->state_machine_thread_handle);
 
+}
+
+void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
+{
+    ut_cp_instance_internal_t *pInternal = validateCPInstance(pInstance);
+
+    if (pInternal == NULL)
+    {
+        return;
+    }
+
+    if ( pInternal->state_machine_thread_handle )
+    {
+        cp_message_t msg;
+        msg.status = EXIT_REQUESTED;
+        enqueue_message(&msg, pInternal);
+        if (pthread_join(pInternal->state_machine_thread_handle, NULL) != 0)
+        {
+            UT_CONTROL_PLANE_ERROR("Failed to join state_machine_thread_handle(1st) from instance = %p\n", pInternal);
+            /*TODO: need to confirm if this return is required*/
+        }
+    }
+    pInternal->state_machine_thread_handle = 0;
 }
 
 ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction)
@@ -363,15 +373,15 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
     }
 
 
-    if ( pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES )
+    if ( pInternal->callback_entry_index >= MAX_CALLBACK_ENTRIES )
     { 
         return UT_CONTROL_PLANE_STATUS_LIST_FULL;
     } 
-    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,UT_CONTROL_PLANE_MAX_KEY_SIZE);
+    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,MAX_KEY_SIZE);
     pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = callbackFunction;
     pInternal->callback_entry_index++;
     UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", pInternal->callback_entry_index);
-    return UT_CONTROL_PLANE_STATUS_LIST_OK;
+    return UT_CONTROL_PLANE_STATUS_OK;
 }
 
 /** Static Functions */

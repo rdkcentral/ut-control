@@ -20,20 +20,15 @@
 
 #include <ut_kvp.h>
 
-#define UT_CONTROL_PLANE_MAX_KEY_SIZE (64)  /*!< Maximum length for a control plane key (bytes). */
-#define UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES (32) /*!< Maximum number of registered callback entries. */
-
-
 /**!
  * @brief Status codes for control plane operations.
  */
 typedef enum
 {
-    UT_CONTROL_PLANE_STATUS_LIST_FULL = 0,        /*!< Callback list is full. */
-    UT_CONTROL_PLANE_STATUS_INVALID_HANDLE,       /*!< Invalid control plane instance handle. */
-    UT_CONTROL_PLANE_STATUS_LIST_OK,              /*!< Callback operation successful. */
-    UT_CONTROL_PLANE_STATUS_INVALID_PARAM,        /*!< Invalid parameter passed. */
-    UT_CONTROL_PLANE_STATUS_OK = 0                /*!< Operation successful. */
+    UT_CONTROL_PLANE_STATUS_OK = 0,           /*!< Operation successful. */
+    UT_CONTROL_PLANE_STATUS_LIST_FULL,        /*!< Callback list is full. */
+    UT_CONTROL_PLANE_STATUS_INVALID_HANDLE,   /*!< Invalid control plane instance handle. */
+    UT_CONTROL_PLANE_STATUS_INVALID_PARAM     /*!< Invalid parameter passed. */
 } ut_control_plane_status_t;
 
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
@@ -57,19 +52,23 @@ ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
  * @retval UT_CONTROL_PLANE_STATUS_OK - Success
  * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE  - Invalid control plane instance handle.
  * @retavl UT_CONTROL_PLANE_STATUC_INVALID_PARAM - Invalid parameter passed
- * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL,  - Callback list is full
+ * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL  - Callback list is full
  */
-ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(
-    ut_controlPlane_instance_t *pInstance,
-    char *key,
-    ut_control_callback_t callbackFunction
-);
+ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance,
+                                                                    char *key,
+                                                                    ut_control_callback_t callbackFunction);
 
 /**
- * @brief Starts the control plane to listen for incoming messages.
+ * @brief Starts the control plane listening for incoming messages.
  * @param pInstance - Handle to the control plane instance.
  */
-void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance);
+void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance );
+
+/**
+ * @brief Stops the control plane listening for incoming messages.
+ * @param pInstance - Handle to the control plane instance.
+ */
+void UT_ControlPlane_Stop(ut_controlPlane_instance_t *pInstance);
 
 /**
  * @brief Releases resources and destroys a control plane instance.
