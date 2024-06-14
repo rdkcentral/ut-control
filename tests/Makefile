@@ -68,12 +68,20 @@ build:
 	@cp $(ROOT_DIR)/../lib/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
+	@echo -e ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}
+	@mkdir -p ${BIN_DIR}/assets
+	@cp ${ROOT_DIR}/src/assets/* ${BIN_DIR}/assets
 
 list:
 	@echo UT [$@]
 	make -C ./ut-core list
 
+clean:
+	@echo UT [$@]
+	@$(RM) -rf $(BIN_DIR)
+
 cleanall:
 	@echo UT [$@]
 	@$(RM) -rf $(BIN_DIR)
+	make -C ../ -f Makefile clean
 	make -C ./ut-core clean

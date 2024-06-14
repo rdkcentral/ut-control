@@ -20,6 +20,7 @@
 /* Standard Libraries */
 #include <pthread.h>
 #include <stdio.h>
+#include <assert.h>
 
 /* Application Includes */
 #include <ut_control_plane.h>
@@ -126,6 +127,8 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
     }
 
     pkvpInstance = ut_kvp_createInstance();
+
+    /* Note: mssg-message data will be freed by the destoryInstance() function */
     status = ut_kvp_openMemory(pkvpInstance, mssg->message, mssg->size );
     if (status != UT_KVP_STATUS_SUCCESS)
     {
@@ -154,7 +157,6 @@ static void *service_ws_requests(void *data)
         return NULL;
     }
 
-
     while (!pInternal->exit_request)
     {
         //TODO: Needs to be fixed in future
@@ -168,6 +170,7 @@ static void *service_ws_requests(void *data)
 static void *service_state_machine(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
+    cp_message_t *msg;
 
     if (pInternal == NULL)
     {
@@ -178,22 +181,28 @@ static void *service_state_machine(void *data)
 
     while (!pInternal->exit_request)
     {
-        cp_message_t *msg;
         msg = dequeue_message( pInternal );
 
         switch (msg->status)
         {
-        case EXIT_REQUESTED:
-            UT_CONTROL_PLANE_DEBUG("EXIT REQUESTED in thread1. Thread1 going to exit\n");
-            pInternal->exit_request = true;
+            case EXIT_REQUESTED:
+            {
+                UT_CONTROL_PLANE_DEBUG("EXIT REQUESTED in thread1. Thread1 going to exit\n");
+                pInternal->exit_request = true;
+            }
             break;
 
-        case DATA_RECIEVED:
-            UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
-            call_callback_on_match(msg, pInternal);
+            case DATA_RECIEVED:
+            {
+                UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
+                call_callback_on_match(msg, pInternal);
+            }
             break;
 
-        default:
+            default:
+            {
+
+            }
             break;
         }
     }
@@ -210,35 +219,42 @@ static void *service_state_machine(void *data)
 
 static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
+    cp_message_t msg;
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t* )lws_context_user(lws_get_context(wsi));
 
     switch (reason)
     {
-    case LWS_CALLBACK_ESTABLISHED:
-        UT_CONTROL_PLANE_DEBUG("Client connected\n");
-        break;
-
-    case LWS_CALLBACK_RECEIVE:
-        UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_RECEIVE\n");
-        cp_message_t msg;
-        msg.message = malloc((int)len + 1);
-        if(msg.message == NULL)
+        case LWS_CALLBACK_ESTABLISHED:
         {
-            UT_CONTROL_PLANE_ERROR("Malloc failed\n");
-            break;
+            UT_CONTROL_PLANE_DEBUG("Client connected\n");
         }
-        msg.size = (int)len;
-        msg.status = DATA_RECIEVED;
-        memset(msg.message, 0, (int)len + 1);
-        strncpy(msg.message, (const char*)in, len);
-        msg.message[len] = '\0';
-        UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
-        enqueue_message(&msg, pInternal);
-        // Echo back received message
-        //lws_write(wsi, in, len, LWS_WRITE_TEXT);
         break;
 
-    default:
+        case LWS_CALLBACK_RECEIVE:
+        {
+            UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_RECEIVE\n");
+            msg.message = malloc((int)len + 1);
+            assert( msg.message != NULL);
+            if (msg.message == NULL)
+            {
+                UT_CONTROL_PLANE_ERROR("Malloc failed\n");
+                break;
+            }
+            msg.size = (int)len;
+            msg.status = DATA_RECIEVED;
+            memset(msg.message, 0, (int)len + 1);
+            strncpy(msg.message, (const char*)in, len);
+            msg.message[len] = '\0';
+            UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
+            enqueue_message(&msg, pInternal);
+            // Echo back received message
+            //lws_write(wsi, in, len, LWS_WRITE_TEXT);
+        }
+        break;
+
+        default:
+        {
+        }
         break;
     }
 
@@ -260,7 +276,10 @@ static struct lws_protocols protocols[] = {
 
 ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
 {
-    ut_cp_instance_internal_t *pInstance = calloc(1, sizeof(ut_cp_instance_internal_t));
+    ut_cp_instance_internal_t *pInstance;
+  
+    pInstance = malloc(sizeof(ut_cp_instance_internal_t));
+    memset(pInstance, 0, sizeof(ut_cp_instance_internal_t));
 
     if ( pInstance == NULL )
     {
@@ -332,6 +351,7 @@ void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance)
 void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance(pInstance);
+    cp_message_t msg = {0};
 
     if (pInternal == NULL)
     {
@@ -340,7 +360,7 @@ void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
 
     if ( pInternal->state_machine_thread_handle )
     {
-        cp_message_t msg;
+        memset(&msg, 0, sizeof(msg));
         msg.status = EXIT_REQUESTED;
         enqueue_message(&msg, pInternal);
         if (pthread_join(pInternal->state_machine_thread_handle, NULL) != 0)

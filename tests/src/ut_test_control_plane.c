@@ -46,7 +46,7 @@ static void test_ut_control_l1_testInitExit()
     ut_controlPlane_instance_t *pInstance = NULL;
     ut_controlPlane_instance_t *pInstance1;
 
-    UT_LOG("test_ut_control_l1_testInitExit\n");
+    UT_LOG("\ntest_ut_control_l1_testInitExit\n");
 
     /* Negative */
     UT_ControlPlane_Exit(NULL);
@@ -76,13 +76,14 @@ static void test_ut_control_l1_testStartStop()
     ut_controlPlane_instance_t *pInstance;
     ut_controlPlane_instance_t *pInstance1;
 
-    UT_LOG("\ntest_ut_control_l1_testStartStop");
+    UT_LOG("\ntest_ut_control_l1_testStartStop\n");
 
     /* Negative */
     UT_ControlPlane_Start(NULL);
     UT_ControlPlane_Stop(NULL);
 
     /* Positive Instance*/
+    UT_LOG("Control Plan Init\n");
     pInstance = UT_ControlPlane_Init(8080);
     UT_ASSERT(pInstance != NULL);
 
@@ -104,7 +105,7 @@ static void test_ut_control_l1_testStartStop()
     /* Exit the other instance */
     UT_ControlPlane_Exit(pInstance);
 
-    UT_LOG("\ntest_ut_control_l1_testStartStop");
+    UT_LOG("test_ut_control_l1_testStartStop\n");
 }
 
 static void test_ut_control_l1_regsiterCallback()
@@ -112,7 +113,7 @@ static void test_ut_control_l1_regsiterCallback()
     ut_controlPlane_instance_t *pInstance;
     ut_control_plane_status_t status;
 
-    UT_LOG("\ntest_ut_control_l1_regsiterCallback");
+    UT_LOG("\ntest_ut_control_l1_regsiterCallback\n");
 
     pInstance = UT_ControlPlane_Init(9000);
     UT_ASSERT(pInstance != NULL);
@@ -140,7 +141,7 @@ static void test_ut_control_l1_regsiterCallback()
 
     UT_ControlPlane_Exit(pInstance);
 
-    UT_LOG("\ntest_ut_control_l1_regsiterCallback");
+    UT_LOG("test_ut_control_l1_regsiterCallback\n");
 }
 
 /* L2 Testing functions */
@@ -154,7 +155,7 @@ void testYAMLCallback(char *key, ut_kvp_instance_t *instance)
 
 void testJSONCallback(char *key, ut_kvp_instance_t *instance)
 {
-    UT_LOG("\n**************testJSONCallback is called****************\n");
+    UT_LOG("**************testJSONCallback is called****************\n");
     ut_kvp_print( instance );
 
     gMessageRecievedJSON = true;
@@ -198,7 +199,7 @@ void run_client_function()
 
     UT_LOG("Please Run the command `./python-client-send-json.py or/& ./python-client-send-yaml.py` \
     from another terminal and press return;'\n");
-    UT_LOG("In order to pass the test you need to run each of the python scripts'");
+    UT_LOG("In order to pass the test you need to run each of the python scripts'\n");
 
     while (countdown > 0)
     { 

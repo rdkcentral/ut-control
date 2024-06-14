@@ -20,10 +20,12 @@
 #include <ut.h>
 
 extern void register_cp_function(void);
+extern void register_kvp_functions(void);
 
 int main(int argc, char** argv)
 {
     UT_init( argc, argv );
     register_cp_function();
+    register_kvp_functions();
     UT_run_tests();
 }

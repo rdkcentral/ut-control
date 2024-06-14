@@ -8,7 +8,7 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/tests/bin/",
       "program": "${workspaceFolder}/tests/bin/ut_control_test",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
