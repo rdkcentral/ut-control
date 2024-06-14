@@ -67,6 +67,7 @@ build:
 	make -C ./ut-core test
 	@cp $(ROOT_DIR)/../lib/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
+	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
 
 list:
 	@echo UT [$@]

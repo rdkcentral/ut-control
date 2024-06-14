@@ -20,6 +20,9 @@
 
 #include <ut_kvp.h>
 
+/* Definations */
+#define UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES (32) /*!< Maximum number of registered callback entries. */
+
 /**!
  * @brief Status codes for control plane operations.
  */
@@ -51,7 +54,7 @@ ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
  * @returns Status of the registration operation (`ut_control_plane_status_t`).
  * @retval UT_CONTROL_PLANE_STATUS_OK - Success
  * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE  - Invalid control plane instance handle.
- * @retavl UT_CONTROL_PLANE_STATUC_INVALID_PARAM - Invalid parameter passed
+ * @retval UT_CONTROL_PLANE_STATUS_INVALID_PARAM - Invalid parameter passed
  * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL  - Callback list is full
  */
 ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance,

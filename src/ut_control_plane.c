@@ -31,11 +31,7 @@
 #define UT_CONTROL_PLANE_ERROR(f_, ...) printf((f_), ##__VA_ARGS__)
 #define UT_CONTROL_PLANE_DEBUG(f_, ...) (void)0
 
-#define MAX_MESSAGE_LEN 256
-#define MAX_MESSAGES 100
-
-#define MAX_CALLBACK_ENTRIES (32) /*!< Maximum number of registered callback entries. */
-#define MAX_KEY_SIZE (64)  /*!< Maximum length for a control plane key (bytes). */
+#define MAX_MESSAGES 32
 
 #define UT_CP_MAGIC (0xdeadbeef)
 
@@ -67,7 +63,7 @@ typedef struct
     pthread_t state_machine_thread_handle;
     pthread_t ws_thread_handle;
     volatile bool exit_request;
-    CallbackEntry_t callbackEntryList[MAX_CALLBACK_ENTRIES];
+    CallbackEntry_t callbackEntryList[UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES];
     uint32_t callback_entry_index;
     cp_message_t message_queue[MAX_MESSAGES];
     uint32_t message_count;
@@ -133,7 +129,7 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
     status = ut_kvp_openMemory(pkvpInstance, mssg->message, mssg->size );
     if (status != UT_KVP_STATUS_SUCCESS)
     {
-        UT_CONTROL_PLANE_ERROR("\nut_kvp_open() - Read Failure\n");
+        UT_CONTROL_PLANE_ERROR("ut_kvp_open() - Read Failure\n");
         ut_kvp_destroyInstance(pkvpInstance);
         return;
     }
@@ -273,6 +269,13 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
         return NULL;
     }
 
+    if ( monitorPort == 0 )
+    {
+        //assert( pInstance != NULL );
+        UT_CONTROL_PLANE_ERROR("port cannot be 0\n");
+        return NULL;
+    }
+
     pInstance->info.port = monitorPort;
     pInstance->info.iface = NULL;
     pInstance->info.protocols = protocols;
@@ -324,7 +327,6 @@ void UT_ControlPlane_Start( ut_controlPlane_instance_t *pInstance)
 
     pthread_create(&pInternal->state_machine_thread_handle, NULL, service_state_machine, (void*) pInternal );
     UT_CONTROL_PLANE_DEBUG("pthread id = %ld\n", pInternal->state_machine_thread_handle);
-
 }
 
 void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
@@ -373,11 +375,11 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
     }
 
 
-    if ( pInternal->callback_entry_index >= MAX_CALLBACK_ENTRIES )
+    if ( pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES )
     { 
         return UT_CONTROL_PLANE_STATUS_LIST_FULL;
     } 
-    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,MAX_KEY_SIZE);
+    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,UT_KVP_MAX_ELEMENT_SIZE);
     pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = callbackFunction;
     pInternal->callback_entry_index++;
     UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", pInternal->callback_entry_index);
@@ -392,14 +394,14 @@ static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t 
     if ( pInstance == NULL )
     {
         //assert(pInternal == NULL);
-        UT_CONTROL_PLANE_ERROR("\nInvalid Handle");
+        UT_CONTROL_PLANE_ERROR("Invalid Handle\n");
         return NULL;
     }
 
     if (pInternal->magic != UT_CP_MAGIC)
     {
         //assert(pInternal->magic != UT_CP_MAGIC);
-        UT_CONTROL_PLANE_ERROR("\nInvalid Handle - magic failure");
+        UT_CONTROL_PLANE_ERROR("Invalid Handle - magic failure\n");
         return NULL;
     }
 
