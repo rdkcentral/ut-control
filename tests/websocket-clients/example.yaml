@@ -1,0 +1,9 @@
+---
+test:
+  yamlData: somevalue
+  x: 1
+  on: true
+test2:
+  yamlData1: somevalue1
+  y: 2
+  off: false
