@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # /*
 #  * If not stated otherwise in this file or this component's LICENSE file the
 #  * following copyright and licenses apply:
@@ -16,7 +17,7 @@
 #  * See the License for the specific language governing permissions and
 #  * limitations under the License.
 #  */
-#  usage : python3 <filename.py>
+#  usage : <filename.py>
 
 import os
 import asyncio

@@ -1,4 +1,5 @@
 # User defined
+tests/obj/*
 .lastlogin
 framework/**
 workspace

@@ -75,4 +75,5 @@ list:
 
 cleanall:
 	@echo UT [$@]
+	@$(RM) -rf $(BIN_DIR)
 	make -C ./ut-core clean

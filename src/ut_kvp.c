@@ -59,7 +59,6 @@ ut_kvp_instance_t *ut_kvp_createInstance(void)
 
     if ( pInstance == NULL )
     {
-        //assert( pInstance != NULL );
         return NULL;
     }
 
@@ -76,7 +75,6 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
 
     if ( pInternal == NULL )
     {
-        //assert(pInternal == NULL);
         return;
     }
 
@@ -99,7 +97,6 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 
     if (fileName == NULL)
     {
-        //assert( fileName != NULL );
         UT_LOG_ERROR( "Invalid Param [fileName]" );
         return UT_KVP_STATUS_INVALID_PARAM;
     }
@@ -132,7 +129,6 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 
     if (pData == NULL)
     {
-        //assert( pData != NULL );
         UT_LOG_ERROR( "Invalid Param [string]" );
         return UT_KVP_STATUS_INVALID_PARAM;
     }
@@ -205,27 +201,23 @@ static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char 
 
     if (pInternal == NULL)
     {
-        //assert(pInternal != NULL);
         return UT_KVP_STATUS_INVALID_INSTANCE;
     }
 
     if (pszKey == NULL)
     {
-        //assert(pszKey != NULL);
         UT_LOG_ERROR("Invalid Param - pszKey");
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
     if (pzResult == NULL)
     {
-        //assert(pzResult != NULL);
         UT_LOG_ERROR("Invalid Param - pzResult");
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
     if ( pInternal->fy_handle == NULL )
     {
-        //assert(pInternal->fy_handle != NULL);
         UT_LOG_ERROR("No Data File open");
         return UT_KVP_STATUS_NO_DATA;
     }
@@ -236,7 +228,6 @@ static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char 
     fy_result = fy_document_scanf(pInternal->fy_handle, zEntry, pzResult);
     if ( fy_result <= 0 )
     {
-        //assert( fy_result > 0 );
         UT_LOG_ERROR("Parsing Error");
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -253,7 +244,6 @@ bool ut_kvp_getBoolField( ut_kvp_instance_t *pInstance, const char *pszKey )
     status = ut_kvp_getField(pInstance, pszKey, result);
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
-        //assert(status == UT_KVP_STATUS_SUCCESS);
         return false;
     }
 
@@ -274,7 +264,6 @@ static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *psz
     status = ut_kvp_getField(pInstance, pszKey, result);
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
-        //assert(status != UT_KVP_STATUS_SUCCESS);
         return 0;
     }
 
@@ -291,19 +280,16 @@ static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *psz
     if (pField == pEndptr)
     {
         UT_LOG_ERROR("No conversion performed!");
-        //assert(true);
         return 0;
     }
     else if (*pEndptr != '\0')
     {
         UT_LOG_ERROR("Invalid characters in the string.");
-        //assert(true);
         return 0;
     }
     else if (errno == ERANGE || uValue > maxRange)
     {
         printf("Value out of range for maxRange [0x%lx,%ld].", maxRange, maxRange);
-        //assert(true);
         return 0;
     }
 
@@ -347,7 +333,6 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
     status = ut_kvp_getField(pInstance, pszKey, result);
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
-        //assert(status != UT_KVP_STATUS_SUCCESS);
         return 0;
     }
 
@@ -364,19 +349,16 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
     if (pField == pEndptr) 
     {
         UT_LOG_ERROR("No conversion performed!");
-        //assert(true);
         return 0;
     }
     else if (*pEndptr != '\0') 
     {
         UT_LOG_ERROR("Invalid characters in the string.");
-        //assert(true);
         return 0;
     } 
     else if (errno == ERANGE || u64Value > UINT64_MAX) 
     {
         UT_LOG_ERROR("Value out of range for uint64_t.");
-        //assert(true);
         return 0;
     }
 
@@ -395,20 +377,17 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
 
     if (pInternal == NULL)
     {
-        //assert(pInternal != NULL);
         return UT_KVP_STATUS_INVALID_INSTANCE;
     }
 
     if (pszKey == NULL)
     {
-        //assert(pszKey != NULL);
         UT_LOG_ERROR("Invalid Param - pszKey");
         return UT_KVP_STATUS_NULL_PARAM;
     }
 
     if ( pszReturnedString == NULL )
     {
-        //assert(pszReturnedString != NULL);
         UT_LOG_ERROR("Invalid Param - pszReturnedString");
         return UT_KVP_STATUS_NULL_PARAM;
     }
@@ -417,7 +396,6 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     *pszReturnedString=0;
     if ( pInternal->fy_handle == NULL )
     {
-        //assert(pInternal->fy_handle != NULL);
         UT_LOG_ERROR("No Data File open");
         return UT_KVP_STATUS_NO_DATA;
     }
@@ -425,7 +403,6 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     root = fy_document_root(pInternal->fy_handle);
     if ( root == NULL )
     {
-        //assert( root != NULL );
         UT_LOG_ERROR("Empty document");
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -436,7 +413,6 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
-        //assert( node != NULL );
         UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
         return UT_KVP_STATUS_KEY_NOT_FOUND;
     }
@@ -447,7 +423,6 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
         pString = fy_node_get_scalar0(node);
         if ( pString == NULL )
         {
-            //assert( pString != NULL );
             UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
             return UT_KVP_STATUS_KEY_NOT_FOUND;
         }
@@ -467,21 +442,18 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
 
     if (pInternal == NULL)
     {
-        //assert(pInternal != NULL);
         UT_LOG_ERROR("Invalid instance - pInstance");
         return 0;
     }
 
     if (pszKey == NULL)
     {
-        //assert(pszKey != NULL);
         UT_LOG_ERROR("Invalid Param - pszKey");
         return 0;
     }
 
     if ( pInternal->fy_handle == NULL )
     {
-        //assert(pInternal->fy_handle != NULL);
         UT_LOG_ERROR("No Data File open");
         return 0;
     }
@@ -490,7 +462,6 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     if ( root == NULL )
     {
         /* The file has no content that can be decoded.*/
-        //assert( root != NULL );
         UT_LOG_ERROR("Empty document");
         return 0;
     }
@@ -525,14 +496,12 @@ static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance
 
     if ( pInstance == NULL )
     {
-        //assert(pInternal == NULL);
         UT_LOG_ERROR("Invalid Handle");
         return NULL;
     }
 
     if (pInternal->magic != UT_KVP_MAGIC)
     {
-        //assert(pInternal->magic != UT_KVP_MAGIC);
         UT_LOG_ERROR("Invalid Handle - magic failure");
         return NULL;
     }
@@ -551,7 +520,6 @@ static bool str_to_bool(const char *string)
         return false;
     }
     /* String is neither true or false, ensure we inform the caller*/
-    //assert(true);
     return false;
 }
 

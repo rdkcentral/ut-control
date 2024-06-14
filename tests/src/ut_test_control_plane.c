@@ -46,6 +46,8 @@ static void test_ut_control_l1_testInitExit()
     ut_controlPlane_instance_t *pInstance = NULL;
     ut_controlPlane_instance_t *pInstance1;
 
+    UT_LOG("test_ut_control_l1_testInitExit\n");
+
     /* Negative */
     UT_ControlPlane_Exit(NULL);
     UT_ASSERT( pInstance == NULL );
@@ -65,12 +67,16 @@ static void test_ut_control_l1_testInitExit()
     UT_ControlPlane_Exit(pInstance);
     UT_ControlPlane_Exit(pInstance1);
 
+    UT_LOG("test_ut_control_l1_testInitExit\n");
+
 }
 
 static void test_ut_control_l1_testStartStop()
 {
     ut_controlPlane_instance_t *pInstance;
     ut_controlPlane_instance_t *pInstance1;
+
+    UT_LOG("\ntest_ut_control_l1_testStartStop");
 
     /* Negative */
     UT_ControlPlane_Start(NULL);
@@ -97,12 +103,16 @@ static void test_ut_control_l1_testStartStop()
 
     /* Exit the other instance */
     UT_ControlPlane_Exit(pInstance);
+
+    UT_LOG("\ntest_ut_control_l1_testStartStop");
 }
 
 static void test_ut_control_l1_regsiterCallback()
 {
     ut_controlPlane_instance_t *pInstance;
     ut_control_plane_status_t status;
+
+    UT_LOG("\ntest_ut_control_l1_regsiterCallback");
 
     pInstance = UT_ControlPlane_Init(9000);
     UT_ASSERT(pInstance != NULL);
@@ -129,6 +139,8 @@ static void test_ut_control_l1_regsiterCallback()
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_LIST_FULL);
 
     UT_ControlPlane_Exit(pInstance);
+
+    UT_LOG("\ntest_ut_control_l1_regsiterCallback");
 }
 
 /* L2 Testing functions */
@@ -184,7 +196,7 @@ void run_client_function()
     bool receivedYAML = false;
     bool receivedJSON = false;
 
-    UT_LOG("Please Run the command `python3 python-client-send-json.py or/& python3 python-client-send-yaml.py` \
+    UT_LOG("Please Run the command `./python-client-send-json.py or/& ./python-client-send-yaml.py` \
     from another terminal and press return;'\n");
     UT_LOG("In order to pass the test you need to run each of the python scripts'");
 
