@@ -1,7 +1,10 @@
 # User defined
+tests/obj/*
+.lastlogin
 framework/**
 workspace
 bin/*
+lib/*
 .vscode/*.log
 *.log
 *.xml
