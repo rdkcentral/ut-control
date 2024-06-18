@@ -176,6 +176,28 @@ uint64_t ut_kvp_getUInt64Field(ut_kvp_instance_t *pInstance, const char *pszKey)
  */
 ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize );
 
+/**!
+ * @brief Retrieves a formatted float value from the KVP profile.
+ *
+ * The caller owns the memory passed into `pszReturnedString`, which is filled out by this function.
+ * The `uStringSize` should include space for the null-terminator.
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Key of the string value to retrieve (null-terminated string).
+ * @param[out] pszReturnedString - Pre-allocated buffer to store the retrieved formatted float value.
+ * @param[in] uStringSize - Size of the `pszReturnedString` buffer (including space for the null-terminator).
+ *
+ * @returns Status of the operation (`ut_kvp_status_t`):
+ * @retval UT_KVP_STATUS_SUCCESS - String value was found and successfully copied to `pszReturnedString`.
+ * @retval UT_KVP_STATUS_INVALID_PARAM - An invalid parameter was passed (e.g. invalid buffer size).
+ * @retval UT_KVP_STATUS_PARSING_ERROR - An error occurred while parsing the KVP data.
+ * @retval UT_KVP_STATUS_NO_DATA - The KVP instance does not contain any data.
+ * @retval UT_KVP_STATUS_KEY_NOT_FOUND - The specified key (`pszKey`) was not found in the KVP data.
+ * @retval UT_KVP_STATUS_NULL_PARAM - A null parameter was passed.
+ * @retval UT_KVP_STATUS_INVALID_INSTANCE - An invalid KVP instance handle was passed.
+ */
+ut_kvp_status_t ut_kvp_getFormattedFloatField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize );
+
 /**
  * @brief Get the data block from the instance, user to free the instance
  *

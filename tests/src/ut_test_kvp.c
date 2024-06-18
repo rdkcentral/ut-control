@@ -459,6 +459,25 @@ void test_ut_kvp_string(void)
     UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
     UT_ASSERT_STRING_EQUAL(result_kvp, "the beef is also dead" );
     UT_LOG( "checkStringDeadBeef2[%s]", result_kvp );
+
+}
+
+void test_ut_kvp_getFormattedFloatField( void )
+{
+    ut_kvp_status_t status;
+    char result_kvp[UT_KVP_MAX_ELEMENT_SIZE]={0xff};
+
+    UT_LOG_STEP("ut_kvp_getFormattedFloatField() - Check Float with Quotes for UT_KVP_STATUS_SUCCESS");
+    status = ut_kvp_getFormattedFloatField(gpMainTestInstance, "decodeTest.checkFloat", result_kvp, UT_KVP_MAX_ELEMENT_SIZE);
+    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+    UT_ASSERT_STRING_EQUAL(result_kvp, "5.1" );
+    UT_LOG( "checkFloat[%s]", result_kvp );
+
+    UT_LOG_STEP("ut_kvp_getFormattedFloatField() - Check Float with Quotes for UT_KVP_STATUS_SUCCESS");
+    status = ut_kvp_getFormattedFloatField(gpMainTestInstance, "decodeTest/checkFloat", result_kvp, UT_KVP_MAX_ELEMENT_SIZE);
+    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+    UT_ASSERT_STRING_EQUAL(result_kvp, "5.1" );
+    UT_LOG( "checkFloat[%s]", result_kvp );
 }
 
 void test_ut_kvp_get_field_without_open( void )
@@ -661,6 +680,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite2, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite2, "kvp uint64", test_ut_kvp_uint64);
     UT_add_test(gpKVPSuite2, "kvp list", test_ut_kvp_list);
+    UT_add_test(gpKVPSuite2, "kvp float(formatted)", test_ut_kvp_getFormattedFloatField);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite3 = UT_add_suite("ut-kvp - test main functions JSON Decoder ", test_ut_kvp_createGlobalJSONInstance, test_ut_kvp_freeGlobalInstance);
@@ -674,6 +694,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite3, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite3, "kvp uint64", test_ut_kvp_uint64);
     UT_add_test(gpKVPSuite3, "kvp list", test_ut_kvp_list);
+    UT_add_test(gpKVPSuite3, "kvp float(formatted)", test_ut_kvp_getFormattedFloatField);
 
 
     gpKVPSuite4 = UT_add_suite("ut-kvp - test main functions Test without Open ", NULL, NULL);
@@ -691,6 +712,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite5, "kvp string", test_ut_kvp_string);
     UT_add_test(gpKVPSuite5, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite5, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite5, "kvp float(formatted)", test_ut_kvp_getFormattedFloatField);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite6 = UT_add_suite("ut-kvp - test main functions JSON Decoder with malloc'd data", test_ut_kvp_createGlobalJSONInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
@@ -702,6 +724,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite6, "kvp bool", test_ut_kvp_bool);
     UT_add_test(gpKVPSuite6, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite6, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite6, "kvp float(formatted)", test_ut_kvp_getFormattedFloatField);
 
     gpKVPSuite7 = UT_add_suite("ut-kvp - test kvp_open_memory()", test_ut_kvp_createGlobalKVPInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
     assert(gpKVPSuite7 != NULL);

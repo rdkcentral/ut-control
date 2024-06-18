@@ -355,6 +355,31 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
     return u64Value;
 }
 
+ut_kvp_status_t ut_kvp_getFormattedFloatField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize )
+{
+    char result[UT_KVP_MAX_ELEMENT_SIZE];
+    ut_kvp_status_t status;
+
+    if ( pszReturnedString == NULL )
+    {
+        UT_LOG_ERROR("Invalid Param - pszReturnedString");
+        return UT_KVP_STATUS_NULL_PARAM;
+    }
+
+    /* Make sure we populate the returned string with zero before any other action */
+    *pszReturnedString=0;
+
+    status = ut_kvp_getField(pInstance, pszKey, result);
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        return status;
+    }
+
+    strncpy( pszReturnedString, result, uStringSize );
+    return UT_KVP_STATUS_SUCCESS;
+
+}
+
 ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize )
 {
     struct fy_node *node = NULL;
