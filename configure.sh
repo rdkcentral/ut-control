@@ -20,6 +20,7 @@
 # *
 
 set -e # error out if required
+
 SCRIPT_EXEC="$(realpath $0)"
 MY_DIR="$(dirname $SCRIPT_EXEC)"
 
@@ -78,3 +79,4 @@ else
     make
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}
+
