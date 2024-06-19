@@ -94,7 +94,7 @@ all: framework lib
 
 # Rule to create the shared library
 lib : ${OBJS}
-	@echo ${GREEN}Building lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
+	@echo ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
 	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(LDFLAGS)
 
@@ -108,7 +108,6 @@ $(BUILD_DIR)/%.o: %.c
 framework:
 	@echo ${GREEN}"Ensure ut-control framework is present"${NC}
 	@${UT_CONTROL_DIR}/configure.sh
-	@echo -e ${GREEN}Completed${NC}
 
 list:
 	@echo ${GREEN}List [$@]${NC}
