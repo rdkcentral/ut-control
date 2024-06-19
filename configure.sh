@@ -32,7 +32,7 @@ ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 LIBWEBSOCKETS_DIR=${FRAMEWORK_DIR}/libwebsockets-4.3.3
 
 if [ -d "${LIBYAML_DIR}" ]; then
-    echo "Framework libyaml already exists"
+    echo "Framework [libfyaml] already exists"
 else
     echo "Clone libfyaml in ${LIBYAML_DIR}"
     wget https://github.com/pantoniou/libfyaml/archive/refs/heads/master.zip --no-check-certificate -P framework/
@@ -52,7 +52,7 @@ popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${ASPRINTF_DIR}" ]; then
-    echo "Framework libyaml already exists"
+    echo "Framework [asprintf] already exists"
 else
     echo "Clone asprintf in ${ASPRINTF_DIR}"
     wget https://github.com/jwerle/asprintf.c/archive/refs/heads/master.zip -P asprintf/. --no-check-certificate
@@ -64,7 +64,7 @@ popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBWEBSOCKETS_DIR}" ]; then
-    echo "Framework libyaml already exists"
+    echo "Framework [libwebsockets] already exists"
 else
     echo "Clone libwebsockets in ${LIBWEBSOCKETS_DIR}"
     wget https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.3.3.zip --no-check-certificate

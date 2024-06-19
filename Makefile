@@ -21,7 +21,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-$(info $(shell echo ${GREEN}TARGET_LIB [$(TARGET_LIB)]${NC}))
+$(info $(shell echo ${GREEN}Building [$(TARGET_LIB)]${NC}))
 
 UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -88,7 +88,9 @@ ifeq ($(TARGET),linux)
 CC := gcc -ggdb -o0 -Wall
 endif
 
-.PHONY: clean list lib test all
+.PHONY: clean list lib test all framework
+
+all: framework lib
 
 # Rule to create the shared library
 lib : ${OBJS}
@@ -102,14 +104,10 @@ $(BUILD_DIR)/%.o: %.c
 	@$(MKDIR_P) $(dir $@)
 	@$(CC) $(XCFLAGS) -c $< -o $@
 
-.PHONY: clean list framework lib
-
-all: framework lib
-
 # Ensure the framework is built
 framework:
 	@echo ${GREEN}"Ensure ut-control framework is present"${NC}
-	${UT_CONTROL_DIR}/configure.sh
+	@${UT_CONTROL_DIR}/configure.sh
 	@echo -e ${GREEN}Completed${NC}
 
 list:
