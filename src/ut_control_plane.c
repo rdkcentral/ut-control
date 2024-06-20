@@ -29,8 +29,8 @@
 /* External libraries */
 #include <libwebsockets.h>
 
-#define UT_CONTROL_PLANE_ERROR(f_, ...) printf((f_), ##__VA_ARGS__)
-#define UT_CONTROL_PLANE_DEBUG(f_, ...) (void)0
+#define UT_CONTROL_PLANE_ERROR(f_, ...) UT_LOG_ERROR((f_), ##__VA_ARGS__)
+#define UT_CONTROL_PLANE_DEBUG(f_, ...) UT_LOG_DEBUG((f_), ##__VA_ARGS__)
 
 #define MAX_MESSAGES 32
 

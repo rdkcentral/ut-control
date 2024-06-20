@@ -22,16 +22,10 @@
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
+#include <assert.h>
 
 /* Application Includes */
 #include <ut_kvp.h>
-#ifdef UT_LOG_ENABLED
-#include <ut_log.h>
-#else
-#define UT_LOG_ERROR(format, ...) printf(format)
-#endif
-
-#include <assert.h>
 
 /* External libraries */
 #include <libfyaml.h>
