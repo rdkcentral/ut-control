@@ -51,7 +51,7 @@ INC_DIRS += $(ASPRINTF_DIR)
 LIBWEBSOCKETS_DIR = $(TOP_DIR)/framework/libwebsockets-4.3.3
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/build
-LDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -l:libwebsockets.a
+LDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -lwebsockets
 
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
@@ -107,7 +107,7 @@ $(BUILD_DIR)/%.o: %.c
 # Ensure the framework is built
 framework:
 	@echo -e ${GREEN}"Ensure ut-control framework is present"${NC}
-	@${UT_CONTROL_DIR}/configure.sh
+	@${UT_CONTROL_DIR}/configure.sh TARGET=$(TARGET)
 
 list:
 	@echo ${GREEN}List [$@]${NC}
