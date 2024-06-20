@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <ut_log.h>
+
 /**! Status codes for the unit testing (UT) Key-Value Pair (KVP) framework. */
 typedef enum
 {
