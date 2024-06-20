@@ -25,6 +25,7 @@
 /* Application Includes */
 #include <ut_control_plane.h>
 #include <ut_kvp.h>
+#include <ut_log.h>
 
 /* External libraries */
 #include <libwebsockets.h>
