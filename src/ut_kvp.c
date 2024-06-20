@@ -26,6 +26,7 @@
 
 /* Application Includes */
 #include <ut_kvp.h>
+#include <ut_log.h>
 
 /* External libraries */
 #include <libfyaml.h>
