@@ -21,7 +21,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-$(info $(shell echo ${GREEN}Building [$(TARGET_LIB)]${NC}))
+$(info $(shell echo -e ${GREEN}Building [$(TARGET_LIB)]${NC}))
 
 UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -94,19 +94,19 @@ all: framework lib
 
 # Rule to create the shared library
 lib : ${OBJS}
-	@echo ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
+	@echo -e ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
 	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(LDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
-	@echo ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
+	@echo -e ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
 	@$(MKDIR_P) $(dir $@)
 	@$(CC) $(XCFLAGS) -c $< -o $@
 
 # Ensure the framework is built
 framework:
-	@echo ${GREEN}"Ensure ut-control framework is present"${NC}
+	@echo -e ${GREEN}"Ensure ut-control framework is present"${NC}
 	@${UT_CONTROL_DIR}/configure.sh
 
 list:
