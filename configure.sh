@@ -20,6 +20,7 @@
 # *
 
 set -e # error out if required
+
 SCRIPT_EXEC="$(realpath $0)"
 MY_DIR="$(dirname $SCRIPT_EXEC)"
 
@@ -31,7 +32,7 @@ ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 LIBWEBSOCKETS_DIR=${FRAMEWORK_DIR}/libwebsockets-4.3.3
 
 if [ -d "${LIBYAML_DIR}" ]; then
-    echo "Framework libyaml already exists"
+    echo "Framework [libfyaml] already exists"
 else
     echo "Clone libfyaml in ${LIBYAML_DIR}"
     wget https://github.com/pantoniou/libfyaml/archive/refs/heads/master.zip --no-check-certificate -P framework/
@@ -51,7 +52,7 @@ popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${ASPRINTF_DIR}" ]; then
-    echo "Framework libyaml already exists"
+    echo "Framework [asprintf] already exists"
 else
     echo "Clone asprintf in ${ASPRINTF_DIR}"
     wget https://github.com/jwerle/asprintf.c/archive/refs/heads/master.zip -P asprintf/. --no-check-certificate
@@ -63,7 +64,7 @@ popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBWEBSOCKETS_DIR}" ]; then
-    echo "Framework libyaml already exists"
+    echo "Framework [libwebsockets] already exists"
 else
     echo "Clone libwebsockets in ${LIBWEBSOCKETS_DIR}"
     wget https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.3.3.zip --no-check-certificate
@@ -72,9 +73,10 @@ else
     mkdir build
     cd build
     cmake .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
-    -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=OFF \
+    -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
     -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release
-    make
+    make $@
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}
+
