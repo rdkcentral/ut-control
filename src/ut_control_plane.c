@@ -41,6 +41,7 @@ typedef struct
 {
   char key[UT_KVP_MAX_ELEMENT_SIZE];
   ut_control_callback_t pCallback;
+  void* userData;
 }CallbackEntry_t;
 
 typedef enum
@@ -143,7 +144,7 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
         if (UT_KVP_STATUS_SUCCESS == ut_kvp_getStringField(pkvpInstance, entry.key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE))
         {
             // call callback
-            entry.pCallback(entry.key, pkvpInstance);
+            entry.pCallback(entry.key, pkvpInstance, entry.userData);
         }
     }
     ut_kvp_destroyInstance(pkvpInstance);
@@ -373,7 +374,7 @@ void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
     pInternal->state_machine_thread_handle = 0;
 }
 
-ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction)
+ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction, void *userData)
 {
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
 
@@ -395,6 +396,12 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
+     if ( userData == NULL )
+    {
+        UT_CONTROL_PLANE_ERROR("NULL userData\n");
+        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
+    }
+
 
     if ( pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES )
     { 
@@ -402,6 +409,7 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
     } 
     strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,UT_KVP_MAX_ELEMENT_SIZE);
     pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = callbackFunction;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].userData = userData;
     pInternal->callback_entry_index++;
     UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", pInternal->callback_entry_index);
     return UT_CONTROL_PLANE_STATUS_OK;
