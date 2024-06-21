@@ -177,13 +177,15 @@ uint64_t ut_kvp_getUInt64Field(ut_kvp_instance_t *pInstance, const char *pszKey)
 ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize );
 
 /**
- * @brief Print the complete kvp data
+ * @brief Get the data block from the instance, user to free the instance
  *
  * Where the data is invalid, no output will occur
+ * Also caller needs to ensure, that they
+ * free the pointer to the data block
  *
- * @param pInstance - pointer to the instance to print
+ * @param pInstance - pointer to the KVP instance
  */
-void ut_kvp_print( ut_kvp_instance_t *pInstance );
+char* ut_kvp_getData( ut_kvp_instance_t *pInstance );
 
 /**!
  * @brief Gets count of the number of entries in a list
@@ -197,15 +199,6 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey);
 
 /* TODO:
  * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`,
- `ut_kvp_getInt64Field`
- * - Also Implement following:
- **
- * @brief Get the data block from the instance
- *
- * Return the complete data block as a string
- *
- * @param pInstance - pointer to the instance to print
- *
- * uint8_t *ut_kvp_getData( ut_kvp_instance_t *pInstance, uint32_t *pReturnedLength );
+ *`ut_kvp_getInt64Field`
  */
 #endif /* __UT_KVP_H__ */

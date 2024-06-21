@@ -38,7 +38,7 @@ static ut_controlPlane_instance_t *gInstance = NULL;
 static volatile bool gMessageRecievedYAML = false;
 static volatile bool gMessageRecievedJSON = false;
 
-void testYAMLCallback(char *key, ut_kvp_instance_t *instance);
+void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData);
 
 /* L1 Function tests */
 static void test_ut_control_l1_testInitExit()
@@ -112,32 +112,41 @@ static void test_ut_control_l1_regsiterCallback()
 {
     ut_controlPlane_instance_t *pInstance;
     ut_control_plane_status_t status;
+    void* userData = (void* )strdup("testJSONCallbackStringInvalidParam");
 
     UT_LOG("\ntest_ut_control_l1_regsiterCallback\n");
 
     pInstance = UT_ControlPlane_Init(9000);
     UT_ASSERT(pInstance != NULL);
 
-    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, NULL, &testYAMLCallback);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, NULL, &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
 
-    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "ttest/yamlData", NULL );
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", NULL, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
 
-    status = UT_ControlPlane_RegisterCallbackOnMessage(NULL, "test/yamlData", &testYAMLCallback);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback, NULL);
+    UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
+
+    status = UT_ControlPlane_RegisterCallbackOnMessage(NULL, "test/yamlData", &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_HANDLE);
 
-    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "ttest/yamlData", &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_OK);
+    free(userData); //freeing the userData after registration
 
+    userData = (void* )strdup("testJSONCallbackString");
     for (int i = 0; i< UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES - 1; i++ )
     {
-        status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback);
+        status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback, userData);
         UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_OK);
     }
+    free(userData); //freeing the userData after registration
 
-    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback);
+    userData = (void* )strdup("testJSONCallbackString");
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_LIST_FULL);
+    free(userData); //freeing the userData after registration
 
     UT_ControlPlane_Exit(pInstance);
 
@@ -145,18 +154,38 @@ static void test_ut_control_l1_regsiterCallback()
 }
 
 /* L2 Testing functions */
-void testYAMLCallback(char *key, ut_kvp_instance_t *instance)
+void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData)
 {
+    char* kvpData;
     printf("*******************************Inside testYAMLCallback************************\n");
-    ut_kvp_print( instance );
+    kvpData = ut_kvp_getData(instance);
+
+    if(kvpData != NULL)
+    {
+        // Print the emitted KVP string
+        printf("%s\n", kvpData);
+
+        // Free the emitted KVP string
+        free(kvpData);
+    }
 
     gMessageRecievedYAML = true;
 }
 
-void testJSONCallback(char *key, ut_kvp_instance_t *instance)
+void testJSONCallback(char *key, ut_kvp_instance_t *instance, void* userData)
 {
+    char* kvpData;
     UT_LOG("**************testJSONCallback is called****************\n");
-    ut_kvp_print( instance );
+    kvpData = ut_kvp_getData(instance);
+
+    if(kvpData != NULL)
+    {
+        // Print the emitted KVP string
+        printf("%s\n", kvpData);
+
+        // Free the emitted KVP string
+        free(kvpData);
+    }
 
     gMessageRecievedJSON = true;
 }
@@ -177,16 +206,25 @@ static void test_ut_control_performInit( void )
 
 static void test_ut_control_performStart()
 {
-    UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback\n");
-    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback);
+    void *userData = NULL;
+
+    UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback - Negative\n");
+    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, userData);
+
+    userData = (void* )strdup("testYAMLCallbackString");
+    UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback - Positive\n");
+    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, userData);
+    free(userData); //freeing the userData after registration
 
     gMessageRecievedYAML = false;
 
     UT_ControlPlane_Start(gInstance);
 
     /* This should still work after start */
-    UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testJSONCallback\n");
-    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2/jsonData1", &testJSONCallback);
+    userData = (void* )strdup("testJSONCallbackString");
+    UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testJSONCallback - Positive \n");
+    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2/jsonData1", &testJSONCallback, userData);
+    free(userData); //freeing the userData after registration
 
     gMessageRecievedJSON = false;
 }

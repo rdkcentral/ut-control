@@ -22,16 +22,11 @@
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
+#include <assert.h>
 
 /* Application Includes */
 #include <ut_kvp.h>
-#ifdef UT_LOG_ENABLED
 #include <ut_log.h>
-#else
-#define UT_LOG_ERROR(format, ...) printf(format)
-#endif
-
-#include <assert.h>
 
 /* External libraries */
 #include <libfyaml.h>
@@ -161,34 +156,28 @@ void ut_kvp_close(ut_kvp_instance_t *pInstance)
     }
 }
 
-void ut_kvp_print( ut_kvp_instance_t *pInstance )
+char* ut_kvp_getData( ut_kvp_instance_t *pInstance )
 {
      ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
      char *kvp_yaml_output = NULL;
 
      if (pInternal == NULL)
     {
-        return;
+        return NULL;
     }
 
     if ( pInternal->fy_handle == NULL)
     {
-        return;
+        return NULL;
     }
 
     kvp_yaml_output = fy_emit_document_to_string(pInternal->fy_handle, FYECF_DEFAULT);
     if (kvp_yaml_output == NULL)
     {
         UT_LOG_ERROR("Failed to emit YAML document\n");
-        return;
+        return NULL;
     }
-
-    // Print the emitted YAML string
-    printf("%s\n", kvp_yaml_output);
-
-    // Free the emitted YAML string
-    free(kvp_yaml_output);
-
+    return kvp_yaml_output;
 }
 
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pzResult)

@@ -37,7 +37,7 @@ typedef enum
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
 /** @brief  Callback function type for handling control plane messages. */
-typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance );
+typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, void *userData );
 
 /**
  * @brief Initializes a control plane instance.
@@ -51,6 +51,7 @@ ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
  * @param pInstance - Handle to the control plane instance.
  * @param key - Null-terminated string representing the message key to trigger the callback.
  * @param callbackFunction - Callback function to be invoked when the key is received.
+ * @param userData - Handle to the caller instance.
  * @returns Status of the registration operation (`ut_control_plane_status_t`).
  * @retval UT_CONTROL_PLANE_STATUS_OK - Success
  * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE  - Invalid control plane instance handle.
@@ -59,7 +60,8 @@ ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
  */
 ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance,
                                                                     char *key,
-                                                                    ut_control_callback_t callbackFunction);
+                                                                    ut_control_callback_t callbackFunction,
+                                                                    void *userData);
 
 /**
  * @brief Starts the control plane listening for incoming messages.

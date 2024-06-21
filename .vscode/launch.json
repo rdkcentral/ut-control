@@ -10,6 +10,7 @@
       "externalConsole": false,
       "cwd": "${workspaceFolder}/tests/bin/",
       "program": "${workspaceFolder}/tests/bin/ut_control_test",
+      "environment": [ {"name": "LD_LIBRARY_PATH", "value":"${workspaceFolder}/tests/bin/"} ],
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
