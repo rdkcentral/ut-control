@@ -355,29 +355,100 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
     return u64Value;
 }
 
-ut_kvp_status_t ut_kvp_getFormattedFloatField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize )
+float ut_kvp_getFloatField( ut_kvp_instance_t *pInstance, const char *pszKey)
 {
     char result[UT_KVP_MAX_ELEMENT_SIZE];
     ut_kvp_status_t status;
-
-    if ( pszReturnedString == NULL )
-    {
-        UT_LOG_ERROR("Invalid Param - pszReturnedString");
-        return UT_KVP_STATUS_NULL_PARAM;
-    }
-
-    /* Make sure we populate the returned string with zero before any other action */
-    *pszReturnedString=0;
+    float fValue;
+    char *endPtr;
 
     status = ut_kvp_getField(pInstance, pszKey, result);
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
-        return status;
+        return 0;
     }
 
-    strncpy( pszReturnedString, result, uStringSize );
-    return UT_KVP_STATUS_SUCCESS;
+    fValue = strtof(result, &endPtr);
 
+    if (*endPtr != '\0') {
+        UT_LOG_ERROR("Error: Invalid floating-point string: '%s'\n", result);
+        return 0;
+    }
+    return fValue;
+}
+
+double ut_kvp_getDoubleField( ut_kvp_instance_t *pInstance, const char *pszKey)
+{
+    char result[UT_KVP_MAX_ELEMENT_SIZE];
+    ut_kvp_status_t status;
+    double dValue;
+    char *endPtr;
+
+    status = ut_kvp_getField(pInstance, pszKey, result);
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        return 0;
+    }
+
+    dValue = strtod(result, &endPtr);
+
+    if (*endPtr != '\0') {
+        UT_LOG_ERROR("Error: Invalid floating-point string: '%s'\n", result);
+        return 0;
+    }
+    return dValue;
+}
+
+bool ut_kvp_fieldPresent( ut_kvp_instance_t *pInstance, const char *pszKey)
+{
+    struct fy_node *node = NULL;
+    struct fy_node *root = NULL;
+    char zKey[UT_KVP_MAX_ELEMENT_SIZE];
+    bool bFieldPresent;
+
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
+    if (pInternal == NULL)
+    {
+        UT_LOG_ERROR("Invalid Param - pInternal");
+        return false;
+    }
+
+    if (pszKey == NULL)
+    {
+        UT_LOG_ERROR("Invalid Param - pszKey");
+        return false;
+    }
+
+    if ( pInternal->fy_handle == NULL )
+    {
+        UT_LOG_ERROR("No Data File open");
+        return false;
+    }
+    // Get the root node
+    root = fy_document_root(pInternal->fy_handle);
+    if ( root == NULL )
+    {
+        UT_LOG_ERROR("Empty document");
+        return false;
+    }
+
+    convert_dot_to_slash(pszKey, zKey);
+
+    // Find the node corresponding to the key
+    node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
+    if ( node == NULL )
+    {
+        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return false;
+    }
+
+    if (node)
+    {
+        bFieldPresent = true;
+    }
+
+    return bFieldPresent;
 }
 
 ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize )
