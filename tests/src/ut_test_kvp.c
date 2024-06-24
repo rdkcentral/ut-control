@@ -730,7 +730,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite2, "kvp list", test_ut_kvp_list);
     UT_add_test(gpKVPSuite2, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite2, "kvp double", test_ut_kvp_getDoubleField);
-    UT_add_test(gpKVPSuite2, "kvp double", test_ut_kvp_fieldPresent);
+    UT_add_test(gpKVPSuite2, "kvp node presence", test_ut_kvp_fieldPresent);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite3 = UT_add_suite("ut-kvp - test main functions JSON Decoder ", test_ut_kvp_createGlobalJSONInstance, test_ut_kvp_freeGlobalInstance);
@@ -746,7 +746,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite3, "kvp list", test_ut_kvp_list);
     UT_add_test(gpKVPSuite3, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite3, "kvp double", test_ut_kvp_getDoubleField);
-    UT_add_test(gpKVPSuite3, "kvp double", test_ut_kvp_fieldPresent);
+    UT_add_test(gpKVPSuite3, "kvp node presence", test_ut_kvp_fieldPresent);
 
 
     gpKVPSuite4 = UT_add_suite("ut-kvp - test main functions Test without Open ", NULL, NULL);
@@ -766,7 +766,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite5, "kvp uint64", test_ut_kvp_uint64);
     UT_add_test(gpKVPSuite5, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite5, "kvp double", test_ut_kvp_getDoubleField);
-    UT_add_test(gpKVPSuite5, "kvp double", test_ut_kvp_fieldPresent);
+    UT_add_test(gpKVPSuite5, "kvp node presence", test_ut_kvp_fieldPresent);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite6 = UT_add_suite("ut-kvp - test main functions JSON Decoder with malloc'd data", test_ut_kvp_createGlobalJSONInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
@@ -780,7 +780,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite6, "kvp uint64", test_ut_kvp_uint64);
     UT_add_test(gpKVPSuite6, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite6, "kvp double", test_ut_kvp_getDoubleField);
-    UT_add_test(gpKVPSuite6, "kvp double", test_ut_kvp_fieldPresent);
+    UT_add_test(gpKVPSuite6, "kvp node presence", test_ut_kvp_fieldPresent);
 
     gpKVPSuite7 = UT_add_suite("ut-kvp - test kvp_open_memory()", test_ut_kvp_createGlobalKVPInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
     assert(gpKVPSuite7 != NULL);
