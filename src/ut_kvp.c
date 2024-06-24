@@ -511,9 +511,12 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
             UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
             return UT_KVP_STATUS_KEY_NOT_FOUND;
         }
+
+        strncpy( pszReturnedString, pString, uStringSize );
+        return UT_KVP_STATUS_SUCCESS;
     }
-    strncpy( pszReturnedString, pString, uStringSize );
-    return UT_KVP_STATUS_SUCCESS;
+
+    return UT_KVP_STATUS_INVALID_KEY;
 }
 
 uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)

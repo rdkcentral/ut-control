@@ -384,6 +384,9 @@ void test_ut_kvp_list(void)
     UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
     UT_ASSERT_STRING_EQUAL(result_kvp, "stringC" );
 
+    status = ut_kvp_getStringField(gpMainTestInstance, "decodeTest", result_kvp, UT_KVP_MAX_ELEMENT_SIZE);
+    UT_ASSERT(status == UT_KVP_STATUS_INVALID_KEY );
+
     /* Positive Tests */
     count = ut_kvp_getListCount( gpMainTestInstance, "decodeTest/checkUint32List" );
     UT_ASSERT( count == 3 );
