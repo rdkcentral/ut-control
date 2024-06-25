@@ -278,7 +278,7 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
 {
     cp_message_t msg;
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t* )lws_context_user(lws_get_context(wsi));
-    struct per_session_data__http *pss = (struct per_session_data__http *)user;
+    struct per_session_data__http *perSessionData = (struct per_session_data__http *)user;
 
     switch (reason)
     {
@@ -286,24 +286,24 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
             char *requested_uri = (char *)in;
 
-            if (strcmp(requested_uri, "/api/postKVP") == 0) {
+            if (strcmp(requested_uri, "/api/postKVP") == 0)
+            {
                 lws_callback_on_writable(wsi);
                 return 0;
-            } else {
-                lws_serve_http_file(wsi, "index.html", "text/html", NULL, 0);
             }
             break;
         }
 
-        case LWS_CALLBACK_HTTP_BODY: {
+        case LWS_CALLBACK_HTTP_BODY:
+        {
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
-            if(pss != NULL)
+            if (perSessionData != NULL)
             {
-                UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP, pss not NULL\n");
-                if ((pss->post_data_len + len) < MAX_POST_DATA_SIZE)
+                UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP, perSessionData not NULL\n");
+                if ((perSessionData->post_data_len + len) < MAX_POST_DATA_SIZE)
                 {
-                    memcpy(pss->post_data + pss->post_data_len, in, len);
-                    pss->post_data_len += len;
+                    memcpy(perSessionData->post_data + perSessionData->post_data_len, in, len);
+                    perSessionData->post_data_len += len;
                 }
                 else
                 {
@@ -314,27 +314,27 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
             break;
         }
 
-        case LWS_CALLBACK_HTTP_BODY_COMPLETION: {
+        case LWS_CALLBACK_HTTP_BODY_COMPLETION:
+        {
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION\n");
-            if(pss != NULL)
+            if (perSessionData != NULL)
             {
-                UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION, pss not NULL\n");
-                msg.message = malloc((int)pss->post_data_len + 1);
+                UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION, perSessionData not NULL\n");
+                msg.message = malloc((int)perSessionData->post_data_len + 1);
                 assert(msg.message != NULL);
                 if (msg.message == NULL)
                 {
                     UT_CONTROL_PLANE_ERROR("Malloc failed\n");
                     break;
                 }
-                msg.size = (int)pss->post_data_len;
+                msg.size = (int)perSessionData->post_data_len;
                 msg.status = DATA_RECIEVED;
-                memset(msg.message, 0, (int)len + 1);
-                strncpy(msg.message, (const char *)pss->post_data, pss->post_data_len);
-                msg.message[pss->post_data_len] = '\0';
-                //UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
+                strncpy(msg.message, (const char *)perSessionData->post_data, perSessionData->post_data_len);
+                msg.message[perSessionData->post_data_len] = '\0';
+                // UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
                 enqueue_message(&msg, pInternal);
-                //char response[] = "{\"status\": \"success\"}";
-                //lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP);
+                // char response[] = "{\"status\": \"success\"}";
+                // lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP);
                 return 1; // HTTP request handled
             }
         }
@@ -347,7 +347,7 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
 
 #endif
 
-    #ifdef WEBSOCKET_SERVER
+#ifdef WEBSOCKET_SERVER
 static struct lws_protocols protocols[] = {
     {
         "echo-protocol",    // protocol name

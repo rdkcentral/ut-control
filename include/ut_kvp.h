@@ -36,7 +36,6 @@ typedef enum
     UT_KVP_STATUS_NO_DATA,           /**!< No data to process. */
     UT_KVP_STATUS_NULL_PARAM,        /**!< Null parameter passed. */
     UT_KVP_STATUS_INVALID_INSTANCE,  /**!< Invalid KVP instance handle. */
-    UT_KVP_STATUS_INVALID_KEY,       /**!< Invalid Key passed by user. */
     UT_KVP_STATUS_MAX                /**!< Out of range marker (not a valid status). */
 } ut_kvp_status_t;
 

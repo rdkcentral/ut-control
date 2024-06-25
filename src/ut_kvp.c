@@ -370,7 +370,8 @@ float ut_kvp_getFloatField( ut_kvp_instance_t *pInstance, const char *pszKey)
 
     fValue = strtof(result, &endPtr);
 
-    if (*endPtr != '\0') {
+    if (*endPtr != '\0')
+    {
         UT_LOG_ERROR("Error: Invalid floating-point string: '%s'\n", result);
         return 0;
     }
@@ -392,7 +393,8 @@ double ut_kvp_getDoubleField( ut_kvp_instance_t *pInstance, const char *pszKey)
 
     dValue = strtod(result, &endPtr);
 
-    if (*endPtr != '\0') {
+    if (*endPtr != '\0')
+    {
         UT_LOG_ERROR("Error: Invalid floating-point string: '%s'\n", result);
         return 0;
     }
@@ -404,7 +406,6 @@ bool ut_kvp_fieldPresent( ut_kvp_instance_t *pInstance, const char *pszKey)
     struct fy_node *node = NULL;
     struct fy_node *root = NULL;
     char zKey[UT_KVP_MAX_ELEMENT_SIZE];
-    bool bFieldPresent;
 
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
@@ -443,12 +444,7 @@ bool ut_kvp_fieldPresent( ut_kvp_instance_t *pInstance, const char *pszKey)
         return false;
     }
 
-    if (node)
-    {
-        bFieldPresent = true;
-    }
-
-    return bFieldPresent;
+    return true;
 }
 
 ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize )
@@ -502,21 +498,22 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
         return UT_KVP_STATUS_KEY_NOT_FOUND;
     }
 
-    if (node && fy_node_is_scalar(node))
+    if (fy_node_is_scalar(node) == false)
     {
-        // Get the string value
-        pString = fy_node_get_scalar0(node);
-        if ( pString == NULL )
-        {
-            UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
-            return UT_KVP_STATUS_KEY_NOT_FOUND;
-        }
-
-        strncpy( pszReturnedString, pString, uStringSize );
-        return UT_KVP_STATUS_SUCCESS;
+        UT_LOG_ERROR("invalid key");
+        return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    return UT_KVP_STATUS_INVALID_KEY;
+    //Get the string value
+    pString = fy_node_get_scalar0(node);
+    if (pString == NULL)
+    {
+        UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return UT_KVP_STATUS_KEY_NOT_FOUND;
+    }
+
+    strncpy( pszReturnedString, pString, uStringSize );
+    return UT_KVP_STATUS_SUCCESS;
 }
 
 uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
