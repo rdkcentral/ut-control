@@ -59,6 +59,7 @@ INC_DIRS += ${TOP_DIR}/include
 
 CFLAGS += -fPIC -Wall -shared   # Flags for compilation
 CFLAGS += -DNDEBUG
+# CFLAGS += -DWEBSOCKET_SERVER
 
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
 

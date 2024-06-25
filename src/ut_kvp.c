@@ -355,6 +355,98 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
     return u64Value;
 }
 
+float ut_kvp_getFloatField( ut_kvp_instance_t *pInstance, const char *pszKey)
+{
+    char result[UT_KVP_MAX_ELEMENT_SIZE];
+    ut_kvp_status_t status;
+    float fValue;
+    char *endPtr;
+
+    status = ut_kvp_getField(pInstance, pszKey, result);
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        return 0;
+    }
+
+    fValue = strtof(result, &endPtr);
+
+    if (*endPtr != '\0')
+    {
+        UT_LOG_ERROR("Error: Invalid floating-point string: '%s'\n", result);
+        return 0;
+    }
+    return fValue;
+}
+
+double ut_kvp_getDoubleField( ut_kvp_instance_t *pInstance, const char *pszKey)
+{
+    char result[UT_KVP_MAX_ELEMENT_SIZE];
+    ut_kvp_status_t status;
+    double dValue;
+    char *endPtr;
+
+    status = ut_kvp_getField(pInstance, pszKey, result);
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        return 0;
+    }
+
+    dValue = strtod(result, &endPtr);
+
+    if (*endPtr != '\0')
+    {
+        UT_LOG_ERROR("Error: Invalid floating-point string: '%s'\n", result);
+        return 0;
+    }
+    return dValue;
+}
+
+bool ut_kvp_fieldPresent( ut_kvp_instance_t *pInstance, const char *pszKey)
+{
+    struct fy_node *node = NULL;
+    struct fy_node *root = NULL;
+    char zKey[UT_KVP_MAX_ELEMENT_SIZE];
+
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
+    if (pInternal == NULL)
+    {
+        UT_LOG_ERROR("Invalid Param - pInternal");
+        return false;
+    }
+
+    if (pszKey == NULL)
+    {
+        UT_LOG_ERROR("Invalid Param - pszKey");
+        return false;
+    }
+
+    if ( pInternal->fy_handle == NULL )
+    {
+        UT_LOG_ERROR("No Data File open");
+        return false;
+    }
+    // Get the root node
+    root = fy_document_root(pInternal->fy_handle);
+    if ( root == NULL )
+    {
+        UT_LOG_ERROR("Empty document");
+        return false;
+    }
+
+    convert_dot_to_slash(pszKey, zKey);
+
+    // Find the node corresponding to the key
+    node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
+    if ( node == NULL )
+    {
+        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return false;
+    }
+
+    return true;
+}
+
 ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize )
 {
     struct fy_node *node = NULL;
@@ -406,16 +498,20 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
         return UT_KVP_STATUS_KEY_NOT_FOUND;
     }
 
-    if (node && fy_node_is_scalar(node))
+    if (fy_node_is_scalar(node) == false)
     {
-        // Get the string value
-        pString = fy_node_get_scalar0(node);
-        if ( pString == NULL )
-        {
-            UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
-            return UT_KVP_STATUS_KEY_NOT_FOUND;
-        }
+        UT_LOG_ERROR("invalid key");
+        return UT_KVP_STATUS_PARSING_ERROR;
     }
+
+    //Get the string value
+    pString = fy_node_get_scalar0(node);
+    if (pString == NULL)
+    {
+        UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return UT_KVP_STATUS_KEY_NOT_FOUND;
+    }
+
     strncpy( pszReturnedString, pString, uStringSize );
     return UT_KVP_STATUS_SUCCESS;
 }

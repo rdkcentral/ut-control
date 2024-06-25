@@ -176,6 +176,36 @@ uint64_t ut_kvp_getUInt64Field(ut_kvp_instance_t *pInstance, const char *pszKey)
  */
 ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char *pszKey, char *pszReturnedString, uint32_t uStringSize );
 
+/**!
+ * @brief Retrieves a float value from the KVP profile.
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Key of the string value to retrieve (null-terminated string).
+ *
+ * @returns The `float` value on success, or 0 on error (check logs for details).
+ */
+float ut_kvp_getFloatField( ut_kvp_instance_t *pInstance, const char *pszKey);
+
+/**!
+ * @brief Retrieves a double value from the KVP profile.
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Key of the string value to retrieve (null-terminated string).
+ *
+ * @returns The `float` value on success, or 0 on error (check logs for details).
+ */
+double ut_kvp_getDoubleField( ut_kvp_instance_t *pInstance, const char *pszKey);
+
+/**!
+ * @brief Gives a bool value according to the presence of node in profile.
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Key of the string value to retrieve (null-terminated string).
+ *
+ * @returns The `bool` value TRUE on success, or FAIL on failure and error (check logs for details).
+ */
+bool ut_kvp_fieldPresent( ut_kvp_instance_t *pInstance, const char *pszKey);
+
 /**
  * @brief Get the data block from the instance, user to free the instance
  *

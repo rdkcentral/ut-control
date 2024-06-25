@@ -80,7 +80,17 @@ static cp_message_t* dequeue_message(ut_cp_instance_internal_t *pInternal);
 static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t *pInternal);
 static void *service_ws_requests(void *data);
 static void *service_state_machine(void *data);
+#ifdef WEBSOCKET_SERVER
 static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+#else
+static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
+#define MAX_POST_DATA_SIZE 4096
+
+struct per_session_data__http {
+    char post_data[MAX_POST_DATA_SIZE];
+    int post_data_len;
+};
+#endif
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance);
 
 /* Local Fucntions*/
@@ -219,6 +229,7 @@ static void *service_state_machine(void *data)
     return NULL;
 }
 
+#ifdef WEBSOCKET_SERVER
 static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
     cp_message_t msg;
@@ -262,7 +273,81 @@ static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void
 
     return 0;
 }
+#else
+static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
+{
+    cp_message_t msg;
+    ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t* )lws_context_user(lws_get_context(wsi));
+    struct per_session_data__http *perSessionData = (struct per_session_data__http *)user;
 
+    switch (reason)
+    {
+        case LWS_CALLBACK_HTTP: {
+            UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
+            char *requested_uri = (char *)in;
+
+            if (strcmp(requested_uri, "/api/postKVP") == 0)
+            {
+                lws_callback_on_writable(wsi);
+                return 0;
+            }
+            break;
+        }
+
+        case LWS_CALLBACK_HTTP_BODY:
+        {
+            UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
+            if (perSessionData != NULL)
+            {
+                UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP, perSessionData not NULL\n");
+                if ((perSessionData->post_data_len + len) < MAX_POST_DATA_SIZE)
+                {
+                    memcpy(perSessionData->post_data + perSessionData->post_data_len, in, len);
+                    perSessionData->post_data_len += len;
+                }
+                else
+                {
+                    // POST data too large
+                    return -1;
+                }
+            }
+            break;
+        }
+
+        case LWS_CALLBACK_HTTP_BODY_COMPLETION:
+        {
+            UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION\n");
+            if (perSessionData != NULL)
+            {
+                UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION, perSessionData not NULL\n");
+                msg.message = malloc((int)perSessionData->post_data_len + 1);
+                assert(msg.message != NULL);
+                if (msg.message == NULL)
+                {
+                    UT_CONTROL_PLANE_ERROR("Malloc failed\n");
+                    break;
+                }
+                msg.size = (int)perSessionData->post_data_len;
+                msg.status = DATA_RECIEVED;
+                strncpy(msg.message, (const char *)perSessionData->post_data, perSessionData->post_data_len);
+                msg.message[perSessionData->post_data_len] = '\0';
+                // UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
+                enqueue_message(&msg, pInternal);
+                // char response[] = "{\"status\": \"success\"}";
+                // lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP);
+                return 1; // HTTP request handled
+            }
+        }
+
+        default:
+            break;
+    }
+    return 0;
+}
+
+#endif
+
+#ifdef WEBSOCKET_SERVER
 static struct lws_protocols protocols[] = {
     {
         "echo-protocol",    // protocol name
@@ -275,6 +360,17 @@ static struct lws_protocols protocols[] = {
     },
     { NULL, NULL, 0, 0 }    // end of list
 };
+#else
+static struct lws_protocols protocols[] = {
+    {
+        "http-only",
+        callback_http,
+        sizeof(struct per_session_data__http),
+        MAX_POST_DATA_SIZE,
+    },
+    { NULL, NULL, 0, 0 }
+};
+#endif
 
 ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
 {
@@ -298,9 +394,14 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
     }
 
     pInstance->info.port = monitorPort;
-    pInstance->info.iface = NULL;
     pInstance->info.protocols = protocols;
     pInstance->info.user = pInstance;
+
+#ifdef WEBSOCKET_SERVER
+    pInstance->info.iface = NULL;
+#else
+    pInstance->info.options = LWS_SERVER_OPTION_HTTP_HEADERS_SECURITY_BEST_PRACTICES_ENFORCE;
+#endif
 
     pInstance->context = lws_create_context(&pInstance->info);
     if (pInstance->context == NULL)
@@ -368,7 +469,6 @@ void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
         if (pthread_join(pInternal->state_machine_thread_handle, NULL) != 0)
         {
             UT_CONTROL_PLANE_ERROR("Failed to join state_machine_thread_handle(1st) from instance = %p\n", pInternal);
-            /*TODO: need to confirm if this return is required*/
         }
     }
     pInternal->state_machine_thread_handle = 0;
