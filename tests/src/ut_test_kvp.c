@@ -384,6 +384,9 @@ void test_ut_kvp_list(void)
     UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
     UT_ASSERT_STRING_EQUAL(result_kvp, "stringC" );
 
+    status = ut_kvp_getStringField(gpMainTestInstance, "decodeTest", result_kvp, UT_KVP_MAX_ELEMENT_SIZE);
+    UT_ASSERT(status == UT_KVP_STATUS_PARSING_ERROR );
+
     /* Positive Tests */
     count = ut_kvp_getListCount( gpMainTestInstance, "decodeTest/checkUint32List" );
     UT_ASSERT( count == 3 );
@@ -459,6 +462,73 @@ void test_ut_kvp_string(void)
     UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
     UT_ASSERT_STRING_EQUAL(result_kvp, "the beef is also dead" );
     UT_LOG( "checkStringDeadBeef2[%s]", result_kvp );
+
+}
+
+void test_ut_kvp_getFloatField( void )
+{
+    float result;
+    float checkFloat = 5.1;
+
+    UT_LOG_STEP("ut_kvp_getFloatField() ");
+    result = ut_kvp_getFloatField(gpMainTestInstance, "decodeTest.checkFloat");
+    UT_ASSERT(result == checkFloat );
+
+    UT_LOG_STEP("ut_kvp_getFloatField() ");
+    result = ut_kvp_getFloatField(gpMainTestInstance, "decodeTest/checkFloat");
+    UT_ASSERT(result == checkFloat);
+}
+
+void test_ut_kvp_getDoubleField( void )
+{
+    double result;
+    double checkDoublePi = 3.14159265358979323846;
+    double checkDoubleScientific = -4.2e8;
+    double checkDoubleInvalid = 0;
+
+    UT_LOG_STEP("ut_kvp_getDoubleField() ");
+    result = ut_kvp_getDoubleField(gpMainTestInstance, "decodeTest.checkDoublePi");
+    UT_ASSERT(result == checkDoublePi );
+
+    UT_LOG_STEP("ut_kvp_getDoubleField() ");
+    result = ut_kvp_getDoubleField(gpMainTestInstance, "decodeTest/checkDoublePi");
+    UT_ASSERT(result == checkDoublePi);
+
+    UT_LOG_STEP("ut_kvp_getDoubleField() ");
+    result = ut_kvp_getDoubleField(gpMainTestInstance, "decodeTest.checkDoubleScientific");
+    UT_ASSERT(result == checkDoubleScientific );
+
+    UT_LOG_STEP("ut_kvp_getDoubleField() ");
+    result = ut_kvp_getDoubleField(gpMainTestInstance, "decodeTest/checkDoubleScientific");
+    UT_ASSERT(result == checkDoubleScientific);
+
+    UT_LOG_STEP("ut_kvp_getDoubleField() ");
+    result = ut_kvp_getDoubleField(gpMainTestInstance, "decodeTest.checkDoubleInvalid");
+    UT_ASSERT(result == checkDoubleInvalid );
+
+    UT_LOG_STEP("ut_kvp_getDoubleField() ");
+    result = ut_kvp_getDoubleField(gpMainTestInstance, "decodeTest/checkDoubleInvalid");
+    UT_ASSERT(result == checkDoubleInvalid);
+}
+
+void test_ut_kvp_fieldPresent()
+{
+    bool result;
+
+    /* Negative Tests */
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "shouldNotWork/checkBoolTRUE" );
+    UT_ASSERT( result == false );
+
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "shouldNotWork" );
+    UT_ASSERT( result == false );
+
+    /* Positive Tests */
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "decodeTest/checkBoolTRUE" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "decodeTest" );
+    UT_ASSERT( result == true );
+
 }
 
 void test_ut_kvp_get_field_without_open( void )
@@ -661,6 +731,9 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite2, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite2, "kvp uint64", test_ut_kvp_uint64);
     UT_add_test(gpKVPSuite2, "kvp list", test_ut_kvp_list);
+    UT_add_test(gpKVPSuite2, "kvp float", test_ut_kvp_getFloatField);
+    UT_add_test(gpKVPSuite2, "kvp double", test_ut_kvp_getDoubleField);
+    UT_add_test(gpKVPSuite2, "kvp node presence", test_ut_kvp_fieldPresent);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite3 = UT_add_suite("ut-kvp - test main functions JSON Decoder ", test_ut_kvp_createGlobalJSONInstance, test_ut_kvp_freeGlobalInstance);
@@ -674,6 +747,9 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite3, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite3, "kvp uint64", test_ut_kvp_uint64);
     UT_add_test(gpKVPSuite3, "kvp list", test_ut_kvp_list);
+    UT_add_test(gpKVPSuite3, "kvp float", test_ut_kvp_getFloatField);
+    UT_add_test(gpKVPSuite3, "kvp double", test_ut_kvp_getDoubleField);
+    UT_add_test(gpKVPSuite3, "kvp node presence", test_ut_kvp_fieldPresent);
 
 
     gpKVPSuite4 = UT_add_suite("ut-kvp - test main functions Test without Open ", NULL, NULL);
@@ -691,6 +767,9 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite5, "kvp string", test_ut_kvp_string);
     UT_add_test(gpKVPSuite5, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite5, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite5, "kvp float", test_ut_kvp_getFloatField);
+    UT_add_test(gpKVPSuite5, "kvp double", test_ut_kvp_getDoubleField);
+    UT_add_test(gpKVPSuite5, "kvp node presence", test_ut_kvp_fieldPresent);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite6 = UT_add_suite("ut-kvp - test main functions JSON Decoder with malloc'd data", test_ut_kvp_createGlobalJSONInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
@@ -702,6 +781,9 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite6, "kvp bool", test_ut_kvp_bool);
     UT_add_test(gpKVPSuite6, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite6, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite6, "kvp float", test_ut_kvp_getFloatField);
+    UT_add_test(gpKVPSuite6, "kvp double", test_ut_kvp_getDoubleField);
+    UT_add_test(gpKVPSuite6, "kvp node presence", test_ut_kvp_fieldPresent);
 
     gpKVPSuite7 = UT_add_suite("ut-kvp - test kvp_open_memory()", test_ut_kvp_createGlobalKVPInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
     assert(gpKVPSuite7 != NULL);

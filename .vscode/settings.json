@@ -61,7 +61,9 @@
     "ut_kvp.h": "c",
     "string": "c",
     "libfyaml.h": "c",
-    "ut_control_plane.h": "c"
+    "ut_control_plane.h": "c",
+    "ut.h": "c",
+    "ut_log.h": "c"
   },
   "cmake.configureOnOpen": true
 }

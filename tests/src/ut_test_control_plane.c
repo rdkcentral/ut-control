@@ -235,9 +235,13 @@ void run_client_function()
     bool receivedYAML = false;
     bool receivedJSON = false;
 
-    UT_LOG("Please Run the command `./python-client-send-json.py or/& ./python-client-send-yaml.py` \
-    from another terminal and press return;'\n");
+#ifdef WEBSOCKET_SERVER
+    UT_LOG("Please Run the command `./python-client-send-json.py or/& ./python-client-send-yaml.py` from another terminal and press return;'\n");
     UT_LOG("In order to pass the test you need to run each of the python scripts'\n");
+#else
+    UT_LOG("Please Run the command `./curl-client-json.sh or/& ./curl-client-yaml.sh or/& ./curl-client-binary.sh` from another terminal and press return;'\n");
+    UT_LOG("In order to pass the test you need to run each of the curl scripts'\n");
+#endif
 
     while (countdown > 0)
     { 

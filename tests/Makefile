@@ -49,6 +49,7 @@ endif
 YLDFLAGS += -L $(ROOT_DIR)/../lib -lut_control -Wl,-rpath-link,$(LIBWEBSOCKET_LIB_DIR)  -pthread
 TARGET_EXEC = ut_control_test
 CFLAGS += -DNDEBUG
+# CFLAGS += -DWEBSOCKET_SERVER
 
 .PHONY: clean list all
 
