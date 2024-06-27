@@ -57,6 +57,11 @@ LDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -lwebsockets
 SRC_DIRS += ${TOP_DIR}/src
 INC_DIRS += ${TOP_DIR}/include
 
+# CURL Requirements
+CURL_DIR = $(TOP_DIR)/framework/curl/curl-master
+INC_DIRS += $(CURL_DIR)/include
+LDFLAGS += -L $(CURL_DIR)/build/lib -lcurl
+
 CFLAGS += -fPIC -Wall -shared   # Flags for compilation
 CFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER

@@ -227,6 +227,14 @@ char* ut_kvp_getData( ut_kvp_instance_t *pInstance );
  */
 uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey);
 
+/**
+ * @brief Get the merged yaml document, ready for processing
+ *
+ * @param[in] pInstance - pointer to the KVP instance
+ * @param[in] pszKey - Null-terminated string representing the key to search for.
+ */
+void* ut_kvp_getMergedFile( ut_kvp_instance_t *pInstance, const char* pszKey );
+
 /* TODO:
  * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`,
  *`ut_kvp_getInt64Field`

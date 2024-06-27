@@ -31,6 +31,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BIN_DIR := $(ROOT_DIR)/bin
 TOP_DIR := $(ROOT_DIR)
 LIBWEBSOCKET_LIB_DIR = $(ROOT_DIR)/../framework/libwebsockets-4.3.3/build/lib
+CURL_LIB_DIR = $(ROOT_DIR)/../framework/curl/curl-master/build/lib/
 
 SRC_DIRS = $(ROOT_DIR)/src
 INC_DIRS := $(ROOT_DIR)/../include
@@ -71,6 +72,7 @@ build:
 	make -C ./ut-core test
 	@cp $(ROOT_DIR)/../lib/lib* ${BIN_DIR}
 	@cp $(LIBWEBSOCKET_LIB_DIR)/lib* ${BIN_DIR}
+	@cp $(CURL_LIB_DIR)/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
 	@echo -e ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}

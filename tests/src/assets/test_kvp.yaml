@@ -29,3 +29,4 @@ decodeTest:
   checkDoublePi: 3.14159265358979323846
   checkDoubleScientific : -4.2e8
   checkDoubleInvalid : invalid_string
+  include : example.yaml

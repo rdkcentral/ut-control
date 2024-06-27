@@ -30,6 +30,7 @@ FRAMEWORK_DIR=${MY_DIR}/framework
 LIBYAML_DIR=${FRAMEWORK_DIR}/libfyaml-master
 ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 LIBWEBSOCKETS_DIR=${FRAMEWORK_DIR}/libwebsockets-4.3.3
+CURL_DIR=${FRAMEWORK_DIR}/curl
 
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
@@ -78,5 +79,20 @@ else
     -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release
     make $@
 fi
-popd > /dev/null # ${FRAMEWORK_DIR}
+popd > /dev/null
 
+pushd ${FRAMEWORK_DIR} > /dev/null
+if [ -d "${CURL_DIR}" ]; then
+    echo "Framework [curl] already exists"
+else
+    echo "Clone curl in ${CURL_DIR}"
+    wget https://github.com/curl/curl/archive/refs/heads/master.zip -P curl/. --no-check-certificate
+    cd curl
+    unzip master.zip
+    cd curl-master
+    mkdir build
+    autoreconf -fi
+    ./configure --prefix=$(pwd)/build --without-ssl
+    make $@; make $@ install
+fi
+popd > /dev/null # ${FRAMEWORK_DIR}

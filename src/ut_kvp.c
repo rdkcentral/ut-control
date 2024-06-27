@@ -23,6 +23,7 @@
 #include <limits.h>
 #include <unistd.h>
 #include <assert.h>
+#include <curl/curl.h>
 
 /* Application Includes */
 #include <ut_kvp.h>
@@ -41,12 +42,23 @@ typedef struct
     struct fy_document *fy_handle;
 } ut_kvp_instance_internal_t;
 
+// Struct to store the downloaded data
+typedef struct
+{
+   char *memory;
+    size_t size;
+} ut_kvp_download_memory_internal_t;
+
 /* Static functions */
 static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance);
 static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *pszKey, unsigned long maxRange );
 static bool str_to_bool(const char *string);
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pszResult);
 static void convert_dot_to_slash(const char *key, char *output);
+static struct fy_document *parse_yaml_file(const char *filePath);
+static int download_url(const char *url, ut_kvp_download_memory_internal_t *memoryChunk);
+static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
+static void merge_yaml_document(struct fy_document *baseDoc, struct fy_document *secondaryDoc);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
 {
@@ -574,12 +586,58 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     return count;
 }
 
+void* ut_kvp_getMergedFile( ut_kvp_instance_t *pInstance, const char* pszKey )
+{
+    struct fy_document *includedDocument = NULL;
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
+    if (pInternal == NULL)
+    {
+        UT_LOG_ERROR("Invalid instance - pInstance");
+        return 0;
+    }
+
+    if (pInternal->fy_handle == NULL)
+    {
+        UT_LOG_ERROR("No Data File open");
+        return 0;
+    }
+
+    // Extract the "include" node (you may have multiple such nodes)
+    struct fy_node *fileIncluded = fy_node_by_path(fy_document_root(pInternal->fy_handle), pszKey, -1, FYNWF_DONT_FOLLOW);
+
+    if(fileIncluded == NULL)
+    {
+        UT_LOG_ERROR("Node not found/extracted");
+        return 0;
+    }
+
+    if (fy_node_is_scalar(fileIncluded))
+    {
+        const char *filePathForIncluded = fy_node_get_scalar(fileIncluded, NULL);
+
+        // Parse and merge the included file
+        includedDocument = parse_yaml_file(filePathForIncluded);
+        if (includedDocument == NULL)
+        {
+            UT_LOG_ERROR("parsing or merging unsuccessful");
+            return 0;
+        }
+    }
+
+    merge_yaml_document(pInternal->fy_handle, includedDocument);
+    fy_document_destroy(includedDocument);
+    // Optionally remove the included_file node after merging
+    fy_node_mapping_remove_by_key(fy_document_root(pInternal->fy_handle), fileIncluded);
+    return (void *)pInternal;
+}
+
 /** Static Functions */
 static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance)
 {
     ut_kvp_instance_internal_t *pInternal = (ut_kvp_instance_internal_t *)pInstance;
 
-    if ( pInstance == NULL )
+    if (pInstance == NULL)
     {
         UT_LOG_ERROR("Invalid Handle");
         return NULL;
@@ -596,11 +654,11 @@ static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance
 
 static bool str_to_bool(const char *string)
 {
-    if ( strcasecmp( string, "true" ) == 0 )
+    if (strcasecmp(string, "true") == 0)
     {
         return true;
     }
-    if ( strcasecmp( string, "false" ) == 0 )
+    if (strcasecmp(string, "false") == 0)
     {
         return false;
     }
@@ -610,7 +668,7 @@ static bool str_to_bool(const char *string)
 
 static void convert_dot_to_slash(const char *key, char *output)
 {
-    if(strchr(key, '.'))
+    if (strchr(key, '.'))
     {
         for (int i = 0; i <= UT_KVP_MAX_ELEMENT_SIZE; i++)
         {
@@ -632,6 +690,141 @@ static void convert_dot_to_slash(const char *key, char *output)
     }
     else
     {
-        snprintf( output, UT_KVP_MAX_ELEMENT_SIZE, "%s", key);
+        snprintf(output, UT_KVP_MAX_ELEMENT_SIZE, "%s", key);
+    }
+}
+
+// Function to parse a YAML file (local or remote) into a document
+static struct fy_document *parse_yaml_file(const char *filePath)
+{
+    struct fy_document *document = NULL;
+    ut_kvp_download_memory_internal_t mChunk;
+
+    // Check if the file path is a URL
+    if (strncmp(filePath, "http://", 7) == 0 || strncmp(filePath, "https://", 8) == 0)
+    {
+        // Download the content from the URL
+        mChunk.memory = malloc(1);
+        mChunk.size = 0;
+
+        if (download_url(filePath, &mChunk) == 0)
+        {
+            // Parse the downloaded content
+            document = fy_document_build_from_malloc_string(NULL, mChunk.memory, mChunk.size);
+            free(mChunk.memory);
+        }
+    }
+    else
+    {
+        // Parse the local file
+        document = fy_document_build_from_file(NULL, filePath);
+    }
+
+    if (document == NULL)
+    {
+        UT_LOG_ERROR("Failed to parse YAML document: %s\n", filePath);
+        return NULL;
+    }
+
+    return document;
+}
+
+// Function to download content from a URL
+static int download_url(const char *url, ut_kvp_download_memory_internal_t *memoryChunk)
+{
+    CURL *curlHandle;
+    CURLcode result;
+
+    curl_global_init(CURL_GLOBAL_ALL);
+
+    curlHandle = curl_easy_init();
+    if (curlHandle)
+    {
+        curl_easy_setopt(curlHandle, CURLOPT_URL, url);
+        curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, write_memory_callback);
+        curl_easy_setopt(curlHandle, CURLOPT_WRITEDATA, (void *)memoryChunk);
+        curl_easy_setopt(curlHandle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+        result = curl_easy_perform(curlHandle);
+
+        if (result != CURLE_OK)
+        {
+            UT_LOG_ERROR("curl_easy_perform() failed: %s\n", curl_easy_strerror(result));
+            curl_easy_cleanup(curlHandle);
+            curl_global_cleanup();
+            return 1;
+        }
+
+        curl_easy_cleanup(curlHandle);
+    }
+
+    curl_global_cleanup();
+    return 0;
+}
+
+// Callback function for libcurl to write downloaded data into a MemoryStruct
+static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    size_t realsize = size * nmemb;
+    ut_kvp_download_memory_internal_t *downloadMemory = (ut_kvp_download_memory_internal_t *)userp;
+
+    char *ptr = realloc(downloadMemory->memory, downloadMemory->size + realsize + 1);
+    if (ptr == NULL)
+    {
+        // Out of memory
+        UT_LOG_ERROR("Not enough memory (realloc returned NULL)\n");
+        return 0;
+    }
+
+    downloadMemory->memory = ptr;
+    memcpy(&(downloadMemory->memory[downloadMemory->size]), contents, realsize);
+    downloadMemory->size += realsize;
+    downloadMemory->memory[downloadMemory->size] = 0;
+
+    return realsize;
+}
+
+// Function to merge nodes from one document into another
+static void merge_yaml_document(struct fy_document *baseDoc, struct fy_document *secondaryDoc)
+{
+    struct fy_node_pair *secondaryPair;
+    void *secondaryIterator = NULL;
+    struct fy_node_pair *base_pair;
+    void *baseIterator = NULL;
+    int keyFound = 0;
+
+    struct fy_node *baseRoot = fy_document_root(baseDoc);
+    struct fy_node *secondaryRoot = fy_document_root(secondaryDoc);
+
+    if (!baseRoot || !secondaryRoot || fy_node_get_type(baseRoot) != FYNT_MAPPING || fy_node_get_type(secondaryRoot) != FYNT_MAPPING)
+    {
+        UT_LOG_ERROR("Unsupported YAML structure\n");
+        return;
+    }
+
+    while ((secondaryPair = fy_node_mapping_iterate(secondaryRoot, &secondaryIterator)) != NULL)
+    {
+        struct fy_node *secondaryKey = fy_node_pair_key(secondaryPair);
+        struct fy_node *secondaryValue = fy_node_pair_value(secondaryPair);
+
+        while ((base_pair = fy_node_mapping_iterate(baseRoot, &baseIterator)) != NULL)
+        {
+            struct fy_node *base_key = fy_node_pair_key(base_pair);
+
+            if (fy_node_compare(base_key, secondaryKey))
+            {
+                struct fy_node *duplicateValue = fy_node_copy(baseDoc, secondaryValue);
+                fy_node_pair_set_value(base_pair, duplicateValue);
+                keyFound = 1;
+                break;
+            }
+        }
+
+        if (!keyFound)
+        {
+            struct fy_node *dup_key = fy_node_copy(baseDoc, secondaryKey);
+            struct fy_node *duplicateValue = fy_node_copy(baseDoc, secondaryValue);
+            fy_node_mapping_append(baseRoot, dup_key, duplicateValue);
+        }
     }
 }
