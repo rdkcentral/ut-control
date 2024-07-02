@@ -59,7 +59,7 @@ static void convert_dot_to_slash(const char *key, char *output);
 static struct fy_node* process_node(struct fy_node *node, int depth);
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
-static void merge_nodes(struct fy_node *dest, struct fy_node *src);
+static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
 static void remove_include_keys(struct fy_node *node);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
@@ -706,40 +706,36 @@ static struct fy_node* process_node(struct fy_node *node, int depth)
 
     if (fy_node_is_sequence(node))
     {
-        for (size_t i = 0; i < fy_node_sequence_item_count(node); i++) {
-            struct fy_node *item = fy_node_sequence_get_by_index(node, i);
-            process_node(item, depth);
-        }
-        return node;
+        UT_LOG_DEBUG("includes inside a sequence is currently not supported");
     }
 
-    if (fy_node_is_mapping(node)) {
+    if (fy_node_is_mapping(node))
+    {
         struct fy_node_pair *pair;
         struct fy_node *includeNode = NULL;
         const char *includeFilename = NULL;
 
         void *iter = NULL;
-        while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL) {
+        while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL)
+        {
             struct fy_node *key = fy_node_pair_key(pair);
             struct fy_node *value = fy_node_pair_value(pair);
             const char *key_str = fy_node_get_scalar(key, NULL);
             UT_LOG_DEBUG("KEY_STR = %s", key_str);
 
-            //const char *tag_str = fy_node_get_tag(key, &length);
             if (key_str && strstr(key_str, "include"))
             {
                 includeFilename = fy_node_get_scalar(value, NULL);
-                if (includeFilename) {
+                if (includeFilename)
+                {
                     includeNode = process_include(includeFilename, depth, includeDoc);
-                    if (includeNode) {
+                    if (includeNode)
+                    {
                         merge_nodes(node, includeNode);
-                        //fy_node_free(includeNode);
+                        fy_document_destroy(includeDoc);
+                        includeDoc = NULL;
                     }
-                    //fy_node_mapping_remove_by_key(node, key);
                 }
-            // } else {
-            //     process_node(value, depth);
-            // }
             }
         }
     }
@@ -747,63 +743,46 @@ static struct fy_node* process_node(struct fy_node *node, int depth)
     return node;
 }
 
-static void merge_nodes(struct fy_node *dest, struct fy_node *src) {
-    if (!dest || !src) return;
+static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
+{
 
-#if 0
-    char *yaml_output_dest = NULL;
-    char *yaml_output_src = NULL;
-
-    yaml_output_dest = fy_emit_node_to_string(dest, FYECF_DEFAULT);
-    if (!yaml_output_dest) {
-        UT_LOG_ERROR("Failed to emit node to string\n");
-    }
-
-    // Print the emitted YAML string
-    printf("Emitted MAIN YAML:\n%s\n", yaml_output_dest);
-
-    // Clean up
-    free(yaml_output_dest);
-
-    yaml_output_src = fy_emit_node_to_string(src, FYECF_DEFAULT);
-    if (!yaml_output_src)
+    if (mainNode == NULL)
     {
-        UT_LOG_ERROR("Failed to emit node to string\n");
+        UT_LOG_ERROR("Main node is invalid");
+        return;
     }
 
-    // Print the emitted YAML string
-    printf("Emitted SECDRY YAML:\n%s\n", yaml_output_src);
+    if (includeNode == NULL)
+    {
+        UT_LOG_ERROR("Included node is invalid");
+        return;
+    }
 
-    // Clean up
-    free(yaml_output_src);
-# endif
-    if (fy_node_is_scalar(dest)) {
-        fy_node_create_scalar_copy(fy_node_document(dest), fy_node_get_scalar(src, NULL), fy_node_get_scalar_length(src));
-    } else if (fy_node_is_sequence(dest) && fy_node_is_sequence(src)) {
-        size_t i = 0;
-        while (i < fy_node_sequence_item_count(src)) {
-            struct fy_node *item = fy_node_sequence_get_by_index(src, i);
-            fy_node_sequence_append(dest, fy_node_copy(NULL, item));
-            i++;
-        }
-    } else if (fy_node_is_mapping(dest) && fy_node_is_mapping(src)) {
+    if (fy_node_is_scalar(mainNode))
+    {
+        fy_node_create_scalar_copy(fy_node_document(mainNode), fy_node_get_scalar(includeNode, NULL), fy_node_get_scalar_length(includeNode));
+    }
+    else if (fy_node_is_sequence(mainNode) && fy_node_is_sequence(includeNode))
+    {
+        UT_LOG_DEBUG("includes inside a sequence is currently not supported");
+    }
+    else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
+    {
         // Merge mappings
         struct fy_node_pair *pair;
         void *iter = NULL;
-   
-        while ((pair = fy_node_mapping_iterate(src, &iter)) != NULL) {
-            //struct fy_node *key = fy_node_copy(NULL, fy_node_pair_key(pair));
-            //struct fy_node *value = fy_node_copy(NULL, fy_node_pair_value(pair));
+
+        while ((pair = fy_node_mapping_iterate(includeNode, &iter)) != NULL)
+        {
             struct fy_node *key = fy_node_pair_key(pair);
             struct fy_node *value = fy_node_pair_value(pair);
             const char *key_str = fy_node_get_scalar(key, NULL);
 
-            // const char *tag_str = fy_node_get_tag(key, &length);
             if (key_str && strstr(key_str, "include") == NULL)
             {
-                if(fy_node_insert(dest, src) != 0)
+                if (fy_node_insert(mainNode, includeNode) != 0)
                 {
-                    UT_LOG_ERROR("Merge failed");
+                    UT_LOG_ERROR("Node merge failed");
                 }
             }
             else
@@ -812,19 +791,8 @@ static void merge_nodes(struct fy_node *dest, struct fy_node *src) {
                 fy_node_free(value);
             }
         }
-
-        // // Now remove the 'include' key from the destination node
-        // iter = NULL;
-        // while ((pair = fy_node_mapping_iterate(dest, &iter)) != NULL) {
-        //     struct fy_node *key = fy_node_pair_key(pair);
-        //     const char *key_str = fy_node_get_scalar(key, NULL);
-        //     if (key_str && strstr(key_str, "include")) {
-        //         fy_node_mapping_remove_by_key(dest, key);
-        //         // fy_node_free(key);
-        //         // fy_node_free(fy_node_pair_value(pair));
-        //     }
-        // }
-    } else
+    }
+    else
     {
         UT_LOG_ERROR("Warning: Cannot merge nodes of incompatible types\n");
     }
@@ -833,7 +801,6 @@ static void merge_nodes(struct fy_node *dest, struct fy_node *src) {
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc)
 {
     ut_kvp_download_memory_internal_t mChunk;
-    // struct fy_node *root;
 
     if (depth >= UT_KVP_MAX_INCLUDE_DEPTH)
     {
@@ -884,7 +851,6 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             return NULL;
         }
 
-        // struct fy_document *doc;
         doc = fy_document_build_from_malloc_string(NULL, mChunk.memory, mChunk.size);
         if (doc == NULL)
         {
@@ -894,16 +860,14 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             return NULL;
         }
 
-        //root = fy_document_set_root(&doc);
-        // root = process_node(root, depth + 1);
         struct fy_node *root;
         root = fy_document_root(doc);
         root = process_node(root, depth + 1);
-        // fy_document_destroy(doc);
         free(mChunk.memory);
         curl_easy_cleanup(curl);
         return fy_document_root(doc);
-    } else
+    }
+    else
     {
         // Local file include
         FILE *file = fopen(filename, "r");
@@ -922,12 +886,9 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             return NULL;
         }
 
-        // root = fy_document_get_root_node(&doc);
-        // root = process_node(root, depth + 1);
         struct fy_node *root;
         root = fy_document_root(doc);
         root = process_node(root, depth + 1);
-        // fy_document_destroy(doc);
         fclose(file);
         return fy_document_root(doc);
     }
@@ -936,7 +897,6 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
 // Function to recursively remove nodes with keys containing "include"
 static void remove_include_keys(struct fy_node *node)
 {
-    // struct fy_node_pair *iter, *next;
     struct fy_node *key, *value;
     const char *key_str;
     struct fy_node_pair *pair;
@@ -944,19 +904,6 @@ static void remove_include_keys(struct fy_node *node)
     struct fy_node *keys_to_remove[10]; // Assuming no more than 10 keys to remove
     int remove_count = 0;
 
-#if 0
-    char *yaml_output_src = fy_emit_node_to_string(node, FYECF_DEFAULT);
-    if (!yaml_output_src)
-    {
-        UT_LOG_ERROR("Failed to emit node to string\n");
-    }
-
-    // Print the emitted YAML string
-    printf("Emitted complete YAML:\n%s\n", yaml_output_src);
-
-    // Clean up
-    free(yaml_output_src);
-#endif
     if (node == NULL)
     {
         UT_LOG_ERROR( "Error: Invalid node.\n");
@@ -972,9 +919,6 @@ static void remove_include_keys(struct fy_node *node)
                 key = fy_node_pair_key(pair);
                 value = fy_node_pair_value(pair);
                 key_str = fy_node_get_scalar(key, NULL);
-                //if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
-                //const char *tag_str = fy_node_get_tag(key, &length);
-                //if (tag_str && strstr(tag_str, "!include"))
                 if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
                 {
                     keys_to_remove[remove_count++] = key;
@@ -990,12 +934,6 @@ static void remove_include_keys(struct fy_node *node)
     }
     else if (fy_node_is_sequence(node))
     {
-        struct fy_node *elem;
-        void *iter_state = NULL;
-        elem = fy_node_sequence_iterate(node, &iter_state);
-        while (elem) {
-            remove_include_keys(elem);
-            elem = fy_node_sequence_iterate(node, &iter_state);
-        }
+        UT_LOG_DEBUG("includes inside a sequence is currently not supported");
     }
 }
