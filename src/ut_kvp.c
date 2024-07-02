@@ -35,6 +35,7 @@
 ut_kvp_instance_t *gKVP_Instance = NULL;
 
 #define UT_KVP_MAGIC (0xdeadbeef)
+#define UT_KVP_MAX_INCLUDE_DEPTH 5
 
 typedef struct
 {
@@ -55,10 +56,11 @@ static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *psz
 static bool str_to_bool(const char *string);
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pszResult);
 static void convert_dot_to_slash(const char *key, char *output);
-static struct fy_document *parse_yaml_file(const char *filePath);
-static int download_url(const char *url, ut_kvp_download_memory_internal_t *memoryChunk);
+static struct fy_node* process_node(struct fy_node *node, int depth);
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
-static void merge_yaml_document(struct fy_document *baseDoc, struct fy_document *secondaryDoc);
+static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
+static void merge_nodes(struct fy_node *dest, struct fy_node *src);
+static void remove_include_keys(struct fy_node *node);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
 {
@@ -95,6 +97,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
 
 ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 {
+    struct fy_node *node;
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
     if (pInstance == NULL)
@@ -118,6 +121,16 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     if (NULL == pInternal->fy_handle)
     {
         UT_LOG_ERROR("Unable to parse file/memory");
+        ut_kvp_close( pInstance );
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    node = process_node(fy_document_root(pInternal->fy_handle), 0);
+    remove_include_keys(node);
+
+    if(node == NULL)
+    {
+         UT_LOG_ERROR("Unable to process node");
         ut_kvp_close( pInstance );
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -586,52 +599,6 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     return count;
 }
 
-void* ut_kvp_getMergedFile( ut_kvp_instance_t *pInstance, const char* pszKey )
-{
-    struct fy_document *includedDocument = NULL;
-    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
-
-    if (pInternal == NULL)
-    {
-        UT_LOG_ERROR("Invalid instance - pInstance");
-        return 0;
-    }
-
-    if (pInternal->fy_handle == NULL)
-    {
-        UT_LOG_ERROR("No Data File open");
-        return 0;
-    }
-
-    // Extract the "include" node (you may have multiple such nodes)
-    struct fy_node *fileIncluded = fy_node_by_path(fy_document_root(pInternal->fy_handle), pszKey, -1, FYNWF_DONT_FOLLOW);
-
-    if(fileIncluded == NULL)
-    {
-        UT_LOG_ERROR("Node not found/extracted");
-        return 0;
-    }
-
-    if (fy_node_is_scalar(fileIncluded))
-    {
-        const char *filePathForIncluded = fy_node_get_scalar(fileIncluded, NULL);
-
-        // Parse and merge the included file
-        includedDocument = parse_yaml_file(filePathForIncluded);
-        if (includedDocument == NULL)
-        {
-            UT_LOG_ERROR("parsing or merging unsuccessful");
-            return 0;
-        }
-    }
-
-    merge_yaml_document(pInternal->fy_handle, includedDocument);
-    fy_document_destroy(includedDocument);
-    // Optionally remove the included_file node after merging
-    fy_node_mapping_remove_by_key(fy_document_root(pInternal->fy_handle), fileIncluded);
-    return (void *)pInternal;
-}
-
 /** Static Functions */
 static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance)
 {
@@ -694,74 +661,6 @@ static void convert_dot_to_slash(const char *key, char *output)
     }
 }
 
-// Function to parse a YAML file (local or remote) into a document
-static struct fy_document *parse_yaml_file(const char *filePath)
-{
-    struct fy_document *document = NULL;
-    ut_kvp_download_memory_internal_t mChunk;
-
-    // Check if the file path is a URL
-    if (strncmp(filePath, "http://", 7) == 0 || strncmp(filePath, "https://", 8) == 0)
-    {
-        // Download the content from the URL
-        mChunk.memory = malloc(1);
-        mChunk.size = 0;
-
-        if (download_url(filePath, &mChunk) == 0)
-        {
-            // Parse the downloaded content
-            document = fy_document_build_from_malloc_string(NULL, mChunk.memory, mChunk.size);
-            free(mChunk.memory);
-        }
-    }
-    else
-    {
-        // Parse the local file
-        document = fy_document_build_from_file(NULL, filePath);
-    }
-
-    if (document == NULL)
-    {
-        UT_LOG_ERROR("Failed to parse YAML document: %s\n", filePath);
-        return NULL;
-    }
-
-    return document;
-}
-
-// Function to download content from a URL
-static int download_url(const char *url, ut_kvp_download_memory_internal_t *memoryChunk)
-{
-    CURL *curlHandle;
-    CURLcode result;
-
-    curl_global_init(CURL_GLOBAL_ALL);
-
-    curlHandle = curl_easy_init();
-    if (curlHandle)
-    {
-        curl_easy_setopt(curlHandle, CURLOPT_URL, url);
-        curl_easy_setopt(curlHandle, CURLOPT_WRITEFUNCTION, write_memory_callback);
-        curl_easy_setopt(curlHandle, CURLOPT_WRITEDATA, (void *)memoryChunk);
-        curl_easy_setopt(curlHandle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-
-        result = curl_easy_perform(curlHandle);
-
-        if (result != CURLE_OK)
-        {
-            UT_LOG_ERROR("curl_easy_perform() failed: %s\n", curl_easy_strerror(result));
-            curl_easy_cleanup(curlHandle);
-            curl_global_cleanup();
-            return 1;
-        }
-
-        curl_easy_cleanup(curlHandle);
-    }
-
-    curl_global_cleanup();
-    return 0;
-}
-
 // Callback function for libcurl to write downloaded data into a MemoryStruct
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
 {
@@ -784,47 +683,319 @@ static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, v
     return realsize;
 }
 
-// Function to merge nodes from one document into another
-static void merge_yaml_document(struct fy_document *baseDoc, struct fy_document *secondaryDoc)
+static struct fy_node* process_node(struct fy_node *node, int depth)
 {
-    struct fy_node_pair *secondaryPair;
-    void *secondaryIterator = NULL;
-    struct fy_node_pair *base_pair;
-    void *baseIterator = NULL;
-    int keyFound = 0;
+     struct fy_document *includeDoc = NULL;
 
-    struct fy_node *baseRoot = fy_document_root(baseDoc);
-    struct fy_node *secondaryRoot = fy_document_root(secondaryDoc);
-
-    if (!baseRoot || !secondaryRoot || fy_node_get_type(baseRoot) != FYNT_MAPPING || fy_node_get_type(secondaryRoot) != FYNT_MAPPING)
+    if (node == NULL)
     {
-        UT_LOG_ERROR("Unsupported YAML structure\n");
-        return;
+        UT_LOG_ERROR( "Error: Invalid node.\n");
+        return NULL;
     }
 
-    while ((secondaryPair = fy_node_mapping_iterate(secondaryRoot, &secondaryIterator)) != NULL)
+    if (depth >= UT_KVP_MAX_INCLUDE_DEPTH)
     {
-        struct fy_node *secondaryKey = fy_node_pair_key(secondaryPair);
-        struct fy_node *secondaryValue = fy_node_pair_value(secondaryPair);
+        UT_LOG_ERROR( "Error: Maximum include depth exceeded.\n");
+        return NULL;
+    }
 
-        while ((base_pair = fy_node_mapping_iterate(baseRoot, &baseIterator)) != NULL)
-        {
-            struct fy_node *base_key = fy_node_pair_key(base_pair);
+    if (fy_node_is_scalar(node))
+    {
+        return node; // Nothing to do for scalar nodes
+    }
 
-            if (fy_node_compare(base_key, secondaryKey))
+    if (fy_node_is_sequence(node))
+    {
+        for (size_t i = 0; i < fy_node_sequence_item_count(node); i++) {
+            struct fy_node *item = fy_node_sequence_get_by_index(node, i);
+            process_node(item, depth);
+        }
+        return node;
+    }
+
+    if (fy_node_is_mapping(node)) {
+        struct fy_node_pair *pair;
+        struct fy_node *includeNode = NULL;
+        const char *includeFilename = NULL;
+
+        void *iter = NULL;
+        while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL) {
+            struct fy_node *key = fy_node_pair_key(pair);
+            struct fy_node *value = fy_node_pair_value(pair);
+            const char *key_str = fy_node_get_scalar(key, NULL);
+            UT_LOG_DEBUG("KEY_STR = %s", key_str);
+
+            //const char *tag_str = fy_node_get_tag(key, &length);
+            if (key_str && strstr(key_str, "include"))
             {
-                struct fy_node *duplicateValue = fy_node_copy(baseDoc, secondaryValue);
-                fy_node_pair_set_value(base_pair, duplicateValue);
-                keyFound = 1;
-                break;
+                includeFilename = fy_node_get_scalar(value, NULL);
+                if (includeFilename) {
+                    includeNode = process_include(includeFilename, depth, includeDoc);
+                    if (includeNode) {
+                        merge_nodes(node, includeNode);
+                        //fy_node_free(includeNode);
+                    }
+                    //fy_node_mapping_remove_by_key(node, key);
+                }
+            // } else {
+            //     process_node(value, depth);
+            // }
+            }
+        }
+    }
+
+    return node;
+}
+
+static void merge_nodes(struct fy_node *dest, struct fy_node *src) {
+    if (!dest || !src) return;
+
+#if 0
+    char *yaml_output_dest = NULL;
+    char *yaml_output_src = NULL;
+
+    yaml_output_dest = fy_emit_node_to_string(dest, FYECF_DEFAULT);
+    if (!yaml_output_dest) {
+        UT_LOG_ERROR("Failed to emit node to string\n");
+    }
+
+    // Print the emitted YAML string
+    printf("Emitted MAIN YAML:\n%s\n", yaml_output_dest);
+
+    // Clean up
+    free(yaml_output_dest);
+
+    yaml_output_src = fy_emit_node_to_string(src, FYECF_DEFAULT);
+    if (!yaml_output_src)
+    {
+        UT_LOG_ERROR("Failed to emit node to string\n");
+    }
+
+    // Print the emitted YAML string
+    printf("Emitted SECDRY YAML:\n%s\n", yaml_output_src);
+
+    // Clean up
+    free(yaml_output_src);
+# endif
+    if (fy_node_is_scalar(dest)) {
+        fy_node_create_scalar_copy(fy_node_document(dest), fy_node_get_scalar(src, NULL), fy_node_get_scalar_length(src));
+    } else if (fy_node_is_sequence(dest) && fy_node_is_sequence(src)) {
+        size_t i = 0;
+        while (i < fy_node_sequence_item_count(src)) {
+            struct fy_node *item = fy_node_sequence_get_by_index(src, i);
+            fy_node_sequence_append(dest, fy_node_copy(NULL, item));
+            i++;
+        }
+    } else if (fy_node_is_mapping(dest) && fy_node_is_mapping(src)) {
+        // Merge mappings
+        struct fy_node_pair *pair;
+        void *iter = NULL;
+   
+        while ((pair = fy_node_mapping_iterate(src, &iter)) != NULL) {
+            //struct fy_node *key = fy_node_copy(NULL, fy_node_pair_key(pair));
+            //struct fy_node *value = fy_node_copy(NULL, fy_node_pair_value(pair));
+            struct fy_node *key = fy_node_pair_key(pair);
+            struct fy_node *value = fy_node_pair_value(pair);
+            const char *key_str = fy_node_get_scalar(key, NULL);
+
+            // const char *tag_str = fy_node_get_tag(key, &length);
+            if (key_str && strstr(key_str, "include") == NULL)
+            {
+                if(fy_node_insert(dest, src) != 0)
+                {
+                    UT_LOG_ERROR("Merge failed");
+                }
+            }
+            else
+            {
+                fy_node_free(key);
+                fy_node_free(value);
             }
         }
 
-        if (!keyFound)
+        // // Now remove the 'include' key from the destination node
+        // iter = NULL;
+        // while ((pair = fy_node_mapping_iterate(dest, &iter)) != NULL) {
+        //     struct fy_node *key = fy_node_pair_key(pair);
+        //     const char *key_str = fy_node_get_scalar(key, NULL);
+        //     if (key_str && strstr(key_str, "include")) {
+        //         fy_node_mapping_remove_by_key(dest, key);
+        //         // fy_node_free(key);
+        //         // fy_node_free(fy_node_pair_value(pair));
+        //     }
+        // }
+    } else
+    {
+        UT_LOG_ERROR("Warning: Cannot merge nodes of incompatible types\n");
+    }
+}
+
+static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc)
+{
+    ut_kvp_download_memory_internal_t mChunk;
+    // struct fy_node *root;
+
+    if (depth >= UT_KVP_MAX_INCLUDE_DEPTH)
+    {
+        UT_LOG_ERROR( "Error: Maximum include depth exceeded.\n");
+        return NULL;
+    }
+
+   if (strncmp(filename, "http:", 5) == 0 || strncmp(filename, "https:", 6) == 0) 
+   {
+        // URL include
+        mChunk.memory = malloc(1);
+        mChunk.size = 0;
+
+        if (!mChunk.memory)
         {
-            struct fy_node *dup_key = fy_node_copy(baseDoc, secondaryKey);
-            struct fy_node *duplicateValue = fy_node_copy(baseDoc, secondaryValue);
-            fy_node_mapping_append(baseRoot, dup_key, duplicateValue);
+            UT_LOG_ERROR( "Error: Not enough memory to store curl response\n");
+            return NULL;
+        }
+
+        CURL *curl = curl_easy_init();
+        if (!curl)
+        {
+            UT_LOG_ERROR( "Error: Could not initialize curl\n");
+            free(mChunk.memory);
+            return NULL;
+        }
+
+        CURLcode res;
+        curl_easy_setopt(curl, CURLOPT_URL, filename);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&mChunk);
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK)
+        {
+            UT_LOG_ERROR( "Error: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            free(mChunk.memory);
+            curl_easy_cleanup(curl);
+            return NULL;
+        }
+
+        long response_code;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+        if (response_code != 200)
+        {
+            UT_LOG_ERROR( "Error: HTTP request failed with code %ld\n", response_code);
+            free(mChunk.memory);
+            curl_easy_cleanup(curl);
+            return NULL;
+        }
+
+        // struct fy_document *doc;
+        doc = fy_document_build_from_malloc_string(NULL, mChunk.memory, mChunk.size);
+        if (doc == NULL)
+        {
+            UT_LOG_ERROR( "Error: Cannot parse included content\n");
+            free(mChunk.memory);
+            curl_easy_cleanup(curl);
+            return NULL;
+        }
+
+        //root = fy_document_set_root(&doc);
+        // root = process_node(root, depth + 1);
+        struct fy_node *root;
+        root = fy_document_root(doc);
+        root = process_node(root, depth + 1);
+        // fy_document_destroy(doc);
+        free(mChunk.memory);
+        curl_easy_cleanup(curl);
+        return fy_document_root(doc);
+    } else
+    {
+        // Local file include
+        FILE *file = fopen(filename, "r");
+        if (!file)
+        {
+            UT_LOG_ERROR("Error: Cannot open include file '%s'.\n", filename);
+            return NULL;
+        }
+
+        // struct fy_document *doc;
+        doc = fy_document_build_from_file(NULL, filename);
+        if (doc == NULL)
+        {
+            UT_LOG_ERROR("Error: Cannot parse include file '%s'.\n", filename);
+            fclose(file);
+            return NULL;
+        }
+
+        // root = fy_document_get_root_node(&doc);
+        // root = process_node(root, depth + 1);
+        struct fy_node *root;
+        root = fy_document_root(doc);
+        root = process_node(root, depth + 1);
+        // fy_document_destroy(doc);
+        fclose(file);
+        return fy_document_root(doc);
+    }
+}
+
+// Function to recursively remove nodes with keys containing "include"
+static void remove_include_keys(struct fy_node *node)
+{
+    // struct fy_node_pair *iter, *next;
+    struct fy_node *key, *value;
+    const char *key_str;
+    struct fy_node_pair *pair;
+    void *iter = NULL;
+    struct fy_node *keys_to_remove[10]; // Assuming no more than 10 keys to remove
+    int remove_count = 0;
+
+#if 0
+    char *yaml_output_src = fy_emit_node_to_string(node, FYECF_DEFAULT);
+    if (!yaml_output_src)
+    {
+        UT_LOG_ERROR("Failed to emit node to string\n");
+    }
+
+    // Print the emitted YAML string
+    printf("Emitted complete YAML:\n%s\n", yaml_output_src);
+
+    // Clean up
+    free(yaml_output_src);
+#endif
+    if (node == NULL)
+    {
+        UT_LOG_ERROR( "Error: Invalid node.\n");
+        return;
+    }
+
+    if (fy_node_is_mapping(node))
+    {
+        UT_LOG_DEBUG("Node pairs = %d\n", fy_node_mapping_item_count(node));
+        while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL)
+        {
+            {
+                key = fy_node_pair_key(pair);
+                value = fy_node_pair_value(pair);
+                key_str = fy_node_get_scalar(key, NULL);
+                //if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
+                //const char *tag_str = fy_node_get_tag(key, &length);
+                //if (tag_str && strstr(tag_str, "!include"))
+                if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
+                {
+                    keys_to_remove[remove_count++] = key;
+                }
+            }
+        }
+
+        // Remove collected keys
+        for (int i = 0; i < remove_count; i++)
+        {
+            fy_node_mapping_remove_by_key(node, keys_to_remove[i]);
+        }
+    }
+    else if (fy_node_is_sequence(node))
+    {
+        struct fy_node *elem;
+        void *iter_state = NULL;
+        elem = fy_node_sequence_iterate(node, &iter_state);
+        while (elem) {
+            remove_include_keys(elem);
+            elem = fy_node_sequence_iterate(node, &iter_state);
         }
     }
 }

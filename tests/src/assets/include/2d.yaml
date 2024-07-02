@@ -1,4 +1,4 @@
 ---
 "2":
   value: true
-include: 3d.yaml
+include: assets/include/3d.yaml
