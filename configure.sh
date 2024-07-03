@@ -30,7 +30,8 @@ FRAMEWORK_DIR=${MY_DIR}/framework
 LIBYAML_DIR=${FRAMEWORK_DIR}/libfyaml-master
 ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 LIBWEBSOCKETS_DIR=${FRAMEWORK_DIR}/libwebsockets-4.3.3
-CMAKE_DIR=${FRAMEWORK_DIR}/cmake/CMake-3.30.0
+CMAKE_DIR=${MY_DIR}/host-tools/CMake-3.30.0
+CMAKE_BIN_DIR=${CMAKE_DIR}/build/bin
 
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
@@ -61,18 +62,18 @@ else
 fi
 popd > /dev/null
 
-pushd ${FRAMEWORK_DIR} > /dev/null
+pushd ${MY_DIR}
 if command -v cmake &> /dev/null
 then
     echo "CMake is installed"
 else
     echo "CMake is not installed"
-    wget https://github.com/Kitware/CMake/archive/refs/tags/v3.30.0.zip -P cmake/. --no-check-certificate
-    cd cmake
+    wget https://github.com/Kitware/CMake/archive/refs/tags/v3.30.0.zip -P host-tools/. --no-check-certificate
+    cd host-tools
     unzip v3.30.0.zip
     cd ${CMAKE_DIR}
     mkdir build && cd build
-    ../bootstrap && make
+    ../bootstrap --prefix=./. && make -j4 BUILD_TESTING=OFF BUILD_EXAMPLES=OFF && make install
 fi
 popd > /dev/null
 
@@ -86,19 +87,17 @@ else
     cd ${LIBWEBSOCKETS_DIR}
     mkdir build
     cd build
-    if [ -d "${CMAKE_DIR}/build/bin" ]; then
+    if [ -d "${CMAKE_BIN_DIR}" ]; then
         echo "CMAKE not installed, hence utilizing the built cmake"
-        ${CMAKE_DIR}/build/bin/cmake .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
-        -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
-        -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
-        -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release
+        CMAKE=${CMAKE_BIN_DIR}/cmake
     else
         echo "CMAKE is already installed, utilizing the installed binary"
-        cmake .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
-        -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
-        -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
-        -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release
+        CMAKE=cmake
     fi
+    ${CMAKE} .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
+    -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
+    -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
+    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release
     make $@
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}
