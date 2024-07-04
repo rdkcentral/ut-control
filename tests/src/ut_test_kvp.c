@@ -1123,14 +1123,14 @@ void register_kvp_functions( void )
     assert(gpKVPSuite8 != NULL);
 
     UT_add_test(gpKVPSuite8, "kvp single include file", test_ut_kvp_open_singleIncludeFileWithBuildFromFile);
-    //UT_add_test(gpKVPSuite8, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromFile);
+    UT_add_test(gpKVPSuite8, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromFile);
     UT_add_test(gpKVPSuite8, "kvp include depth check", test_ut_kvp_IncludeDepthCheckWithBuildFromFile);
 
     gpKVPSuite9 = UT_add_suite("ut-kvp - test main functions YAML Decoder for single include files using build from Malloced data", NULL, NULL);
     assert(gpKVPSuite9 != NULL);
 
     UT_add_test(gpKVPSuite9, "kvp single include file", test_ut_kvp_singleIncludeFileWithBuildFromMallocedData);
-    //UT_add_test(gpKVPSuite9, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromMallocedData);
+    UT_add_test(gpKVPSuite9, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromMallocedData);
     UT_add_test(gpKVPSuite9, "kvp include depth check", test_ut_kvp_IncludeDepthCheckWithBuildFromMallocedData);
 
     gpKVPSuite10 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml include support", test_ut_kvp_createGlobalYAMLInstanceForIncludeFileViaYaml, test_ut_kvp_freeGlobalInstance);
