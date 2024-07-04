@@ -73,8 +73,8 @@ else
     unzip v3.30.0.zip
     cd ${CMAKE_DIR}
     mkdir build && cd build
-    ../bootstrap --prefix=./. && make -j4 BUILD_TESTING=OFF BUILD_EXAMPLES=OFF && make install
-fi
+    ../bootstrap --prefix=./. -- -DCMAKE_USE_OPENSSL=OFF
+    make -j4 BUILD_TESTING=OFF BUILD_EXAMPLES=OFF && make install
 popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
