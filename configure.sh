@@ -116,7 +116,7 @@ else
     cd curl-master
     mkdir build
     autoreconf -fi
-    ./configure --prefix=$(pwd)/build --without-ssl
+    ./configure --prefix=$(pwd)/build --with-ssl
     make $@; make $@ install
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}

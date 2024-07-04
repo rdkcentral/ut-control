@@ -113,7 +113,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 
     if (access(fileName, F_OK) != 0)
     {
-        printf("[%s] cannot be accesed", fileName);
+        UT_LOG_DEBUG("[%s] cannot be accesed", fileName);
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
     pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
@@ -140,6 +140,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 
 ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length )
 {
+    struct fy_node *node;
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
     if (pInstance == NULL)
@@ -159,6 +160,16 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
     {
         UT_LOG_ERROR("Unable to parse file/memory");
         ut_kvp_close( pInstance );
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    node = process_node(fy_document_root(pInternal->fy_handle), 0);
+    remove_include_keys(node);
+
+    if (node == NULL)
+    {
+        UT_LOG_ERROR("Unable to process node");
+        ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
@@ -303,7 +314,7 @@ static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *psz
     }
     else if (errno == ERANGE || uValue > maxRange)
     {
-        printf("Value out of range for maxRange [0x%lx,%ld].", maxRange, maxRange);
+        UT_LOG_DEBUG("Value out of range for maxRange [0x%lx,%ld].", maxRange, maxRange);
         return 0;
     }
 
@@ -721,7 +732,7 @@ static struct fy_node* process_node(struct fy_node *node, int depth)
             struct fy_node *key = fy_node_pair_key(pair);
             struct fy_node *value = fy_node_pair_value(pair);
             const char *key_str = fy_node_get_scalar(key, NULL);
-            UT_LOG_DEBUG("KEY_STR = %s", key_str);
+            // UT_LOG_DEBUG("KEY_STR = %s", key_str);
 
             if (key_str && strstr(key_str, "include"))
             {
@@ -854,16 +865,16 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         doc = fy_document_build_from_malloc_string(NULL, mChunk.memory, mChunk.size);
         if (doc == NULL)
         {
-            UT_LOG_ERROR( "Error: Cannot parse included content\n");
+            UT_LOG_ERROR("Error: Cannot parse included content\n");
             free(mChunk.memory);
             curl_easy_cleanup(curl);
             return NULL;
         }
 
-        struct fy_node *root;
-        root = fy_document_root(doc);
-        root = process_node(root, depth + 1);
-        free(mChunk.memory);
+        process_node(fy_document_root(doc), depth + 1);
+        // UT_LOG_DEBUG("%s memory chunk = \n%s\n", __FUNCTION__, mChunk.memory);
+
+        // free(mChunk.memory); // fy_document_build_from_malloc_string():  The string is expected to have been allocated by malloc(3) and when the document is destroyed it will be automatically freed.
         curl_easy_cleanup(curl);
         return fy_document_root(doc);
     }
@@ -912,7 +923,7 @@ static void remove_include_keys(struct fy_node *node)
 
     if (fy_node_is_mapping(node))
     {
-        UT_LOG_DEBUG("Node pairs = %d\n", fy_node_mapping_item_count(node));
+        // UT_LOG_DEBUG("Node pairs = %d\n", fy_node_mapping_item_count(node));
         while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL)
         {
             {
