@@ -75,6 +75,7 @@ else
     mkdir build && cd build
     ../bootstrap --prefix=./. -- -DCMAKE_USE_OPENSSL=OFF
     make -j4 BUILD_TESTING=OFF BUILD_EXAMPLES=OFF && make install
+fi
 popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
@@ -101,4 +102,3 @@ else
     make $@
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}
-
