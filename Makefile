@@ -126,3 +126,7 @@ clean:
 cleanall: clean
 	@echo -e ${GREEN}Performing Clean on frameworks [$(TOP_DIR)/framework]${NC}
 	@${RM} -rf $(TOP_DIR)/framework
+
+cleanhost-tools:
+	@echo -e ${GREEN}Performing Clean on host-tools [$(TOP_DIR)/host-tools]${NC}
+	@${RM} -rf $(TOP_DIR)/host-tools

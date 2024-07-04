@@ -63,18 +63,21 @@ fi
 popd > /dev/null
 
 pushd ${MY_DIR}
-if command -v cmake &> /dev/null
-then
+if command -v cmake &> /dev/null; then
     echo "CMake is installed"
 else
-    echo "CMake is not installed"
-    wget https://github.com/Kitware/CMake/archive/refs/tags/v3.30.0.zip -P host-tools/. --no-check-certificate
-    cd host-tools
-    unzip v3.30.0.zip
-    cd ${CMAKE_DIR}
-    mkdir build && cd build
-    ../bootstrap --prefix=./. -- -DCMAKE_USE_OPENSSL=OFF
-    make -j4 BUILD_TESTING=OFF BUILD_EXAMPLES=OFF && make install
+    if [ -d "${CMAKE_BIN_DIR}" ]; then
+        echo "CMake is already built"
+    else
+        echo "CMake is not installed, building it"
+        wget https://github.com/Kitware/CMake/archive/refs/tags/v3.30.0.zip -P host-tools/. --no-check-certificate
+        cd host-tools
+        unzip v3.30.0.zip
+        cd ${CMAKE_DIR}
+        mkdir build && cd build
+        ../bootstrap --prefix=./. -- -DCMAKE_USE_OPENSSL=OFF
+        make -j4 BUILD_TESTING=OFF BUILD_EXAMPLES=OFF && make install
+    fi
 fi
 popd > /dev/null
 
