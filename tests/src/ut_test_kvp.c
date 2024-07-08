@@ -593,11 +593,10 @@ void test_ut_kvp_bool(void)
     UT_ASSERT( result == false );
 }
 
+/*These tests test the integrated yaml for there key-value pair*/
 void test_ut_kvp_bool_on_main_yaml(void)
 {
      bool result;
-
-    /*These tests test the integrated yaml for there key-value pair*/
 
     /* Negative Tests */
     result = ut_kvp_getBoolField( gpMainTestInstance, "6/value" );
@@ -621,11 +620,10 @@ void test_ut_kvp_bool_on_main_yaml(void)
 
 }
 
+ /*These tests test the integrated yaml for the availbility of field*/
 void test_ut_kvp_fieldPresent_on_main_yaml(void)
 {
     bool result;
-
-    /*These tests test the integrated yaml for the availbility of field*/
 
     /* Negative Tests */
     result = ut_kvp_fieldPresent( gpMainTestInstance, "6/value" );
@@ -692,33 +690,31 @@ static void create_delete_kvp_instance_for_given_file(const char* filename)
      ut_kvp_destroyInstance( pInstance );
 }
 
-void test_ut_kvp_open_singleIncludeFileWithBuildFromFile( void )
+/*These tests, test for availability of include file in the given file.
+**The given file only contains file path to be included
+*/
+void test_ut_kvp_open_singleIncludeFileWithBuildFromFile(void)
 {
-    /*These tests, test for availability of include file in the given file
-    **The given file only contains file path to be included
-    */
 
-     create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
-
+    create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
 }
 
-void test_ut_kvp_singleIncludeUrlsWithBuildFromFile( void )
+/*These tests, test for availability of include url in the given file.
+**The given file only contains urls to be included
+*/
+void test_ut_kvp_singleIncludeUrlsWithBuildFromFile(void)
 {
-    /*These tests, test for availability of include url in the given file
-    **The given file only contains urls to be included
-    */
 
-     create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML);
-
+    create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML);
 }
 
+/*These tests, test for availability of include file in the given file
+ **The given file only contains file path to be included, however the
+ **the included file contains file path of another file and so on.
+ **KVP as now supports UT_KVP_MAX_INCLUDE_DEPTH = 5
+ */
 void test_ut_kvp_IncludeDepthCheckWithBuildFromFile(void)
 {
-    /*These tests, test for availability of include file in the given file
-    **The given file only contains file path to be included, however the
-    **the included file contains file path of another file and so on.
-    **KVP as now supports UT_KVP_MAX_INCLUDE_DEPTH = 5
-    */
 
     create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
 }
@@ -764,38 +760,34 @@ static create_delete_kvp_memory_instance_for_given_file(const char* filename)
      ut_kvp_destroyInstance( pInstance );
 }
 
+/*These tests, test for availability of include file in the malloc'd buffer
+ **The malloc'd buffer, only contains files to be included
+ */
 void test_ut_kvp_singleIncludeFileWithBuildFromMallocedData(void)
 {
-    /*These tests, test for availability of include file in the malloc'd buffer
-    **The malloc'd buffer, only contains files to be included
-    */
 
-   create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
-
+    create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
 }
 
+/*These tests, test for availability of include file in the malloc'd buffer
+ **The malloc'd buffer, only contains urls to be included
+ */
 void test_ut_kvp_singleIncludeUrlsWithBuildFromMallocedData(void)
 {
-    /*These tests, test for availability of include file in the malloc'd buffer
-    **The malloc'd buffer, only contains urls to be included
-    */
 
-   create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML);
-
+    create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML);
 }
 
+/*These tests, test for availability of include file in the malloc'd data
+ **The malloc'd data only contains file path to be included, however the
+ **the included file contains file path of another file and so on.
+ **KVP as now supports UT_KVP_MAX_INCLUDE_DEPTH = 5
+ */
 void test_ut_kvp_IncludeDepthCheckWithBuildFromMallocedData(void)
 {
-    /*These tests, test for availability of include file in the malloc'd data
-    **The malloc'd data only contains file path to be included, however the
-    **the included file contains file path of another file and so on.
-    **KVP as now supports UT_KVP_MAX_INCLUDE_DEPTH = 5
-    */
 
-   create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
-
+    create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
 }
-
 
 static int test_ut_kvp_createGlobalYAMLInstance( void )
 {
