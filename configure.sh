@@ -64,8 +64,6 @@ else
 fi
 popd > /dev/null
 
-# CMAKE_BIN=$(which cmake)
-# CMAKE_BIN=${CMAKE_BIN_DIR}/cmake
 pushd ${MY_DIR}
 if command -v cmake &> /dev/null; then
     echo "CMake is installed"
