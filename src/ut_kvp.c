@@ -46,7 +46,7 @@ typedef struct
 // Struct to store the downloaded data
 typedef struct
 {
-   char *memory;
+    char *memory;
     size_t size;
 } ut_kvp_download_memory_internal_t;
 
@@ -128,10 +128,10 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     node = process_node(fy_document_root(pInternal->fy_handle), 0);
     remove_include_keys(node);
 
-    if(node == NULL)
+    if (node == NULL)
     {
-         UT_LOG_ERROR("Unable to process node");
-        ut_kvp_close( pInstance );
+        UT_LOG_ERROR("Unable to process node");
+        ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 

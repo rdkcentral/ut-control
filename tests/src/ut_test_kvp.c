@@ -597,6 +597,8 @@ void test_ut_kvp_bool_on_main_yaml(void)
 {
      bool result;
 
+    /*These tests test the integrated yaml for there key-value pair*/
+
     /* Negative Tests */
     result = ut_kvp_getBoolField( gpMainTestInstance, "6/value" );
     UT_ASSERT( result == false );
@@ -622,6 +624,8 @@ void test_ut_kvp_bool_on_main_yaml(void)
 void test_ut_kvp_fieldPresent_on_main_yaml(void)
 {
     bool result;
+
+    /*These tests test the integrated yaml for the availbility of field*/
 
     /* Negative Tests */
     result = ut_kvp_fieldPresent( gpMainTestInstance, "6/value" );
@@ -651,7 +655,7 @@ void test_ut_kvp_fieldPresent_on_main_yaml(void)
 
 }
 
-void test_ut_kvp_open_singleIncludeFileWithBuildFromFile( void )
+static void create_delete_kvp_instance_for_given_file(const char* filename)
 {
     ut_kvp_instance_t *pInstance = NULL;
     ut_kvp_status_t status;
@@ -665,7 +669,7 @@ void test_ut_kvp_open_singleIncludeFileWithBuildFromFile( void )
         return;
     }
 
-    status = ut_kvp_open( pInstance, KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
+    status = ut_kvp_open( pInstance, filename);
     assert( status == UT_KVP_STATUS_SUCCESS );
 
     if ( status != UT_KVP_STATUS_SUCCESS )
@@ -686,49 +690,42 @@ void test_ut_kvp_open_singleIncludeFileWithBuildFromFile( void )
     }
 
      ut_kvp_destroyInstance( pInstance );
+}
+
+void test_ut_kvp_open_singleIncludeFileWithBuildFromFile( void )
+{
+    /*These tests, test for availability of include file in the given file
+    **The given file only contains file path to be included
+    */
+
+     create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
 
 }
 
 void test_ut_kvp_singleIncludeUrlsWithBuildFromFile( void )
 {
-    ut_kvp_instance_t *pInstance = NULL;
-    ut_kvp_status_t status;
-    char* kvpData;
+    /*These tests, test for availability of include url in the given file
+    **The given file only contains urls to be included
+    */
 
-    pInstance = ut_kvp_createInstance();
-    if ( pInstance == NULL )
-    {
-        assert( pInstance != NULL );
-        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
-        return;
-    }
-
-    status = ut_kvp_open( pInstance, KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML);
-    assert( status == UT_KVP_STATUS_SUCCESS );
-
-    if ( status != UT_KVP_STATUS_SUCCESS )
-    {
-        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
-        return;
-    }
-
-    kvpData = ut_kvp_getData(pInstance);
-
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("%s\n", kvpData);
-
-        // Free the emitted KVP string
-           free(kvpData);
-    }
-
-     ut_kvp_destroyInstance( pInstance );
+     create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML);
 
 }
 
 void test_ut_kvp_IncludeDepthCheckWithBuildFromFile(void)
 {
+    /*These tests, test for availability of include file in the given file
+    **The given file only contains file path to be included, however the
+    **the included file contains file path of another file and so on.
+    **KVP as now supports UT_KVP_MAX_INCLUDE_DEPTH = 5
+    */
+
+    create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
+}
+
+static create_delete_kvp_memory_instance_for_given_file(const char* filename)
+{
+    test_ut_memory_t kvpMemory;
     ut_kvp_instance_t *pInstance = NULL;
     ut_kvp_status_t status;
     char* kvpData;
@@ -741,8 +738,11 @@ void test_ut_kvp_IncludeDepthCheckWithBuildFromFile(void)
         return;
     }
 
-    status = ut_kvp_open( pInstance, KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
-    assert( status == UT_KVP_STATUS_SUCCESS );
+    if (read_file_into_memory(filename, &kvpMemory) == 0)
+    {
+        status = ut_kvp_openMemory(pInstance, kvpMemory.buffer, kvpMemory.length);
+        UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+    }
 
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
@@ -766,127 +766,33 @@ void test_ut_kvp_IncludeDepthCheckWithBuildFromFile(void)
 
 void test_ut_kvp_singleIncludeFileWithBuildFromMallocedData(void)
 {
-    test_ut_memory_t kvpMemory;
-    ut_kvp_instance_t *pInstance = NULL;
-    ut_kvp_status_t status;
-    char* kvpData;
+    /*These tests, test for availability of include file in the malloc'd buffer
+    **The malloc'd buffer, only contains files to be included
+    */
 
-    pInstance = ut_kvp_createInstance();
-    if ( pInstance == NULL )
-    {
-        assert( pInstance != NULL );
-        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
-        return;
-    }
-
-    if (read_file_into_memory(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML, &kvpMemory) == 0)
-    {
-        status = ut_kvp_openMemory(pInstance, kvpMemory.buffer, kvpMemory.length);
-        UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
-    }
-
-    if ( status != UT_KVP_STATUS_SUCCESS )
-    {
-        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
-        return;
-    }
-
-    kvpData = ut_kvp_getData(pInstance);
-
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("%s\n", kvpData);
-
-        // Free the emitted KVP string
-           free(kvpData);
-    }
-
-     ut_kvp_destroyInstance( pInstance );
+   create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
 
 }
 
 void test_ut_kvp_singleIncludeUrlsWithBuildFromMallocedData(void)
 {
-    test_ut_memory_t kvpMemory;
-    ut_kvp_instance_t *pInstance = NULL;
-    ut_kvp_status_t status;
-    char* kvpData;
+    /*These tests, test for availability of include file in the malloc'd buffer
+    **The malloc'd buffer, only contains urls to be included
+    */
 
-    pInstance = ut_kvp_createInstance();
-    if ( pInstance == NULL )
-    {
-        assert( pInstance != NULL );
-        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
-        return;
-    }
-
-    if (read_file_into_memory(KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML, &kvpMemory) == 0)
-    {
-        status = ut_kvp_openMemory(pInstance, kvpMemory.buffer, kvpMemory.length);
-        UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
-    }
-
-    if ( status != UT_KVP_STATUS_SUCCESS )
-    {
-        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
-        return;
-    }
-
-    kvpData = ut_kvp_getData(pInstance);
-
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("%s\n", kvpData);
-
-        // Free the emitted KVP string
-           free(kvpData);
-    }
-
-     ut_kvp_destroyInstance( pInstance );
+   create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML);
 
 }
 
 void test_ut_kvp_IncludeDepthCheckWithBuildFromMallocedData(void)
 {
-    test_ut_memory_t kvpMemory;
-    ut_kvp_instance_t *pInstance = NULL;
-    ut_kvp_status_t status;
-    char* kvpData;
+    /*These tests, test for availability of include file in the malloc'd data
+    **The malloc'd data only contains file path to be included, however the
+    **the included file contains file path of another file and so on.
+    **KVP as now supports UT_KVP_MAX_INCLUDE_DEPTH = 5
+    */
 
-    pInstance = ut_kvp_createInstance();
-    if ( pInstance == NULL )
-    {
-        assert( pInstance != NULL );
-        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
-        return;
-    }
-
-    if (read_file_into_memory(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML, &kvpMemory) == 0)
-    {
-        status = ut_kvp_openMemory(pInstance, kvpMemory.buffer, kvpMemory.length);
-        UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
-    }
-
-    if ( status != UT_KVP_STATUS_SUCCESS )
-    {
-        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
-        return;
-    }
-
-    kvpData = ut_kvp_getData(pInstance);
-
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("%s\n", kvpData);
-
-        // Free the emitted KVP string
-           free(kvpData);
-    }
-
-     ut_kvp_destroyInstance( pInstance );
+   create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
 
 }
 
@@ -1011,6 +917,10 @@ static int test_ut_kvp_createGlobalKVPInstanceForMallocedData( void )
 
 static int test_ut_kvp_createGlobalYAMLInstanceForIncludeFileViaYaml( void)
 {
+    /*Creating global instance for include yaml support, so that the values
+    **in integrated yaml can be tested
+    */
+
     ut_kvp_status_t status;
 
     gpMainTestInstance = ut_kvp_createInstance();
