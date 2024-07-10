@@ -58,7 +58,7 @@ SRC_DIRS += ${TOP_DIR}/src
 INC_DIRS += ${TOP_DIR}/include
 
 # CURL Requirements
-CURL_DIR = $(TOP_DIR)/framework/curl/curl-master
+CURL_DIR = $(TOP_DIR)/framework/curl/curl-8.8.0
 INC_DIRS += $(CURL_DIR)/include
 LDFLAGS += -L $(CURL_DIR)/build/lib -lcurl
 
@@ -87,6 +87,11 @@ ifeq ($(TARGET),arm)
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
+ifndef SDKTARGETSYSROOT
+$(error SDKTARGETSYSROOT is not set. Please set this variable before running the make command.)
+endif
+INC_DIR += $(SDKTARGETSYSROOT)/usr/include
+LDFLAGS += -L $(SDKTARGETSYSROOT)/usr/lib -lcurl -Wl,-rpath-link,$(SDKTARGETSYSROOT)/usr/lib  -pthread
 endif
 
 # Defaults for target linux
