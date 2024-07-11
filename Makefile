@@ -60,7 +60,7 @@ INC_DIRS += ${TOP_DIR}/include
 # CURL Requirements
 CURL_DIR = $(TOP_DIR)/framework/curl/curl-8.8.0
 INC_DIRS += $(CURL_DIR)/include
-LDFLAGS += -L $(CURL_DIR)/build/lib -lcurl
+LDFLAGS += -L $(CURL_DIR)/build/lib -lcurl -Wl,-rpath-link,$(CURL_DIR)/build/lib
 
 CFLAGS += -fPIC -Wall -shared   # Flags for compilation
 CFLAGS += -DNDEBUG
@@ -90,6 +90,7 @@ INC_DIRS += $(UT_DIR)/sysroot/usr/include
 ifndef SDKTARGETSYSROOT
 $(error SDKTARGETSYSROOT is not set. Please set this variable before running the make command.)
 endif
+$(info $(shell echo -e ${GREEN}SDKTARGETSYSROOT= [$(SDKTARGETSYSROOT)]${NC}))
 INC_DIR += $(SDKTARGETSYSROOT)/usr/include
 LDFLAGS += -L $(SDKTARGETSYSROOT)/usr/lib -lcurl -Wl,-rpath-link,$(SDKTARGETSYSROOT)/usr/lib  -pthread
 endif

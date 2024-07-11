@@ -35,7 +35,7 @@ CMAKE_BIN_DIR=${CMAKE_DIR}/build/bin
 HOST_CC=gcc
 TARGET_CC=${CC}
 CURL_DIR=${FRAMEWORK_DIR}/curl
-OPENSSL_DIR=${FRAMEWORK_DIR}/openssl/openssl-OpenSSL_1_1_1w/
+OPENSSL_DIR=${FRAMEWORK_DIR}/openssl/openssl-OpenSSL_1_1_1w
 
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
@@ -106,27 +106,22 @@ else
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}
 
+pushd ${FRAMEWORK_DIR} > /dev/null
 if [ "$TARGET" = "arm" ]; then
     TARGET=arm
 else
     TARGET=linux
 fi
 
-pushd ${FRAMEWORK_DIR} > /dev/null
 if [ "$TARGET" = "arm" ]; then
-    serach_paths=$SDKTARGETSYSROOT
-    export SDKTARGETSYSROOT=${SDKTARGETSYSROOT}
-    #LD_FLAGS="-L$SDKTARGETSYSROOT/usr/local/lib -L$SDKTARGETSYSROOT/usr/lib -lcurl"
-    #INC_DIRS="-I$SDKTARGETSYSROOT/usr/local/include -I$SDKTARGETSYSROOT/usr/include"
+    search_paths=$SDKTARGETSYSROOT
 else
-    serach_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
-    #LD_FLAGS="-L/usr/local/lib -L/usr/lib -lcurl"
-    #INC_DIRS="-I/usr/local/include -I/usr/include"
+    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
 fi
 
-if find ${serach_paths} -name 'curl.h' -print -quit | grep -q 'curl.h'; then
+if find ${search_paths} -name 'curl.h' -print -quit | grep -q 'curl.h'; then
     echo "curl.h found for ${TARGET}"
-    if find ${serach_paths} -name 'libcurl.so*' -print -quit | grep -q 'libcurl.so*'; then
+    if find ${search_paths} -name 'libcurl.so*' -print -quit | grep -q 'libcurl.so*'; then
         echo "libcurl.so* found for ${TARGET}"
     else
         echo "libcurl.so* not found for ${TARGET}"
@@ -138,18 +133,26 @@ else
 fi
 
 # Search for libssl.so* files and check its version
-result=$(find ${serach_paths} -iname "libssl.so*" | xargs -I {} file "{}" | grep -i "version 1")
+result=""
+for file_path in $(find ${search_paths} -iname "libssl.so.1*"); do
+    # Check the file type and version
+    if file "${file_path}" | grep -i -q "version 1"; then
+        result="${file_path}"
+        break
+    fi
+done
 
 # Check if the result is empty or not
-if [ -n "$result" ]; then
-    echo "Version 1 of libssl.so is found:Also assuming libcrypto is also available in same path"
-    echo "$result"
+if [ -n "${result}" ]; then
+    echo "Version 1 of libssl.so is found for ${TARGET}.Also assuming libcrypto is also available in the same path"
     OPENSSL_IS_INSTALLED=1
 else
-    echo "Version 1 of libssl.so is not found."
+    echo "Version 1 of libssl.so is not found for ${TARGET}."
     OPENSSL_IS_INSTALLED=0
 fi
+popd > /dev/null # ${FRAMEWORK_DIR}
 
+pushd ${FRAMEWORK_DIR} > /dev/null
 if [ "$OPENSSL_IS_INSTALLED" -eq 0 ]; then
     if [ -d "${OPENSSL_DIR}" ]; then
         echo "Framework [openssl] already exists"
@@ -161,15 +164,20 @@ if [ "$OPENSSL_IS_INSTALLED" -eq 0 ]; then
         cd openssl-OpenSSL_1_1_1w/
         mkdir build
         if [ "$TARGET" = "arm" ]; then
-            export CROSS_COMPILE=
-            ./Configure linux-armv4 shared --prefix=$PWD/build --openssldir=$PWD -march=armv7-a -mthumb -mfpu=neon -mfloat-abi=hard
+            CROSS_COMPILE=
+            COMPILER_FLAGS=$(echo $CC | cut -d' ' -f2-)
+            /usr/bin/perl ./Configure linux-armv4 shared --prefix=${OPENSSL_DIR}/build --openssldir=${OPENSSL_DIR} --cross-compile-prefix=${CROSS_COMPILE} $COMPILER_FLAGS
+
         else
-            ./config --prefix=$PWD/build
+            ./config --prefix=${OPENSSL_DIR}/build
         fi
+        make && make install
     fi
 fi
+popd > /dev/null # ${FRAMEWORK_DIR}
 
-if [ "$LIBCURL_IS_INSTALLED" -eq 0 ]; then
+pushd ${FRAMEWORK_DIR} > /dev/null
+if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
     if [ -d "${CURL_DIR}" ]; then
         echo "Framework [curl] already exists"
     else
@@ -180,7 +188,7 @@ if [ "$LIBCURL_IS_INSTALLED" -eq 0 ]; then
         cd curl-8.8.0
         mkdir build
         if [ "$TARGET" = "arm" ]; then
-            ./configure --prefix=$(pwd)/build --host=arm-rdk-linux-gnueabi  --with-openssl=${OPENSSL_DIR}/build
+            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=$(pwd)/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build
         else
             ./configure --prefix=$(pwd)/build --with-ssl
         fi
