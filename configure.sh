@@ -32,6 +32,10 @@ ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 LIBWEBSOCKETS_DIR=${FRAMEWORK_DIR}/libwebsockets-4.3.3
 CURL_DIR=${FRAMEWORK_DIR}/curl
 OPENSSL_DIR=${FRAMEWORK_DIR}/openssl/openssl-OpenSSL_1_1_1w
+CMAKE_DIR=${MY_DIR}/host-tools/CMake-3.30.0
+CMAKE_BIN_DIR=${CMAKE_DIR}/build/bin
+HOST_CC=gcc
+TARGET_CC=${CC}
 
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
@@ -62,6 +66,28 @@ else
 fi
 popd > /dev/null
 
+pushd ${MY_DIR}
+if command -v cmake &> /dev/null; then
+    echo "CMake is installed"
+    CMAKE_BIN=$(which cmake)
+else
+    CMAKE_BIN=${CMAKE_BIN_DIR}/cmake
+    if [ -d "${CMAKE_BIN_DIR}" ]; then
+        echo "CMake is already built"
+    else
+        echo "CMake is not installed, building it"
+        wget https://github.com/Kitware/CMake/archive/refs/tags/v3.30.0.zip -P host-tools/. --no-check-certificate
+        cd host-tools
+        unzip v3.30.0.zip
+        echo "HOST_CC:${HOST_CC}"
+        cd ${CMAKE_DIR}
+        mkdir build && cd build
+        ../bootstrap --prefix=./. -- -DCMAKE_USE_OPENSSL=OFF
+        make CC=${HOST_CC} -j4 BUILD_TESTING=OFF BUILD_EXAMPLES=OFF && make install
+    fi
+fi
+popd > /dev/null
+
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBWEBSOCKETS_DIR}" ]; then
     echo "Framework [libwebsockets] already exists"
@@ -72,7 +98,7 @@ else
     cd ${LIBWEBSOCKETS_DIR}
     mkdir build
     cd build
-    cmake .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
+    ${CMAKE_BIN} .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
     -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
     -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release
