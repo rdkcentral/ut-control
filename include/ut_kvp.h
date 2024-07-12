@@ -67,7 +67,6 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
  *
  * @param[in] pInstance - Handle to the KVP instance where the parsed data will be stored.
  * @param[in] fileName - Null-terminated string containing the path to the KVP file.
- * @param[in] is_malloced - Bool value that denotes if the string is malloced buffer or not
  *
  * @returns Status of the operation (`ut_kvp_status_t`):
  * @retval UT_KVP_STATUS_SUCCESS - The file was opened and parsed successfully.
@@ -79,12 +78,13 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
 ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName);
 
 /**!
- * @brief Opens and parses a Key-Value Pair (KVP) file into a KVP instance.
+ * @brief Opens and parses a memory block read from a Key-Value Pair (KVP) file into a KVP instance.
  *
- * This function opens the specified KVP file, reads its contents, and parses the key-value pairs into the given KVP instance.
+ * This function opens the specified memory block, reads its contents, and parses the key-value
+ * pairs into the given KVP instance.The memory passed gets freed as part of destroy instance
  *
  * @param[in] pInstance - Handle to the KVP instance where the parsed data will be stored.
- * @param[in] pData - point to memory containing KVP Data.
+ * @param[in] pData - points to malloc'd memory containing KVP Data.
  * @param[in] length - size of the KVP data
  *
  * @returns Status of the operation (`ut_kvp_status_t`):
