@@ -59,7 +59,7 @@ else
     git clone ${TEST_REPO} ut-core
     check_next_revision
     cd ./ut-core
-    git checkout ${UT_CORE_PROJECT_VERSION}
+    #git checkout ${UT_CORE_PROJECT_VERSION} //Commented this as tests can be on latest ut-core
     ./build.sh no_ut_control
     #cd ..
     #./${0} $@

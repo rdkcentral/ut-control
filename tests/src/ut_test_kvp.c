@@ -667,7 +667,7 @@ static void create_delete_kvp_instance_for_given_file(const char* filename)
         return;
     }
 
-    status = ut_kvp_open( pInstance, filename);
+    status = ut_kvp_open( pInstance, (char*)filename);
     assert( status == UT_KVP_STATUS_SUCCESS );
 
     if ( status != UT_KVP_STATUS_SUCCESS )
@@ -719,7 +719,7 @@ void test_ut_kvp_IncludeDepthCheckWithBuildFromFile(void)
     create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
 }
 
-static create_delete_kvp_memory_instance_for_given_file(const char* filename)
+static void create_delete_kvp_memory_instance_for_given_file(const char* filename)
 {
     test_ut_memory_t kvpMemory;
     ut_kvp_instance_t *pInstance = NULL;
