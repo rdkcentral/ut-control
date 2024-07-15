@@ -51,11 +51,16 @@ INC_DIRS += $(ASPRINTF_DIR)
 LIBWEBSOCKETS_DIR = $(TOP_DIR)/framework/libwebsockets-4.3.3
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/build
-LDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -lwebsockets
+XLDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -lwebsockets
 
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
 INC_DIRS += ${TOP_DIR}/include
+
+# CURL Requirements
+CURL_DIR = $(TOP_DIR)/framework/curl/curl-8.8.0
+INC_DIRS += $(CURL_DIR)/include
+XLDFLAGS += -L $(CURL_DIR)/build/lib -lcurl -Wl,-rpath-link,$(CURL_DIR)/build/lib
 
 CFLAGS += -fPIC -Wall -shared   # Flags for compilation
 CFLAGS += -DNDEBUG
@@ -97,7 +102,7 @@ all: framework lib
 lib : ${OBJS}
 	@echo -e ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
-	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(LDFLAGS)
+	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
@@ -115,7 +120,7 @@ list:
 	@echo -e ${YELLOW}INC_DIRS:${NC} ${INC_DIRS}
 	@echo -e ${YELLOW}SRC_DIRS:${NC} ${SRC_DIRS}
 	@echo -e ${YELLOW}CFLAGS:${NC} ${CFLAGS}
-	@echo -e ${YELLOW}LDFLAGS:${NC} ${LDFLAGS}
+	@echo -e ${YELLOW}XLDFLAGS:${NC} ${XLDFLAGS}
 	@echo -e ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
 
 clean:

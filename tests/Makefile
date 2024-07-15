@@ -31,6 +31,8 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 BIN_DIR := $(ROOT_DIR)/bin
 TOP_DIR := $(ROOT_DIR)
 LIBWEBSOCKET_LIB_DIR = $(ROOT_DIR)/../framework/libwebsockets-4.3.3/build/lib
+CURL_LIB_DIR = $(ROOT_DIR)/../framework/curl/curl-8.8.0/build/lib/
+OPENSSL_LIB_DIR = $(ROOT_DIR)/../framework/openssl/openssl-OpenSSL_1_1_1w/build/lib/
 
 SRC_DIRS = $(ROOT_DIR)/src
 INC_DIRS := $(ROOT_DIR)/../include
@@ -46,7 +48,7 @@ ifeq ($(TARGET),arm)
 HAL_LIB_DIR := $(ROOT_DIR)/libs
 endif
 
-YLDFLAGS += -L $(ROOT_DIR)/../lib -lut_control -Wl,-rpath-link,$(LIBWEBSOCKET_LIB_DIR)  -pthread
+YLDFLAGS += -L $(ROOT_DIR)/../lib -lut_control -Wl,-rpath-link,$(LIBWEBSOCKET_LIB_DIR):$(CURL_LIB_DIR):$(OPENSSL_LIB_DIR) -pthread
 TARGET_EXEC = ut_control_test
 CFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER
@@ -71,11 +73,12 @@ build:
 	make -C ./ut-core test
 	@cp $(ROOT_DIR)/../lib/lib* ${BIN_DIR}
 	@cp $(LIBWEBSOCKET_LIB_DIR)/lib* ${BIN_DIR}
+	@cp $(CURL_LIB_DIR)/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
 	@echo -e ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}
 	@mkdir -p ${BIN_DIR}/assets
-	@cp ${ROOT_DIR}/src/assets/* ${BIN_DIR}/assets
+	@cp -r ${ROOT_DIR}/src/assets/* ${BIN_DIR}/assets
 
 list:
 	@echo UT [$@]
