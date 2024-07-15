@@ -636,10 +636,6 @@ static bool str_to_bool(const char *string)
     {
         return true;
     }
-    if (strcasecmp(string, "false") == 0)
-    {
-        return false;
-    }
     /* String is neither true or false, ensure we inform the caller*/
     return false;
 }
