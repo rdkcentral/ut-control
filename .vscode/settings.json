@@ -63,7 +63,8 @@
     "libfyaml.h": "c",
     "ut_control_plane.h": "c",
     "ut.h": "c",
-    "ut_log.h": "c"
+    "ut_log.h": "c",
+    "tuple": "c"
   },
   "cmake.configureOnOpen": true
 }
