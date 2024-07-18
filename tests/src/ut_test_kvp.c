@@ -26,13 +26,8 @@
 /* Module Includes */
 #include <ut.h>
 #include <ut_kvp.h>
-#include <ut_log.h>
 
-typedef struct
-{
-    char *buffer;
-    long length;
-}test_ut_memory_t;
+#include "ut_control_common.h"
 
 #define KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE "assets/no_data_file.yaml"
 #define KVP_VALID_TEST_ZERO_LENGTH_YAML_FILE "assets/zero_length.yaml"
@@ -148,71 +143,6 @@ void test_ut_kvp_open( void )
     ut_kvp_close(pInstance);
     UT_LOG_STEP("ut_kvp_close(4) - Positive");
     ut_kvp_close(pInstance);
-}
-
-int read_file_into_memory(const char* filename, test_ut_memory_t* pInstance)
-{
-    FILE *file = fopen(filename, "r");
-    if (file == NULL)
-    {
-        UT_LOG_ERROR("fopen");
-        pInstance->length = 0;
-        return -1;
-    }
-
-    // Negative Offset: this check should fail for zero length file
-    if (fseek(file, -1, SEEK_END) != 0)
-    {
-        UT_LOG_ERROR("zero length file\n");
-        fclose(file);
-        pInstance->length = 0;
-        return -1;
-    }
-
-    // Seek to the end to determine the file size
-    if (fseek(file, 0, SEEK_END) != 0)
-    {
-        UT_LOG_ERROR("fseek");
-        fclose(file);
-        pInstance->length = 0;
-        return -1;
-    }
-
-    pInstance->length = ftell(file);
-    // if (pInstance->length < 0)
-    // {
-    //     UT_LOG_ERROR("ftell");
-    //     fclose(file);
-    //     pInstance->length = 0;
-    //     return -1;
-    // }
-    rewind(file);
-
-    // Allocate memory for the file contents
-    pInstance->buffer = malloc(pInstance->length + 1);
-    if (pInstance->buffer == NULL)
-    {
-        UT_LOG_ERROR("malloc");
-        fclose(file);
-        pInstance->length = 0;
-        return -1;
-    }
-
-    // Read the file into the buffer
-    if (fread(pInstance->buffer, 1, pInstance->length, file) != pInstance->length)
-    {
-        UT_LOG_ERROR("fread");
-        free(pInstance->buffer);
-        fclose(file);
-        pInstance->length = 0;
-        return -1;
-    }
-
-    // Null-terminate the buffer
-    pInstance->buffer[pInstance->length] = '\0';
-
-    fclose(file);
-    return 0;
 }
 
 void test_ut_kvp_open_memory( void )
