@@ -51,7 +51,7 @@ INC_DIRS += $(ASPRINTF_DIR)
 LIBWEBSOCKETS_DIR = $(TOP_DIR)/framework/libwebsockets-4.3.3
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/build
-XLDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -lwebsockets
+XLDFLAGS += $(LIBWEBSOCKETS_DIR)/build/lib/libwebsockets.a
 
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
@@ -60,7 +60,7 @@ INC_DIRS += ${TOP_DIR}/include
 # CURL Requirements
 CURL_DIR = $(TOP_DIR)/framework/curl/curl-8.8.0
 INC_DIRS += $(CURL_DIR)/include
-XLDFLAGS += -L $(CURL_DIR)/build/lib -lcurl -Wl,-rpath-link,$(CURL_DIR)/build/lib
+XLDFLAGS += $(CURL_DIR)/build/lib/libcurl.a
 
 CFLAGS += -fPIC -Wall -shared   # Flags for compilation
 CFLAGS += -DNDEBUG
@@ -87,6 +87,10 @@ ifeq ($(TARGET),arm)
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
+OPENSSL_LIB_DIR = $(TOP_DIR)/framework/openssl/openssl-OpenSSL_1_1_1w/build/lib/
+XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a
+else
+XLDFLAGS += -lssl -lcrypto -lz
 endif
 
 # Defaults for target linux
