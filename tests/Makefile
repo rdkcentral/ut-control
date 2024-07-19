@@ -43,7 +43,6 @@ $(info TARGET [$(TARGET)])
 
 ifeq ($(TARGET),arm)
 HAL_LIB_DIR := $(ROOT_DIR)/libs
-YLDFLAGS += -ldl
 endif
 
 YLDFLAGS += -L $(ROOT_DIR)/../lib -lut_control -pthread
