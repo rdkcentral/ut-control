@@ -88,7 +88,7 @@ ifeq ($(TARGET),arm)
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
 OPENSSL_LIB_DIR = $(TOP_DIR)/framework/openssl/openssl-OpenSSL_1_1_1w/build/lib/
-XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a
+XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl
 else
 XLDFLAGS += -lssl -lcrypto -lz
 endif
