@@ -190,7 +190,7 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
         mkdir build
         if [ "$TARGET" = "arm" ]; then
             # For arm
-            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build
+            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build --with-pic
         else
             # For linux
             ./configure --prefix=$(pwd)/build --with-ssl
