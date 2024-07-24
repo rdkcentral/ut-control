@@ -646,8 +646,9 @@ ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *ps
     }
 
     /* Make sure we populate the returned string with zt before any other action */
-    // *pszReturnedString=0;
     memset(pszReturnedString, 0, UT_KVP_MAX_ELEMENT_SIZE);
+    *length = 0;
+
     if ( pInternal->fy_handle == NULL )
     {
         UT_LOG_ERROR("No Data File open");
@@ -686,7 +687,6 @@ ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *ps
     }
 
     //UT_LOG("Bytes YAML Node: %s\n", byteString);
-    *length = 0;
 
     // Parse the hexadecimal string to byte data
     parse_edid_bytes(byteString, bytes, &byte_len);
