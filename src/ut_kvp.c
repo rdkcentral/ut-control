@@ -61,6 +61,7 @@ static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, v
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
 static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
 static void remove_include_keys(struct fy_node *node);
+static void parse_edid_bytes(const char *hex_str, unsigned char *bytes, size_t *byte_len);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
 {
@@ -610,6 +611,97 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     return count;
 }
 
+ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, unsigned char *pszReturnedString, size_t *length)
+{
+    struct fy_node *node = NULL;
+    struct fy_node *root = NULL;
+    const char *byteString = NULL;
+    char zKey[UT_KVP_MAX_ELEMENT_SIZE];
+    unsigned char bytes[256];
+    size_t byte_len = 0;
+
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
+    if (pInternal == NULL)
+    {
+        return UT_KVP_STATUS_INVALID_INSTANCE;
+    }
+
+    if (pszKey == NULL)
+    {
+        UT_LOG_ERROR("Invalid Param - pszKey");
+        return UT_KVP_STATUS_NULL_PARAM;
+    }
+
+    if ( pszReturnedString == NULL )
+    {
+        UT_LOG_ERROR("Invalid Param - pszReturnedString");
+        return UT_KVP_STATUS_NULL_PARAM;
+    }
+
+    if ( length == NULL )
+    {
+        UT_LOG_ERROR("Invalid Param - length");
+        return UT_KVP_STATUS_NULL_PARAM;
+    }
+
+    /* Make sure we populate the returned string with zt before any other action */
+    // *pszReturnedString=0;
+    memset(pszReturnedString, 0, UT_KVP_MAX_ELEMENT_SIZE);
+    if ( pInternal->fy_handle == NULL )
+    {
+        UT_LOG_ERROR("No Data File open");
+        return UT_KVP_STATUS_NO_DATA;
+    }
+    // Get the root node
+    root = fy_document_root(pInternal->fy_handle);
+    if ( root == NULL )
+    {
+        UT_LOG_ERROR("Empty document");
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    convert_dot_to_slash(pszKey, zKey);
+
+    // Find the node corresponding to the key
+    node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
+    if ( node == NULL )
+    {
+        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return UT_KVP_STATUS_KEY_NOT_FOUND;
+    }
+
+    if (fy_node_is_scalar(node) == false)
+    {
+        UT_LOG_ERROR("invalid key");
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    //Get the string value
+    byteString = fy_node_get_scalar0(node);
+    if (byteString == NULL)
+    {
+        UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return UT_KVP_STATUS_KEY_NOT_FOUND;
+    }
+
+    //UT_LOG("Bytes YAML Node: %s\n", byteString);
+    *length = 0;
+
+    // Parse the hexadecimal string to byte data
+    parse_edid_bytes(byteString, bytes, &byte_len);
+
+    *length = byte_len;
+    if (byte_len == 0)
+    {
+        UT_LOG("Incorrect data byte");
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    memcpy(pszReturnedString, bytes, byte_len);
+    return UT_KVP_STATUS_SUCCESS;
+}
+
 /** Static Functions */
 static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance)
 {
@@ -942,5 +1034,28 @@ static void remove_include_keys(struct fy_node *node)
     else if (fy_node_is_sequence(node))
     {
         UT_LOG_DEBUG("includes inside a sequence is currently not supported");
+    }
+}
+
+static void parse_edid_bytes(const char *hex_str, unsigned char *bytes, size_t *byte_len)
+{
+    const char *ptr = hex_str;
+    *byte_len = 0;
+
+    while (*ptr)
+    {
+        if (*ptr == '0' && (*(ptr + 1) == 'x' || *(ptr + 1) == 'X'))
+        {
+            ptr += 2;
+            unsigned int byte;
+            sscanf(ptr, "%2x", &byte);
+            bytes[*byte_len] = (unsigned char)byte;
+            (*byte_len)++;
+            ptr += 2;
+        }
+        else
+        {
+            ptr++;
+        }
     }
 }

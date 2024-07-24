@@ -471,6 +471,69 @@ void test_ut_kvp_string(void)
 
 }
 
+void test_ut_kvp_dataByte( void )
+{
+    unsigned char result_kvp[UT_KVP_MAX_ELEMENT_SIZE]={0x00};
+    ut_kvp_status_t status;
+    unsigned long byte_len = 0;
+    test_ut_memory_t kvpdata;
+
+    /* Check for INVALID_PARAM */
+    UT_LOG_STEP("ut_kvp_getDataBytes() - Check for INVALID_PARAM");
+    status = ut_kvp_getDataBytes(NULL, "decodeTest/checkBytesSpace", result_kvp, &byte_len);
+    UT_ASSERT(status == UT_KVP_STATUS_INVALID_INSTANCE );
+
+    status = ut_kvp_getDataBytes(gpMainTestInstance, NULL, result_kvp, &byte_len);
+    UT_ASSERT(status == UT_KVP_STATUS_NULL_PARAM );
+
+    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", NULL, &byte_len);
+    UT_ASSERT(status == UT_KVP_STATUS_NULL_PARAM );
+
+    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", result_kvp, NULL);
+    UT_ASSERT(status == UT_KVP_STATUS_NULL_PARAM );
+
+    UT_LOG_STEP("ut_kvp_getDataBytes() - Check for KEY_NOT_FOUND");
+    status = ut_kvp_getDataBytes(gpMainTestInstance, "shouldNotWork/checkStringDeadBeef", result_kvp, &byte_len);
+    UT_ASSERT(status == UT_KVP_STATUS_KEY_NOT_FOUND );
+
+     if (read_file_into_memory(KVP_VALID_TEST_YAML_FILE, &kvpdata) == 0)
+    {
+        printf("\nYAML file is = \n%s\n", kvpdata.buffer);
+
+    }
+    UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesSpace for UT_KVP_STATUS_SUCCESS");
+    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", result_kvp, &byte_len);
+    UT_LOG("Parsed %zu bytes:\n", byte_len);
+    for (size_t i = 0; i < byte_len; i++)
+    {
+        printf("0x%02x ", result_kvp[i]);
+    }
+    UT_LOG("\n");
+    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesComma for UT_KVP_STATUS_SUCCESS");
+    byte_len = 0;
+    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesComma", result_kvp, &byte_len);
+    UT_LOG("Parsed %zu bytes:\n", byte_len);
+    for (size_t i = 0; i < byte_len; i++)
+    {
+        printf("0x%02x ", result_kvp[i]);
+    }
+    UT_LOG("\n");
+    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesIncorrect for UT_KVP_STATUS_PARSING_ERROR");
+    byte_len = 0;
+    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesIncorrect", result_kvp, &byte_len);
+    UT_LOG("Parsed %zu bytes:\n", byte_len);
+    for (size_t i = 0; i < byte_len; i++)
+    {
+        printf("0x%02x ", result_kvp[i]);
+    }
+    UT_LOG("\n");
+    UT_ASSERT(status == UT_KVP_STATUS_PARSING_ERROR );
+}
+
 void test_ut_kvp_getFloatField( void )
 {
     float result;
@@ -965,6 +1028,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite2, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite2, "kvp double", test_ut_kvp_getDoubleField);
     UT_add_test(gpKVPSuite2, "kvp node presence", test_ut_kvp_fieldPresent);
+    UT_add_test(gpKVPSuite2, "kvp dataByte", test_ut_kvp_dataByte);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite3 = UT_add_suite("ut-kvp - test main functions JSON Decoder ", test_ut_kvp_createGlobalJSONInstance, test_ut_kvp_freeGlobalInstance);
@@ -1001,6 +1065,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite5, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite5, "kvp double", test_ut_kvp_getDoubleField);
     UT_add_test(gpKVPSuite5, "kvp node presence", test_ut_kvp_fieldPresent);
+    UT_add_test(gpKVPSuite5, "kvp dataByte", test_ut_kvp_dataByte);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite6 = UT_add_suite("ut-kvp - test main functions JSON Decoder with malloc'd data", test_ut_kvp_createGlobalJSONInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
