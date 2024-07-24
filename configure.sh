@@ -36,8 +36,6 @@ CMAKE_DIR=${MY_DIR}/host-tools/CMake-3.30.0
 CMAKE_BIN_DIR=${CMAKE_DIR}/build/bin
 HOST_CC=gcc
 TARGET_CC=${CC}
-CURL_DIR=${FRAMEWORK_DIR}/curl
-OPENSSL_DIR=${FRAMEWORK_DIR}/openssl/openssl-OpenSSL_1_1_1w
 
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
