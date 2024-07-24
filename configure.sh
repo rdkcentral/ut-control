@@ -30,6 +30,8 @@ FRAMEWORK_DIR=${MY_DIR}/framework
 LIBYAML_DIR=${FRAMEWORK_DIR}/libfyaml-master
 ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 LIBWEBSOCKETS_DIR=${FRAMEWORK_DIR}/libwebsockets-4.3.3
+CURL_DIR=${FRAMEWORK_DIR}/curl/curl-8.8.0
+OPENSSL_DIR=${FRAMEWORK_DIR}/openssl/openssl-OpenSSL_1_1_1w
 CMAKE_DIR=${MY_DIR}/host-tools/CMake-3.30.0
 CMAKE_BIN_DIR=${CMAKE_DIR}/build/bin
 HOST_CC=gcc
@@ -107,48 +109,48 @@ fi
 popd > /dev/null # ${FRAMEWORK_DIR}
 
 pushd ${FRAMEWORK_DIR} > /dev/null
+check_file_exists() {
+    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
+    local TARGET=$1
+    local file_name=$2
+
+    if find ${search_paths} -type f -name "${file_name}" -print -quit | grep -q .; then
+        echo "found"
+    else
+        echo "not_found"
+    fi
+}
+
 if [ "$TARGET" = "arm" ]; then
     TARGET=arm
+    LIBCURL_IS_INSTALLED=0
+    OPENSSL_IS_INSTALLED=0
 else
     TARGET=linux
-fi
 
-if [ "$TARGET" = "arm" ]; then
-    search_paths=$SDKTARGETSYSROOT
-else
-    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
-fi
-
-if find ${search_paths} -name 'curl.h' -print -quit | grep -q 'curl.h'; then
-    echo "curl.h found for ${TARGET}"
-    if find ${search_paths} -name 'libcurl.so*' -print -quit | grep -q 'libcurl.so*'; then
-        echo "libcurl.so* found for ${TARGET}"
-    else
-        echo "libcurl.so* not found for ${TARGET}"
-        LIBCURL_IS_INSTALLED=0
-    fi
-else
-    echo "curl.h not found for ${TARGET}"
+    CURL_LIB=$(check_file_exists ${TARGET} "libcurl.so*")
+    CURL_HEADER=$(check_file_exists ${TARGET} "curl.h")
     LIBCURL_IS_INSTALLED=0
-fi
-
-# Search for libssl.so* files and check its version
-result=""
-for file_path in $(find ${search_paths} -iname "libssl.so.1*"); do
-    # Check the file type and version
-    if file "${file_path}" | grep -i -q "version 1"; then
-        result="${file_path}"
-        break
+    if [ "$CURL_HEADER" = "found" ] && [ "$CURL_LIB" = "found" ]; then
+        LIBCURL_IS_INSTALLED=1
     fi
-done
 
-# Check if the result is empty or not
-if [ -n "${result}" ]; then
-    echo "Version 1 of libssl.so is found for ${TARGET}.Also assuming libcrypto is also available in the same path"
-    OPENSSL_IS_INSTALLED=1
-else
-    echo "Version 1 of libssl.so is not found for ${TARGET}."
+    # Search for libssl.so* files and check its version
+    result=""
+    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
+    for file_path in $(find ${search_paths} -iname "libssl.so.1*"); do
+        # Check the file type and version
+        if file "${file_path}" | grep -i -q "version 1"; then
+            result="${file_path}"
+            break
+        fi
+    done
+
     OPENSSL_IS_INSTALLED=0
+    if [ -n "${result}" ]; then
+        echo "Version 1 of libssl.so is found for ${TARGET}.Also assuming libcrypto is also available in the same path"
+        OPENSSL_IS_INSTALLED=1
+    fi
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}
 
@@ -164,11 +166,12 @@ if [ "$OPENSSL_IS_INSTALLED" -eq 0 ]; then
         cd openssl-OpenSSL_1_1_1w/
         mkdir build
         if [ "$TARGET" = "arm" ]; then
+            # For arm
             CROSS_COMPILE=
             COMPILER_FLAGS=$(echo $CC | cut -d' ' -f2-)
             /usr/bin/perl ./Configure linux-armv4 shared --prefix=${OPENSSL_DIR}/build --openssldir=${OPENSSL_DIR} --cross-compile-prefix=${CROSS_COMPILE} $COMPILER_FLAGS
-
         else
+            # For linux
             ./config --prefix=${OPENSSL_DIR}/build
         fi
         make && make install
@@ -188,8 +191,10 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
         cd curl-8.8.0
         mkdir build
         if [ "$TARGET" = "arm" ]; then
-            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=$(pwd)/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build
+            # For arm
+            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build
         else
+            # For linux
             ./configure --prefix=$(pwd)/build --with-ssl
         fi
         make $@; make $@ install

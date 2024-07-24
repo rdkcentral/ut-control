@@ -51,7 +51,7 @@ INC_DIRS += $(ASPRINTF_DIR)
 LIBWEBSOCKETS_DIR = $(TOP_DIR)/framework/libwebsockets-4.3.3
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/build
-LDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -lwebsockets
+XLDFLAGS += -L $(LIBWEBSOCKETS_DIR)/build/lib -lwebsockets
 
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
@@ -60,7 +60,7 @@ INC_DIRS += ${TOP_DIR}/include
 # CURL Requirements
 CURL_DIR = $(TOP_DIR)/framework/curl/curl-8.8.0
 INC_DIRS += $(CURL_DIR)/include
-LDFLAGS += -L $(CURL_DIR)/build/lib -lcurl -Wl,-rpath-link,$(CURL_DIR)/build/lib
+XLDFLAGS += -L $(CURL_DIR)/build/lib -lcurl -Wl,-rpath-link,$(CURL_DIR)/build/lib
 
 CFLAGS += -fPIC -Wall -shared   # Flags for compilation
 CFLAGS += -DNDEBUG
@@ -87,12 +87,6 @@ ifeq ($(TARGET),arm)
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
-ifndef SDKTARGETSYSROOT
-$(error SDKTARGETSYSROOT is not set. Please set this variable before running the make command.)
-endif
-$(info $(shell echo -e ${GREEN}SDKTARGETSYSROOT= [$(SDKTARGETSYSROOT)]${NC}))
-INC_DIR += $(SDKTARGETSYSROOT)/usr/include
-LDFLAGS += -L $(SDKTARGETSYSROOT)/usr/lib -lcurl -Wl,-rpath-link,$(SDKTARGETSYSROOT)/usr/lib  -pthread
 endif
 
 # Defaults for target linux
@@ -108,7 +102,7 @@ all: framework lib
 lib : ${OBJS}
 	@echo -e ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
-	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(LDFLAGS)
+	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
@@ -126,7 +120,7 @@ list:
 	@echo -e ${YELLOW}INC_DIRS:${NC} ${INC_DIRS}
 	@echo -e ${YELLOW}SRC_DIRS:${NC} ${SRC_DIRS}
 	@echo -e ${YELLOW}CFLAGS:${NC} ${CFLAGS}
-	@echo -e ${YELLOW}LDFLAGS:${NC} ${LDFLAGS}
+	@echo -e ${YELLOW}XLDFLAGS:${NC} ${XLDFLAGS}
 	@echo -e ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
 
 clean:
