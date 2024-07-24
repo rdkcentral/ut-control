@@ -34,6 +34,7 @@ CMAKE_DIR=${MY_DIR}/host-tools/CMake-3.30.0
 CMAKE_BIN_DIR=${CMAKE_DIR}/build/bin
 HOST_CC=gcc
 TARGET_CC=${CC}
+CURL_DIR=${FRAMEWORK_DIR}/curl
 
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
@@ -101,5 +102,21 @@ else
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
     -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release
     make $@
+fi
+popd > /dev/null # ${FRAMEWORK_DIR}
+
+pushd ${FRAMEWORK_DIR} > /dev/null
+if [ -d "${CURL_DIR}" ]; then
+    echo "Framework [curl] already exists"
+else
+    echo "Clone curl in ${CURL_DIR}"
+    wget https://github.com/curl/curl/archive/refs/heads/master.zip -P curl/. --no-check-certificate
+    cd curl
+    unzip master.zip
+    cd curl-master
+    mkdir build
+    autoreconf -fi
+    ./configure --prefix=$(pwd)/build --without-ssl
+    make $@; make $@ install
 fi
 popd > /dev/null # ${FRAMEWORK_DIR}
