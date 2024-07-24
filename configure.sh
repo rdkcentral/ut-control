@@ -90,6 +90,33 @@ else
 fi
 popd > /dev/null
 
+# Switch                             Description                                                 Effect on LWS Build
+# -DLWS_WITH_SSL=OFF                 Disables Secure Sockets Layer (SSL) support in             Reduces library size, removes dependency on OpenSSL.
+#                                    libwebsockets.
+# -DLWS_WITH_ZIP_FOPS=OFF            Disables support for ZIP file operations in                Removes zlib dependency, reduces library size.
+#                                    libwebsockets.
+# -DLWS_WITH_ZLIB=OFF                Disables zlib compression support in libwebsockets.        Reduces library size, disables compression for WebSocket payloads.
+# -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ONDisables the built-in mechanism to obtain network          Relies on external libraries or system calls to get interface addresses.
+#                                    interface addresses.
+# -DLWS_WITHOUT_CLIENT=ON            Removes the WebSocket client functionality from the        Only server-side WebSocket functionality is included.
+#                                    library.
+# -DLWS_WITHOUT_EXTENSIONS=ON        Disables LWS extensions (e.g., permessage-deflate,         Reduces library size, potentially improves performance.
+#                                    client_no_context_takeover).
+# -DLWS_WITHOUT_TESTAPPS=ON          Excludes test applications from the build.                 Streamlines the build, focuses on core library components.
+# -DLWS_WITH_SHARED=ON               Builds libwebsockets as a shared library (.so file).       Allows the library to be used by multiple applications.
+# -DLWS_WITHOUT_TEST_SERVER=ON       Excludes the test server component from the build.         Streamlines the build.
+# -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ONDisables the external poll mechanism in the test server.  May affect testing capabilities of the library.
+# -DLWS_WITH_MINIMAL_EXAMPLES=ON     Includes only the minimal set of example programs.         Reduces the number of example programs built.
+# -DLWS_WITHOUT_DAEMONIZE=ON         Prevents the LWS test server from running as a daemon.     Useful for debugging and when you want to control the server process directly.
+# -DCMAKE_C_FLAGS=-fPIC              Adds the -fPIC flag to the C compiler, enabling            Makes the generated code relocatable, necessary for shared libraries.
+#                                    Position-Independent Code (PIC).
+# -DLWS_WITH_NO_LOGS=ON              Disables logging in libwebsockets.                         Can improve performance but makes debugging more difficult.
+# -DCMAKE_BUILD_TYPE=Release         Configures the build for release mode (optimization        Optimizes the library for performance.
+#                                    enabled, debugging symbols stripped).
+# -DCMAKE_POSITION_INDEPENDENT_CODE=ON Enables Position-Independent Code (PIC) for the          Makes all generated code relocatable.
+#                                     entire project, including executables and shared libraries.
+
+
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBWEBSOCKETS_DIR}" ]; then
     echo "Framework [libwebsockets] already exists"
@@ -103,10 +130,10 @@ else
     ${CMAKE_BIN} .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
     -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
-    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release
+    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     make $@
 fi
-popd > /dev/null # ${FRAMEWORK_DIR}
+popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 check_file_exists() {
@@ -192,7 +219,7 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
         mkdir build
         if [ "$TARGET" = "arm" ]; then
             # For arm
-            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build
+            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build --with-pic
         else
             # For linux
             ./configure --prefix=$(pwd)/build --with-ssl
