@@ -117,8 +117,9 @@ static cp_message_t* dequeue_message(ut_cp_instance_internal_t *pInternal)
     {
         pthread_cond_wait(&pInternal->queue_condition, &pInternal->queue_mutex);
     }
-    //msg = &pInternal->message_queue[0];
+
     msg = (cp_message_t*)malloc(sizeof(cp_message_t));
+    assert(msg != NULL);
     if (msg == NULL)
     {
         pthread_mutex_unlock(&pInternal->queue_mutex);

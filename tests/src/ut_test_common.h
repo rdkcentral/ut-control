@@ -30,4 +30,18 @@ typedef struct
     long length;
 }test_ut_memory_t;
 
+/**
+ * @brief Reads the content of a file into memory.
+ *
+ * This function opens a file specified by `filename`, reads its content, and stores it in the memory
+ * provided by the `pInstance` parameter. The function returns an integer status code indicating the
+ * success or failure of the operation.
+ *
+ * @param[in] filename The name of the file to be read.
+ * @param[out] pInstance Pointer to a `test_ut_memory_t` structure where the file content will be stored.
+ *
+ * @return int Status code:
+ * - 0 on success
+ * - Non-zero error code on failure (e.g., file not found, memory allocation failure).
+ */
 int read_file_into_memory(const char* filename, test_ut_memory_t* pInstance);

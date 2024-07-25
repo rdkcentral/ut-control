@@ -18,7 +18,7 @@
  */
 
 /* Module Includes */
-#include "ut_control_common.h"
+#include "ut_test_common.h"
 
 int read_file_into_memory(const char* filename, test_ut_memory_t* pInstance)
 {
