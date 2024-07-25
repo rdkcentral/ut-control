@@ -48,3 +48,7 @@ decodeTest:
     c0 00 e3 06 0d 01 e4 0f 03 00 00 eb 01 46 d0 00 4d 57 3a 94 34 07 a5 e6 11
     46 d0 00 00 00 66 21 50 b0 51 00 1b 30 40 70 36 00 40 84 63 00 00 1e 00 00
     00 00 00 00 00 00 00 00 00 00 00 00 66
+  checkByteCommaSpaces: 0x00, 0xff, 0xff, 0xff
+  checkBytesDecimalSpace: 00 55 255 255
+  checkBytesDecimalComma: 00,255,55,255
+  checkBytesDecimalCommaSpace: 00, 255, 255, 55

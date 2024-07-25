@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <curl/curl.h>
+#include <ctype.h>
 
 /* Application Includes */
 #include <ut_kvp.h>
@@ -61,7 +62,8 @@ static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, v
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
 static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
 static void remove_include_keys(struct fy_node *node);
-static void parse_edid_bytes(const char *hex_str, unsigned char *bytes, size_t *byte_len);
+static void parse_data(const char *hex_str, unsigned char *bytes, size_t *byte_len);
+static int is_valid_byte(const char *str);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
 {
@@ -611,7 +613,7 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     return count;
 }
 
-ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, unsigned char *pszReturnedString, size_t *length)
+ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, unsigned char *pData, size_t *length)
 {
     struct fy_node *node = NULL;
     struct fy_node *root = NULL;
@@ -633,9 +635,9 @@ ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *ps
         return UT_KVP_STATUS_NULL_PARAM;
     }
 
-    if ( pszReturnedString == NULL )
+    if ( pData == NULL )
     {
-        UT_LOG_ERROR("Invalid Param - pszReturnedString");
+        UT_LOG_ERROR("Invalid Param - pData");
         return UT_KVP_STATUS_NULL_PARAM;
     }
 
@@ -646,7 +648,7 @@ ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *ps
     }
 
     /* Make sure we populate the returned string with zt before any other action */
-    memset(pszReturnedString, 0, UT_KVP_MAX_ELEMENT_SIZE);
+    memset(pData, 0, UT_KVP_MAX_ELEMENT_SIZE);
     *length = 0;
 
     if ( pInternal->fy_handle == NULL )
@@ -689,7 +691,7 @@ ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *ps
     //UT_LOG("Bytes YAML Node: %s\n", byteString);
 
     // Parse the hexadecimal string to byte data
-    parse_edid_bytes(byteString, bytes, &byte_len);
+    parse_data(byteString, bytes, &byte_len);
 
     *length = byte_len;
     if (byte_len == 0)
@@ -698,7 +700,7 @@ ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *ps
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    memcpy(pszReturnedString, bytes, byte_len);
+    memcpy(pData, bytes, byte_len);
     return UT_KVP_STATUS_SUCCESS;
 }
 
@@ -1037,25 +1039,80 @@ static void remove_include_keys(struct fy_node *node)
     }
 }
 
-static void parse_edid_bytes(const char *hex_str, unsigned char *bytes, size_t *byte_len)
+// Function to validate if a string is a valid hexadecimal or decimal byte
+static int is_valid_byte(const char *str)
 {
-    const char *ptr = hex_str;
-    *byte_len = 0;
+    // Check for hexadecimal prefix
+    if (*str == '0' && (*(str + 1) == 'x' || *(str + 1) == 'X'))
+    {
+        str += 2;
+        while (*str && *str != ' ' && *str != ',')
+        {
+            if (!isxdigit(*str))
+            {
+                return 0; // Invalid hex digit
+            }
+            str++;
+        }
+        return 1; // Valid hex byte
+    }
+    // Check for decimal
+    while (*str && *str != ' ' && *str != ',')
+    {
+        if (!isdigit(*str))
+        {
+            return 0; // Invalid decimal digit
+        }
+        str++;
+    }
+    return 1; // Valid decimal byte
+}
 
+// Function to parse the data string to binary data
+static void parse_data(const char *data_str, unsigned char *bytes, size_t *byte_len)
+{
+    const char *ptr = data_str;
+    *byte_len = 0;
     while (*ptr)
     {
-        if (*ptr == '0' && (*(ptr + 1) == 'x' || *(ptr + 1) == 'X'))
-        {
-            ptr += 2;
-            unsigned int byte;
-            sscanf(ptr, "%2x", &byte);
-            bytes[*byte_len] = (unsigned char)byte;
-            (*byte_len)++;
-            ptr += 2;
-        }
-        else
+        // Skip any spaces or commas
+        while (*ptr == ' ' || *ptr == ',')
         {
             ptr++;
+        }
+        // Validate the byte
+        const char *byte_start = ptr;
+        while (*ptr && *ptr != ' ' && *ptr != ',')
+        {
+            ptr++;
+        }
+        if (!is_valid_byte(byte_start))
+        {
+            UT_LOG_DEBUG("Invalid byte format: %s", data_str);
+            *byte_len = 0;
+            return;
+        }
+        // Check for hex prefix 0x or 0X
+        if (*byte_start == '0' && (*(byte_start + 1) == 'x' || *(byte_start + 1) == 'X'))
+        {
+            byte_start += 2;
+            unsigned int byte;
+            sscanf(byte_start, "%2x", &byte);
+            bytes[*byte_len] = (unsigned char)byte;
+            (*byte_len)++;
+        }
+        else if (isdigit(*byte_start))
+        { // Check for decimal
+            unsigned int byte;
+            sscanf(byte_start, "%3u", &byte); // Read up to 3 digits for decimal values
+            if (byte > 0xff)
+            {
+                UT_LOG_DEBUG("Invalid decimal byte: %u", byte);
+                *byte_len = 0;
+                return;
+            }
+            bytes[*byte_len] = (unsigned char)byte;
+            (*byte_len)++;
         }
     }
 }
