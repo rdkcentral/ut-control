@@ -492,10 +492,12 @@ void test_ut_kvp_dataByte( void )
     status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", result_kvp, NULL);
     UT_ASSERT(status == UT_KVP_STATUS_NULL_PARAM );
 
+    /* Check for KEY_NOT_FOUND */
     UT_LOG_STEP("ut_kvp_getDataBytes() - Check for KEY_NOT_FOUND");
     status = ut_kvp_getDataBytes(gpMainTestInstance, "shouldNotWork/checkStringDeadBeef", result_kvp, &byte_len);
     UT_ASSERT(status == UT_KVP_STATUS_KEY_NOT_FOUND );
 
+    /* Positive tests */
      if (read_file_into_memory(KVP_VALID_TEST_YAML_FILE, &kvpdata) == 0)
     {
         printf("\nYAML file is = \n%s\n", kvpdata.buffer);

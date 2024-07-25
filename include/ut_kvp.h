@@ -231,12 +231,11 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey);
  * @brief Retrieves a data byte value from the KVP profile.
  *
  * The caller owns the memory passed into `pszReturnedString`, which is filled out by this function.
- * The `uStringSize` should include space for the null-terminator.
  *
  * @param[in] pInstance - Handle to the KVP instance.
  * @param[in] pszKey - Key of the string value to retrieve (null-terminated string).
  * @param[out] pszReturnedString - Pre-allocated buffer to store the retrieved string.
- * @param[in] length - Size of the `pszReturnedString` buffer (including space for the null-terminator).
+ * @param[in] length - pointer that stores the size of the `pszReturnedString` buffer 
  *
  * @returns Status of the operation (`ut_kvp_status_t`):
  * @retval UT_KVP_STATUS_SUCCESS - String value was found and successfully copied to `pszReturnedString`.
