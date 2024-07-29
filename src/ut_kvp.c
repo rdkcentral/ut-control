@@ -24,7 +24,6 @@
 #include <unistd.h>
 #include <assert.h>
 #include <curl/curl.h>
-#include <ctype.h>
 
 /* Application Includes */
 #include <ut_kvp.h>
@@ -62,8 +61,6 @@ static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, v
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
 static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
 static void remove_include_keys(struct fy_node *node);
-static void parse_data(const char *hex_str, unsigned char *bytes, size_t *byte_len);
-static int is_valid_byte(const char *str);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
 {
@@ -613,95 +610,139 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     return count;
 }
 
-ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, unsigned char *pData, size_t *length)
+unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, int *size)
 {
     struct fy_node *node = NULL;
     struct fy_node *root = NULL;
     const char *byteString = NULL;
     char zKey[UT_KVP_MAX_ELEMENT_SIZE];
-    unsigned char bytes[256];
-    size_t byte_len = 0;
+    char *token;
+    int byte_count = 0;
+    size_t buffer_size = 16; // Initial buffer size
+    unsigned char *output_bytes = (unsigned char *)malloc(buffer_size);
 
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
     if (pInternal == NULL)
     {
-        return UT_KVP_STATUS_INVALID_INSTANCE;
+        return NULL;
     }
 
     if (pszKey == NULL)
     {
         UT_LOG_ERROR("Invalid Param - pszKey");
-        return UT_KVP_STATUS_NULL_PARAM;
+        return NULL;
     }
 
-    if ( pData == NULL )
+    if (size == NULL)
     {
-        UT_LOG_ERROR("Invalid Param - pData");
-        return UT_KVP_STATUS_NULL_PARAM;
+        UT_LOG_ERROR("Invalid address passed");
+        return NULL;
     }
+    *size = 0; // Ensuring size is 0, initially
 
-    if ( length == NULL )
+    if (!output_bytes)
     {
-        UT_LOG_ERROR("Invalid Param - length");
-        return UT_KVP_STATUS_NULL_PARAM;
+        UT_LOG_ERROR("Initial memory allocation error");
+        return NULL;
     }
 
-    /* Make sure we populate the returned string with zt before any other action */
-    memset(pData, 0, UT_KVP_MAX_ELEMENT_SIZE);
-    *length = 0;
-
-    if ( pInternal->fy_handle == NULL )
+    if (pInternal->fy_handle == NULL)
     {
         UT_LOG_ERROR("No Data File open");
-        return UT_KVP_STATUS_NO_DATA;
+        return NULL;
     }
     // Get the root node
     root = fy_document_root(pInternal->fy_handle);
-    if ( root == NULL )
+    if (root == NULL)
     {
         UT_LOG_ERROR("Empty document");
-        return UT_KVP_STATUS_PARSING_ERROR;
+        return NULL;
     }
 
     convert_dot_to_slash(pszKey, zKey);
 
     // Find the node corresponding to the key
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
-    if ( node == NULL )
+    if (node == NULL)
     {
         UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
-        return UT_KVP_STATUS_KEY_NOT_FOUND;
+        return NULL;
     }
 
     if (fy_node_is_scalar(node) == false)
     {
         UT_LOG_ERROR("invalid key");
-        return UT_KVP_STATUS_PARSING_ERROR;
+        return NULL;
     }
 
-    //Get the string value
+    // Get the string value
     byteString = fy_node_get_scalar0(node);
     if (byteString == NULL)
     {
         UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
-        return UT_KVP_STATUS_KEY_NOT_FOUND;
+        return NULL;
     }
 
-    //UT_LOG("Bytes YAML Node: %s\n", byteString);
-
-    // Parse the hexadecimal string to byte data
-    parse_data(byteString, bytes, &byte_len);
-
-    *length = byte_len;
-    if (byte_len == 0)
+    char *input_copy = strdup(byteString);
+    if (!input_copy)
     {
-        UT_LOG("Incorrect data byte");
-        return UT_KVP_STATUS_PARSING_ERROR;
+        UT_LOG_ERROR("Memory allocation error.");
+        free(output_bytes);
+        return NULL;
     }
 
-    memcpy(pData, bytes, byte_len);
-    return UT_KVP_STATUS_SUCCESS;
+    token = strtok(input_copy, ", ");
+    while (token != NULL)
+    {
+        // Trim leading/trailing whitespace (if any)
+        while (*token == ' ')
+        {
+            token++;
+        }
+
+        char *endptr;
+        unsigned long value;
+
+        // Try converting as hexadecimal (starts with "0x")
+        if (strncmp(token, "0x", 2) == 0)
+        {
+            value = strtoul(token, &endptr, 16); // Base 16 for hexadecimal
+        }
+        else
+        {
+            value = strtoul(token, &endptr, 10); // Try decimal
+        }
+
+        // Error checking
+        if (*endptr != '\0' || (value == ULONG_MAX && errno == ERANGE) || value > 255)
+        {
+            UT_LOG_ERROR("Invalid byte value: %s", token);
+            free(input_copy);
+            free(output_bytes); // Free the output buffer as well
+            return NULL;
+        }
+
+        // Check if we need to expand the output buffer
+        if (byte_count >= buffer_size)
+        {
+            buffer_size *= 2; // Double the buffer size
+            output_bytes = (unsigned char *)realloc(output_bytes, buffer_size);
+            if (!output_bytes)
+            {
+                UT_LOG_ERROR("Memory reallocation error.\n");
+                free(input_copy);
+                return NULL;
+            }
+        }
+
+        output_bytes[byte_count++] = (unsigned char)value;
+        token = strtok(NULL, ", ");
+    }
+
+    free(input_copy);
+    *size = byte_count;
+    return output_bytes;
 }
 
 /** Static Functions */
@@ -1036,83 +1077,5 @@ static void remove_include_keys(struct fy_node *node)
     else if (fy_node_is_sequence(node))
     {
         UT_LOG_DEBUG("includes inside a sequence is currently not supported");
-    }
-}
-
-// Function to validate if a string is a valid hexadecimal or decimal byte
-static int is_valid_byte(const char *str)
-{
-    // Check for hexadecimal prefix
-    if (*str == '0' && (*(str + 1) == 'x' || *(str + 1) == 'X'))
-    {
-        str += 2;
-        while (*str && *str != ' ' && *str != ',')
-        {
-            if (!isxdigit(*str))
-            {
-                return 0; // Invalid hex digit
-            }
-            str++;
-        }
-        return 1; // Valid hex byte
-    }
-    // Check for decimal
-    while (*str && *str != ' ' && *str != ',')
-    {
-        if (!isdigit(*str))
-        {
-            return 0; // Invalid decimal digit
-        }
-        str++;
-    }
-    return 1; // Valid decimal byte
-}
-
-// Function to parse the data string to binary data
-static void parse_data(const char *data_str, unsigned char *bytes, size_t *byte_len)
-{
-    const char *ptr = data_str;
-    *byte_len = 0;
-    while (*ptr)
-    {
-        // Skip any spaces or commas
-        while (*ptr == ' ' || *ptr == ',')
-        {
-            ptr++;
-        }
-        // Validate the byte
-        const char *byte_start = ptr;
-        while (*ptr && *ptr != ' ' && *ptr != ',')
-        {
-            ptr++;
-        }
-        if (!is_valid_byte(byte_start))
-        {
-            UT_LOG_DEBUG("Invalid byte format: %s", data_str);
-            *byte_len = 0;
-            return;
-        }
-        // Check for hex prefix 0x or 0X
-        if (*byte_start == '0' && (*(byte_start + 1) == 'x' || *(byte_start + 1) == 'X'))
-        {
-            byte_start += 2;
-            unsigned int byte;
-            sscanf(byte_start, "%2x", &byte);
-            bytes[*byte_len] = (unsigned char)byte;
-            (*byte_len)++;
-        }
-        else if (isdigit(*byte_start))
-        { // Check for decimal
-            unsigned int byte;
-            sscanf(byte_start, "%3u", &byte); // Read up to 3 digits for decimal values
-            if (byte > 0xff)
-            {
-                UT_LOG_DEBUG("Invalid decimal byte: %u", byte);
-                *byte_len = 0;
-                return;
-            }
-            bytes[*byte_len] = (unsigned char)byte;
-            (*byte_len)++;
-        }
     }
 }

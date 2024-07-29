@@ -227,26 +227,27 @@ char* ut_kvp_getData( ut_kvp_instance_t *pInstance );
  */
 uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey);
 
-/**!
- * @brief Retrieves a data byte value from the KVP profile.
+/**
+ * @brief Retrieves the data bytes associated with a given key from a key-value pair instance.
  *
- * The caller owns the memory passed into `pData`, which is filled out by this function.
+ * This function searches for the specified key within the provided key-value pair instance
+ * and returns the associated data bytes if found. The function allocates memory for the
+ * output bytes, which must be freed by the caller. The size of the data is also returned
+ * via the `size` parameter.
  *
- * @param[in] pInstance - Handle to the KVP instance.
- * @param[in] pszKey - Key of the string value to retrieve (null-terminated string).
- * @param[out] pData - Pre-allocated buffer to store the retrieved string.
- * @param[in] length - pointer that stores the size of the `pData` buffer
+ * @param[in]  pInstance    Pointer to the key-value pair instance to search within.
+ * @param[in]  pszKey       Null-terminated string representing the key to search for.
+ * @param[out] size         Pointer to an integer where the size of the returned data bytes
+ *                          will be stored. If the key is not found, this will be set to 0.
  *
- * @returns Status of the operation (`ut_kvp_status_t`):
- * @retval UT_KVP_STATUS_SUCCESS - String value was found and successfully copied to `pData`.
- * @retval UT_KVP_STATUS_INVALID_PARAM - An invalid parameter was passed (e.g. invalid buffer size).
- * @retval UT_KVP_STATUS_PARSING_ERROR - An error occurred while parsing the KVP data.
- * @retval UT_KVP_STATUS_NO_DATA - The KVP instance does not contain any data.
- * @retval UT_KVP_STATUS_KEY_NOT_FOUND - The specified key (`pszKey`) was not found in the KVP data.
- * @retval UT_KVP_STATUS_NULL_PARAM - A null parameter was passed.
- * @retval UT_KVP_STATUS_INVALID_INSTANCE - An invalid KVP instance handle was passed.
+ * @return unsigned char*
+ *         - Pointer to the allocated data bytes if the key is found.
+ *         - NULL if the key is not found or an error occurs.
+ *
+ * @note The memory for the returned data bytes must be managed by the caller, and it should be
+ *       freed when no longer needed.
  */
-ut_kvp_status_t ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, unsigned char *pData, size_t *length);
+unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, int *size);
 
 /* TODO:
  * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`,

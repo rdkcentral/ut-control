@@ -473,111 +473,142 @@ void test_ut_kvp_string(void)
 
 void test_ut_kvp_dataByte( void )
 {
-    unsigned char result_kvp[UT_KVP_MAX_ELEMENT_SIZE]={0x00};
-    ut_kvp_status_t status;
-    unsigned long byte_len = 0;
+    int bytes_count = 0;
+    unsigned char *output_bytes;
     test_ut_memory_t kvpdata;
 
     /* Check for INVALID_PARAM */
     UT_LOG_STEP("ut_kvp_getDataBytes() - Check for INVALID_PARAM");
-    status = ut_kvp_getDataBytes(NULL, "decodeTest/checkBytesSpace", result_kvp, &byte_len);
-    UT_ASSERT(status == UT_KVP_STATUS_INVALID_INSTANCE );
+    output_bytes = ut_kvp_getDataBytes(NULL, "decodeTest/checkBytesSpace", &bytes_count);
+    UT_ASSERT(output_bytes == NULL );
+    UT_ASSERT(bytes_count == 0);
 
-    status = ut_kvp_getDataBytes(gpMainTestInstance, NULL, result_kvp, &byte_len);
-    UT_ASSERT(status == UT_KVP_STATUS_NULL_PARAM );
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, NULL, &bytes_count);
+    UT_ASSERT(output_bytes == NULL );
+    UT_ASSERT(bytes_count == 0);
 
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", NULL, &byte_len);
-    UT_ASSERT(status == UT_KVP_STATUS_NULL_PARAM );
-
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", result_kvp, NULL);
-    UT_ASSERT(status == UT_KVP_STATUS_NULL_PARAM );
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", NULL);
+    UT_ASSERT(output_bytes == NULL );
+    UT_ASSERT(bytes_count == 0);
 
     /* Check for KEY_NOT_FOUND */
     UT_LOG_STEP("ut_kvp_getDataBytes() - Check for KEY_NOT_FOUND");
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "shouldNotWork/checkStringDeadBeef", result_kvp, &byte_len);
-    UT_ASSERT(status == UT_KVP_STATUS_KEY_NOT_FOUND );
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "shouldNotWork/checkStringDeadBeef", &bytes_count);
+    UT_ASSERT(output_bytes == NULL );
+    UT_ASSERT(bytes_count == 0);
 
     /* Positive tests */
      if (read_file_into_memory(KVP_VALID_TEST_YAML_FILE, &kvpdata) == 0)
     {
         printf("\nYAML file is = \n%s\n", kvpdata.buffer);
-
     }
     UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesSpace for UT_KVP_STATUS_SUCCESS");
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", result_kvp, &byte_len);
-    UT_LOG("Parsed %zu bytes:\n", byte_len);
-    for (size_t i = 0; i < byte_len; i++)
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", &bytes_count);
+    UT_ASSERT(output_bytes != NULL);
+    UT_ASSERT(bytes_count != 0);
+    UT_LOG("Parsed %d bytes:\n", bytes_count);
+    for (int i = 0; i < bytes_count; i++)
     {
-        printf("%02x", result_kvp[i]);
+        printf("0x%02x ", output_bytes[i]);
     }
     UT_LOG("\n");
-    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+    free(output_bytes);
+    output_bytes = NULL;
 
     UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesComma for UT_KVP_STATUS_SUCCESS");
-    byte_len = 0;
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesComma", result_kvp, &byte_len);
-    UT_LOG("Parsed %zu bytes:\n", byte_len);
-    for (size_t i = 0; i < byte_len; i++)
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesComma", &bytes_count);
+    UT_ASSERT(output_bytes != NULL);
+    UT_ASSERT(bytes_count != 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
+    for (int i = 0; i < bytes_count; i++)
     {
-        printf("%02x", result_kvp[i]);
+        printf("0x%02x ", output_bytes[i]);
     }
     UT_LOG("\n");
-    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+    free(output_bytes);
+    output_bytes = NULL;
 
     UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesIncorrect for UT_KVP_STATUS_PARSING_ERROR");
-    byte_len = 0;
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesIncorrect", result_kvp, &byte_len);
-    UT_LOG("Parsed %zu bytes:\n", byte_len);
-    for (size_t i = 0; i < byte_len; i++)
-    {
-        printf("%02x", result_kvp[i]);
-    }
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesIncorrect", &bytes_count);
+    UT_ASSERT(output_bytes == NULL);
+    UT_ASSERT(bytes_count == 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
     UT_LOG("\n");
-    UT_ASSERT(status == UT_KVP_STATUS_PARSING_ERROR );
+    free(output_bytes);
+    output_bytes = NULL;
 
     UT_LOG_STEP("ut_kvp_getDataBytes() - checkByteCommaSpaces for UT_KVP_STATUS_SUCCESS");
-    byte_len = 0;
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkByteCommaSpaces", result_kvp, &byte_len);
-    UT_LOG("Parsed %zu bytes:\n", byte_len);
-    for (size_t i = 0; i < byte_len; i++)
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkByteCommaSpaces", &bytes_count);
+    UT_ASSERT(output_bytes != NULL);
+    UT_ASSERT(bytes_count != 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
+    for (int i = 0; i < bytes_count; i++)
     {
-        printf("%02x", result_kvp[i]);
+        printf("0x%02x ", output_bytes[i]);
     }
     UT_LOG("\n");
-    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+    free(output_bytes);
+    output_bytes = NULL;
 
     UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesDecimalSpace for UT_KVP_STATUS_SUCCESS");
-    byte_len = 0;
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesDecimalSpace", result_kvp, &byte_len);
-    UT_LOG("Parsed %zu bytes:\n", byte_len);
-    for (size_t i = 0; i < byte_len; i++)
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesDecimalSpace", &bytes_count);
+    UT_ASSERT(output_bytes != NULL);
+    UT_ASSERT(bytes_count != 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
+    for (int i = 0; i < bytes_count; i++)
     {
-        printf("%02x", result_kvp[i]);
+        printf("0x%02x ", output_bytes[i]);
     }
     UT_LOG("\n");
-    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+    free(output_bytes);
+    output_bytes = NULL;
 
     UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesDecimalComma for UT_KVP_STATUS_SUCCESS");
-    byte_len = 0;
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesDecimalComma", result_kvp, &byte_len);
-    UT_LOG("Parsed %zu bytes:\n", byte_len);
-    for (size_t i = 0; i < byte_len; i++)
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesDecimalComma", &bytes_count);
+    UT_ASSERT(output_bytes != NULL);
+    UT_ASSERT(bytes_count != 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
+    for (int i = 0; i < bytes_count; i++)
     {
-        printf("%02x", result_kvp[i]);
+        printf("0x%02x ", output_bytes[i]);
     }
     UT_LOG("\n");
-    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+    free(output_bytes);
+    output_bytes = NULL;
 
     UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesDecimalCommaSpace for UT_KVP_STATUS_SUCCESS");
-    byte_len = 0;
-    status = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesDecimalCommaSpace", result_kvp, &byte_len);
-    UT_LOG("Parsed %zu bytes:\n", byte_len);
-    for (size_t i = 0; i < byte_len; i++)
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesDecimalCommaSpace", &bytes_count);
+    UT_ASSERT(output_bytes != NULL);
+    UT_ASSERT(bytes_count != 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
+    for (int i = 0; i < bytes_count; i++)
     {
-        printf("%02x", result_kvp[i]);
+        printf("0x%02x ", output_bytes[i]);
     }
     UT_LOG("\n");
-    UT_ASSERT(status == UT_KVP_STATUS_SUCCESS );
+    free(output_bytes);
+    output_bytes = NULL;
+
+    UT_LOG_STEP("ut_kvp_getDataBytes() - checkByteSpaceSpaceCommaSpace for UT_KVP_STATUS_SUCCESS");
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkByteSpaceSpaceCommaSpace", &bytes_count);
+    UT_ASSERT(output_bytes != NULL);
+    UT_ASSERT(bytes_count != 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
+    for (int i = 0; i < bytes_count; i++)
+    {
+        printf("0x%02x ", output_bytes[i]);
+    }
+    UT_LOG("\n");
+    free(output_bytes);
+    output_bytes = NULL;
+
+    UT_LOG_STEP("ut_kvp_getDataBytes() - checkByteInvalid for UT_KVP_STATUS_SUCCESS");
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkByteInvalid", &bytes_count);
+    UT_ASSERT(output_bytes == NULL);
+    UT_ASSERT(bytes_count == 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
+    free(output_bytes);
+    output_bytes = NULL;
 }
 
 void test_ut_kvp_getFloatField( void )
