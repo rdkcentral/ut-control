@@ -609,6 +609,19 @@ void test_ut_kvp_dataByte( void )
     UT_LOG("Parsed %zu bytes:\n", bytes_count);
     free(output_bytes);
     output_bytes = NULL;
+
+    UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytePrefix for UT_KVP_STATUS_SUCCESS");
+    output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytePrefix", &bytes_count);
+    UT_ASSERT(output_bytes != NULL);
+    UT_ASSERT(bytes_count != 0);
+    UT_LOG("Parsed %zu bytes:\n", bytes_count);
+    for (int i = 0; i < bytes_count; i++)
+    {
+        printf("0x%02x ", output_bytes[i]);
+    }
+    UT_LOG("\n");
+    free(output_bytes);
+    output_bytes = NULL;
 }
 
 void test_ut_kvp_getFloatField( void )

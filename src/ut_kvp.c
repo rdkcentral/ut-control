@@ -705,7 +705,7 @@ unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *psz
         unsigned long value;
 
         // Try converting as hexadecimal (starts with "0x")
-        if (strncmp(token, "0x", 2) == 0)
+        if (strncmp(token, "0x", 2) == 0 || strncmp(token, "0X", 2) == 0)
         {
             value = strtoul(token, &endptr, 16); // Base 16 for hexadecimal
         }

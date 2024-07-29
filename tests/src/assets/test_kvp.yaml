@@ -54,3 +54,4 @@ decodeTest:
   checkBytesDecimalComma: 00,255,55,255
   checkBytesDecimalCommaSpace: 00, 255, 255, 55
   checkByteInvalid: 0xFF 9A
+  checkBytePrefix: 0xFF 0xed 0X15 0xee
