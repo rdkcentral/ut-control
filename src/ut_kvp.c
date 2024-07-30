@@ -619,7 +619,6 @@ unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *psz
     char *token;
     int byte_count = 0;
     size_t buffer_size = 16; // Initial buffer size
-    unsigned char *output_bytes = (unsigned char *)malloc(buffer_size);
 
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
@@ -640,12 +639,6 @@ unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *psz
         return NULL;
     }
     *size = 0; // Ensuring size is 0, initially
-
-    if (!output_bytes)
-    {
-        UT_LOG_ERROR("Initial memory allocation error");
-        return NULL;
-    }
 
     if (pInternal->fy_handle == NULL)
     {
@@ -681,6 +674,13 @@ unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *psz
     if (byteString == NULL)
     {
         UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return NULL;
+    }
+
+    unsigned char *output_bytes = (unsigned char *)malloc(buffer_size);
+    if (!output_bytes)
+    {
+        UT_LOG_ERROR("Initial memory allocation error");
         return NULL;
     }
 
