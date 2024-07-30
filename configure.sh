@@ -223,9 +223,9 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
         else
             # For linux
             if [ -d "${OPENSSL_DIR}" ]; then
-                ./configure --prefix=$(pwd)/build --with-ssl=${OPENSSL_DIR}/build
-            else
                 ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --with-ssl=${OPENSSL_DIR}/build --with-pic
+            else
+                ./configure --prefix=$(pwd)/build --with-ssl
             fi
         fi
         make $@; make $@ install
