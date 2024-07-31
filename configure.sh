@@ -219,13 +219,13 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
         mkdir build
         if [ "$TARGET" = "arm" ]; then
             # For arm
-            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build --with-pic
+            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm --with-ssl=${OPENSSL_DIR}/build --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
         else
             # For linux
             if [ -d "${OPENSSL_DIR}" ]; then
-                ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --with-ssl=${OPENSSL_DIR}/build --with-pic
+                ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --with-ssl=${OPENSSL_DIR}/build --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
             else
-                ./configure --prefix=$(pwd)/build --with-ssl
+                ./configure --prefix=$(pwd)/build --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
             fi
         fi
         make $@; make $@ install
