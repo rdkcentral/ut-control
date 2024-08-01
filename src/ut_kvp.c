@@ -610,6 +610,141 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     return count;
 }
 
+unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, int *size)
+{
+    struct fy_node *node = NULL;
+    struct fy_node *root = NULL;
+    const char *byteString = NULL;
+    char zKey[UT_KVP_MAX_ELEMENT_SIZE];
+    char *token;
+    int byte_count = 0;
+    size_t buffer_size = 16; // Initial buffer size
+
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
+    if (pInternal == NULL)
+    {
+        return NULL;
+    }
+
+    if (pszKey == NULL)
+    {
+        UT_LOG_ERROR("Invalid Param - pszKey");
+        return NULL;
+    }
+
+    if (size == NULL)
+    {
+        UT_LOG_ERROR("Invalid address passed");
+        return NULL;
+    }
+    *size = 0; // Ensuring size is 0, initially
+
+    if (pInternal->fy_handle == NULL)
+    {
+        UT_LOG_ERROR("No Data File open");
+        return NULL;
+    }
+    // Get the root node
+    root = fy_document_root(pInternal->fy_handle);
+    if (root == NULL)
+    {
+        UT_LOG_ERROR("Empty document");
+        return NULL;
+    }
+
+    convert_dot_to_slash(pszKey, zKey);
+
+    // Find the node corresponding to the key
+    node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
+    if (node == NULL)
+    {
+        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return NULL;
+    }
+
+    if (fy_node_is_scalar(node) == false)
+    {
+        UT_LOG_ERROR("invalid key");
+        return NULL;
+    }
+
+    // Get the string value
+    byteString = fy_node_get_scalar0(node);
+    if (byteString == NULL)
+    {
+        UT_LOG_ERROR("field not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        return NULL;
+    }
+
+    unsigned char *output_bytes = (unsigned char *)malloc(buffer_size);
+    if (!output_bytes)
+    {
+        UT_LOG_ERROR("Initial memory allocation error");
+        return NULL;
+    }
+
+    char *input_copy = strdup(byteString);
+    if (!input_copy)
+    {
+        UT_LOG_ERROR("Memory allocation error.");
+        free(output_bytes);
+        return NULL;
+    }
+
+    token = strtok(input_copy, ", ");
+    while (token != NULL)
+    {
+        // Trim leading/trailing whitespace (if any)
+        while (*token == ' ')
+        {
+            token++;
+        }
+
+        char *endptr;
+        unsigned long value;
+
+        // Try converting as hexadecimal (starts with "0x")
+        if (strncmp(token, "0x", 2) == 0 || strncmp(token, "0X", 2) == 0)
+        {
+            value = strtoul(token, &endptr, 16); // Base 16 for hexadecimal
+        }
+        else
+        {
+            value = strtoul(token, &endptr, 10); // Try decimal
+        }
+
+        // Error checking
+        if (*endptr != '\0' || (value == ULONG_MAX && errno == ERANGE) || value > 255)
+        {
+            UT_LOG_ERROR("Invalid byte value: %s", token);
+            free(input_copy);
+            free(output_bytes); // Free the output buffer as well
+            return NULL;
+        }
+
+        // Check if we need to expand the output buffer
+        if (byte_count >= buffer_size)
+        {
+            buffer_size *= 2; // Double the buffer size
+            output_bytes = (unsigned char *)realloc(output_bytes, buffer_size);
+            if (!output_bytes)
+            {
+                UT_LOG_ERROR("Memory reallocation error.\n");
+                free(input_copy);
+                return NULL;
+            }
+        }
+
+        output_bytes[byte_count++] = (unsigned char)value;
+        token = strtok(NULL, ", ");
+    }
+
+    free(input_copy);
+    *size = byte_count;
+    return output_bytes;
+}
+
 /** Static Functions */
 static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance)
 {
