@@ -128,7 +128,8 @@ else
     ${CMAKE_BIN} .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
     -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
-    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_HAVE_LIBCAP=0
     make $@
 fi
 popd > /dev/null
@@ -219,7 +220,7 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
         mkdir build
         if [ "$TARGET" = "arm" ]; then
             # For arm
-            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm --with-ssl=${OPENSSL_DIR}/build --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm --with-ssl=${OPENSSL_DIR}/build --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
         else
             # For linux
             if [ -d "${OPENSSL_DIR}" ]; then
