@@ -117,7 +117,20 @@ static cp_message_t* dequeue_message(ut_cp_instance_internal_t *pInternal)
     {
         pthread_cond_wait(&pInternal->queue_condition, &pInternal->queue_mutex);
     }
-    msg = &pInternal->message_queue[0];
+
+    msg = (cp_message_t*)malloc(sizeof(cp_message_t));
+    assert(msg != NULL);
+    if (msg == NULL)
+    {
+        pthread_mutex_unlock(&pInternal->queue_mutex);
+        return NULL; // Return NULL if memory allocation fails
+    }
+
+    // Copy the message content to the newly allocated memory
+    msg->size = pInternal->message_queue[0].size;
+    msg->status = pInternal->message_queue[0].status;
+    msg->message = pInternal->message_queue[0].message;
+
     for (int i = 0; i < pInternal->message_count - 1; i++)
     {
         pInternal->message_queue[i] = pInternal->message_queue[i + 1];
@@ -208,6 +221,7 @@ static void *service_state_machine(void *data)
             {
                 UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
                 call_callback_on_match(msg, pInternal);
+                free(msg);
             }
             break;
 
