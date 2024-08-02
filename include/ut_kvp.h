@@ -227,6 +227,28 @@ char* ut_kvp_getData( ut_kvp_instance_t *pInstance );
  */
 uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey);
 
+/**
+ * @brief Retrieves the data bytes associated with a given key from a key-value pair instance.
+ *
+ * This function searches for the specified key within the provided key-value pair instance
+ * and returns the associated data bytes if found. The function allocates memory for the
+ * output bytes, which must be freed by the caller. The size of the data is also returned
+ * via the `size` parameter.
+ *
+ * @param[in]  pInstance    Pointer to the key-value pair instance to search within.
+ * @param[in]  pszKey       Null-terminated string representing the key to search for.
+ * @param[out] size         Pointer to an integer where the size of the returned data bytes
+ *                          will be stored. If the key is not found, this will be set to 0.
+ *
+ * @return unsigned char*
+ *         - Pointer to the allocated data bytes if the key is found.
+ *         - NULL if the key is not found or an error occurs.
+ *
+ * @note The memory for the returned data bytes must be managed by the caller, and it should be
+ *       freed when no longer needed.
+ */
+unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, int *size);
+
 /* TODO:
  * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`,
  *`ut_kvp_getInt64Field`

@@ -128,7 +128,8 @@ else
     ${CMAKE_BIN} .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
     -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
-    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_HAVE_LIBCAP=0
     make $@
 fi
 popd > /dev/null
@@ -136,8 +137,7 @@ popd > /dev/null
 pushd ${FRAMEWORK_DIR} > /dev/null
 check_file_exists() {
     search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
-    local TARGET=$1
-    local file_name=$2
+    local file_name=$1
 
     if find ${search_paths} -type f -name "${file_name}" -print -quit | grep -q .; then
         echo "found"
@@ -153,14 +153,15 @@ if [ "$TARGET" = "arm" ]; then
 else
     TARGET=linux
 
-    CURL_LIB=$(check_file_exists ${TARGET} "libcurl.so*")
-    CURL_HEADER=$(check_file_exists ${TARGET} "curl.h")
+    CURL_LIB=$(check_file_exists "libcurl.so*")
+    CURL_HEADER=$(check_file_exists "curl.h")
     LIBCURL_IS_INSTALLED=0
     if [ "$CURL_HEADER" = "found" ] && [ "$CURL_LIB" = "found" ]; then
         LIBCURL_IS_INSTALLED=1
     fi
 
     # Search for libssl.so* files and check its version
+    OPENSSL_IS_INSTALLED=0
     result=""
     search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
     for file_path in $(find ${search_paths} -iname "libssl.so.1*"); do
@@ -171,8 +172,10 @@ else
         fi
     done
 
-    OPENSSL_IS_INSTALLED=0
-    if [ -n "${result}" ]; then
+    # Check package-config file for openssl is available or not
+    OPENSSL_PC=$(check_file_exists "openssl.pc")
+
+    if [ -n "${result}" ] && [ "$OPENSSL_PC" = "found" ]; then
         echo "Version 1 of libssl.so is found for ${TARGET}.Also assuming libcrypto is also available in the same path"
         OPENSSL_IS_INSTALLED=1
     fi
@@ -217,10 +220,14 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
         mkdir build
         if [ "$TARGET" = "arm" ]; then
             # For arm
-            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm-rdk-linux-gnueabi --with-ssl=${OPENSSL_DIR}/build --with-pic
+            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm --with-ssl=${OPENSSL_DIR}/build --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
         else
             # For linux
-            ./configure --prefix=$(pwd)/build --with-ssl
+            if [ -d "${OPENSSL_DIR}" ]; then
+                ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --with-ssl=${OPENSSL_DIR}/build --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+            else
+                ./configure --prefix=$(pwd)/build --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+            fi
         fi
         make $@; make $@ install
     fi

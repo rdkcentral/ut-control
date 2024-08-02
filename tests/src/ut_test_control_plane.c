@@ -31,12 +31,18 @@
 
 #include <ut_control_plane.h>
 
+#include "ut_test_common.h"
+
+#define UT_CONTROL_YAML_FILE "example.yaml"
+#define UT_CONTROL_JSON_FILE "example.json"
+
 static UT_test_suite_t *gpAssertSuite1 = NULL;
 static UT_test_suite_t *gpAssertSuite2 = NULL;
 
 static ut_controlPlane_instance_t *gInstance = NULL;
 static volatile bool gMessageRecievedYAML = false;
 static volatile bool gMessageRecievedJSON = false;
+static test_ut_memory_t gUserDataYaml, gUserDataJson;
 
 void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData);
 
@@ -159,6 +165,7 @@ void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData)
     char* kvpData;
     printf("*******************************Inside testYAMLCallback************************\n");
     kvpData = ut_kvp_getData(instance);
+    char *data = (char*)userData;
 
     if(kvpData != NULL)
     {
@@ -169,6 +176,12 @@ void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData)
         free(kvpData);
     }
 
+    if(data != NULL)
+    {
+        printf("Original Yaml file\n%s", data);
+    }
+
+    //UT_ASSERT_STRING_EQUAL(kvpData, data);
     gMessageRecievedYAML = true;
 }
 
@@ -177,6 +190,7 @@ void testJSONCallback(char *key, ut_kvp_instance_t *instance, void* userData)
     char* kvpData;
     UT_LOG("**************testJSONCallback is called****************\n");
     kvpData = ut_kvp_getData(instance);
+    char *data = (char*)userData;
 
     if(kvpData != NULL)
     {
@@ -187,6 +201,12 @@ void testJSONCallback(char *key, ut_kvp_instance_t *instance, void* userData)
         free(kvpData);
     }
 
+    if(data != NULL)
+    {
+        printf("Original Json file\n%s", data);
+    }
+
+    //UT_ASSERT_STRING_EQUAL(kvpData, data);
     gMessageRecievedJSON = true;
 }
 
@@ -206,25 +226,35 @@ static void test_ut_control_performInit( void )
 
 static void test_ut_control_performStart()
 {
-    void *userData = NULL;
 
     UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback - Negative\n");
-    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, userData);
+    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, NULL);
 
-    userData = (void* )strdup("testYAMLCallbackString");
-    UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback - Positive\n");
-    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, userData);
-    free(userData); //freeing the userData after registration
+    if (read_file_into_memory(UT_CONTROL_YAML_FILE, &gUserDataYaml) == 0)
+    {
+        if (gUserDataYaml.buffer != NULL)
+        {
+            printf("Original Yaml file\n%s", (char*)gUserDataYaml.buffer);
+        }
+        UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback - Positive\n");
+        UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, (void *)gUserDataYaml.buffer);
+    }
 
     gMessageRecievedYAML = false;
 
     UT_ControlPlane_Start(gInstance);
 
     /* This should still work after start */
-    userData = (void* )strdup("testJSONCallbackString");
-    UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testJSONCallback - Positive \n");
-    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2/jsonData1", &testJSONCallback, userData);
-    free(userData); //freeing the userData after registration
+    if (read_file_into_memory(UT_CONTROL_JSON_FILE, &gUserDataJson) == 0)
+    {
+        if (gUserDataJson.buffer != NULL)
+        {
+            printf("Original Json file\n%s", (char*)gUserDataJson.buffer);
+        }
+
+        UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testJSONCallback - Positive \n");
+        UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2/jsonData1", &testJSONCallback, (void *)gUserDataJson.buffer);
+    }
 
     gMessageRecievedJSON = false;
 }
@@ -278,6 +308,16 @@ void test_ut_control_performExit( void )
 {
     UT_LOG("test_ut_control_performExit()\n");
     signal(SIGINT, NULL);
+    if (gUserDataJson.buffer)
+    {
+        free(gUserDataJson.buffer);
+    }
+
+    if (gUserDataYaml.buffer)
+    {
+        free(gUserDataYaml.buffer);
+    }
+
     UT_ControlPlane_Exit(gInstance);
 }
 
