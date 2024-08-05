@@ -24,6 +24,13 @@ set -e # error out if required
 SCRIPT_EXEC="$(realpath $0)"
 MY_DIR="$(dirname $SCRIPT_EXEC)"
 
+# Check if the arguments contain 'TARGET=arm'
+if [[ "$*" == *"TARGET=arm"* ]]; then
+    TARGET=arm
+else
+    TARGET=linux
+fi
+
 pushd ${MY_DIR} > /dev/null
 
 FRAMEWORK_DIR=${MY_DIR}/framework
@@ -88,6 +95,54 @@ else
 fi
 popd > /dev/null
 
+pushd ${FRAMEWORK_DIR} > /dev/null
+check_file_exists() {
+    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
+    local file_name=$1
+    
+    if find ${search_paths} -type f -name "${file_name}" -print -quit | grep -q .; then
+        echo "found"
+    else
+        echo "not_found"
+    fi
+}
+
+if [ "$TARGET" = "arm" ]; then
+    TARGET=arm
+    LIBCURL_IS_INSTALLED=0
+    OPENSSL_IS_INSTALLED=0
+else
+    TARGET=linux
+    
+    CURL_LIB=$(check_file_exists "libcurl.so*")
+    CURL_HEADER=$(check_file_exists "curl.h")
+    LIBCURL_IS_INSTALLED=0
+    if [ "$CURL_HEADER" = "found" ] && [ "$CURL_LIB" = "found" ]; then
+        LIBCURL_IS_INSTALLED=1
+    fi
+    
+    # Search for libssl.so* files and check its version
+    OPENSSL_IS_INSTALLED=0
+    result=""
+    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
+    for file_path in $(find ${search_paths} -iname "libssl.so.1*"); do
+        # Check the file type and version
+        if file "${file_path}" | grep -i -q "version 1"; then
+            result="${file_path}"
+            break
+        fi
+    done
+    
+    # Check package-config file for openssl is available or not
+    OPENSSL_PC=$(check_file_exists "openssl.pc")
+    
+    if [ -n "${result}" ] && [ "$OPENSSL_PC" = "found" ]; then
+        echo "Version 1 of libssl.so is found for ${TARGET}.Also assuming libcrypto is also available in the same path"
+        OPENSSL_IS_INSTALLED=1
+    fi
+fi
+popd > /dev/null # ${FRAMEWORK_DIR}
+
 # Switch                             Description                                                 Effect on LWS Build
 # -DLWS_WITH_SSL=OFF                 Disables Secure Sockets Layer (SSL) support in             Reduces library size, removes dependency on OpenSSL.
 #                                    libwebsockets.
@@ -118,13 +173,26 @@ popd > /dev/null
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBWEBSOCKETS_DIR}" ]; then
     echo "Framework [libwebsockets] already exists"
+    if [ -d "${LIBWEBSOCKETS_DIR}/build-${TARGET}" ]; then
+        echo "Framework [libwebsockets] already built for ${TARGET}"
+    else
+        cd ${LIBWEBSOCKETS_DIR}
+        mkdir build-${TARGET}
+        cd build-${TARGET}
+        ${CMAKE_BIN} .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
+        -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
+        -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
+        -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_HAVE_LIBCAP=0
+        make $@
+    fi
 else
     echo "Clone libwebsockets in ${LIBWEBSOCKETS_DIR}"
     wget https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.3.3.zip --no-check-certificate
     unzip v4.3.3.zip
     cd ${LIBWEBSOCKETS_DIR}
-    mkdir build
-    cd build
+    mkdir build-${TARGET}
+    cd build-${TARGET}
     ${CMAKE_BIN} .. -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
     -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
@@ -134,73 +202,43 @@ else
 fi
 popd > /dev/null
 
-pushd ${FRAMEWORK_DIR} > /dev/null
-check_file_exists() {
-    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
-    local file_name=$1
-
-    if find ${search_paths} -type f -name "${file_name}" -print -quit | grep -q .; then
-        echo "found"
-    else
-        echo "not_found"
-    fi
-}
-
-if [ "$TARGET" = "arm" ]; then
-    TARGET=arm
-    LIBCURL_IS_INSTALLED=0
-    OPENSSL_IS_INSTALLED=0
-else
-    TARGET=linux
-
-    CURL_LIB=$(check_file_exists "libcurl.so*")
-    CURL_HEADER=$(check_file_exists "curl.h")
-    LIBCURL_IS_INSTALLED=0
-    if [ "$CURL_HEADER" = "found" ] && [ "$CURL_LIB" = "found" ]; then
-        LIBCURL_IS_INSTALLED=1
-    fi
-
-    # Search for libssl.so* files and check its version
-    OPENSSL_IS_INSTALLED=0
-    result=""
-    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
-    for file_path in $(find ${search_paths} -iname "libssl.so.1*"); do
-        # Check the file type and version
-        if file "${file_path}" | grep -i -q "version 1"; then
-            result="${file_path}"
-            break
-        fi
-    done
-
-    # Check package-config file for openssl is available or not
-    OPENSSL_PC=$(check_file_exists "openssl.pc")
-
-    if [ -n "${result}" ] && [ "$OPENSSL_PC" = "found" ]; then
-        echo "Version 1 of libssl.so is found for ${TARGET}.Also assuming libcrypto is also available in the same path"
-        OPENSSL_IS_INSTALLED=1
-    fi
-fi
-popd > /dev/null # ${FRAMEWORK_DIR}
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ "$OPENSSL_IS_INSTALLED" -eq 0 ]; then
     if [ -d "${OPENSSL_DIR}" ]; then
         echo "Framework [openssl] already exists"
+        if [ -d "${OPENSSL_DIR}/build-${TARGET}" ]; then
+            echo "Framework [openssl] already built for ${TARGET}"
+        else
+            echo "Building Framework [openssl] for ${TARGET}"
+            cd ${OPENSSL_DIR}
+            mkdir build-${TARGET}
+            if [ "$TARGET" = "arm" ]; then
+                # For arm
+                CROSS_COMPILE=
+                COMPILER_FLAGS=$(echo $CC | cut -d' ' -f2-)
+                /usr/bin/perl ./Configure linux-armv4 shared --prefix=${OPENSSL_DIR}/build-${TARGET} --openssldir=${OPENSSL_DIR} --cross-compile-prefix=${CROSS_COMPILE} $COMPILER_FLAGS
+            else
+                # For linux
+                ./config --prefix=${OPENSSL_DIR}/build-${TARGET}
+            fi
+            make && make install
+        fi
     else
         echo "Clone openssl in ${OPENSSL_DIR} for $TARGET"
         wget https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1w.zip -P openssl --no-check-certificate
         cd openssl
         unzip OpenSSL_1_1_1w.zip
         cd openssl-OpenSSL_1_1_1w/
-        mkdir build
+        mkdir build-${TARGET}
         if [ "$TARGET" = "arm" ]; then
             # For arm
             CROSS_COMPILE=
             COMPILER_FLAGS=$(echo $CC | cut -d' ' -f2-)
-            /usr/bin/perl ./Configure linux-armv4 shared --prefix=${OPENSSL_DIR}/build --openssldir=${OPENSSL_DIR} --cross-compile-prefix=${CROSS_COMPILE} $COMPILER_FLAGS
+            /usr/bin/perl ./Configure linux-armv4 shared --prefix=${OPENSSL_DIR}/build-${TARGET} --openssldir=${OPENSSL_DIR} --cross-compile-prefix=${CROSS_COMPILE} $COMPILER_FLAGS
         else
             # For linux
-            ./config --prefix=${OPENSSL_DIR}/build
+            ./config --prefix=${OPENSSL_DIR}/build-${TARGET}
         fi
         make && make install
     fi
@@ -211,22 +249,40 @@ pushd ${FRAMEWORK_DIR} > /dev/null
 if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
     if [ -d "${CURL_DIR}" ]; then
         echo "Framework [curl] already exists"
+        if [ -d "${CURL_DIR}/build-${TARGET}" ]; then
+            echo "Framework [curl] already built for ${TARGET}"
+        else
+            cd ${CURL_DIR}
+            mkdir build-${TARGET}
+            if [ "$TARGET" = "arm" ]; then
+                # For arm
+                ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-arm/lib" --prefix=${CURL_DIR}/build-${TARGET} --host=arm --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
+            else
+                # For linux
+                if [ -d "${OPENSSL_DIR}" ]; then
+                    ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-${TARGET}/lib" --prefix=${CURL_DIR}/build-${TARGET} --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+                else
+                    ./configure --prefix=$(pwd)/build-${TARGET} --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+                fi
+            fi
+            make $@; make $@ install
+        fi
     else
         echo "Clone curl in ${CURL_DIR} for $TARGET"
         wget https://curl.se/download/curl-8.8.0.zip -P curl --no-check-certificate
         cd curl
         unzip curl-8.8.0.zip
         cd curl-8.8.0
-        mkdir build
+        mkdir build-${TARGET}
         if [ "$TARGET" = "arm" ]; then
             # For arm
-            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --host=arm --with-ssl=${OPENSSL_DIR}/build --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
+            ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-arm/lib" --prefix=${CURL_DIR}/build-${TARGET} --host=arm --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
         else
             # For linux
             if [ -d "${OPENSSL_DIR}" ]; then
-                ./configure CPPFLAGS="-I${OPENSSL_DIR}/build/include" LDFLAGS="-L${OPENSSL_DIR}/build/lib" --prefix=${CURL_DIR}/build --with-ssl=${OPENSSL_DIR}/build --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+                ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-${TARGET}/lib" --prefix=${CURL_DIR}/build-${TARGET} --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
             else
-                ./configure --prefix=$(pwd)/build --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+                ./configure --prefix=$(pwd)/build-${TARGET} --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
             fi
         fi
         make $@; make $@ install

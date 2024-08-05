@@ -33,7 +33,6 @@ export PATH := $(shell pwd)/toolchain:$(PATH)
 TOP_DIR = $(UT_CONTROL_DIR)
 BUILD_DIR = $(TOP_DIR)/obj
 BIN_DIR = $(TOP_DIR)/bin
-LIB_DIR := $(TOP_DIR)/lib
 BUILD_LIBS = yes
 
 # Enable libyaml Requirements
@@ -47,52 +46,51 @@ SRC_DIRS += $(ASPRINTF_DIR)
 INC_DIRS = $(LIBFYAML_DIR)/include
 INC_DIRS += $(ASPRINTF_DIR)
 
+ifeq ($(TARGET),arm)
+TARGET=arm
+else
+TARGET=linux
+endif
+
+LIB_DIR := $(TOP_DIR)/lib-$(TARGET)
+OBJ_DIR = ${BUILD_DIR}/$(TARGET)
+
 # LIBWEBSOCKETS Requirements
 LIBWEBSOCKETS_DIR = $(TOP_DIR)/framework/libwebsockets-4.3.3
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
-INC_DIRS += $(LIBWEBSOCKETS_DIR)/build
-XLDFLAGS += $(LIBWEBSOCKETS_DIR)/build/lib/libwebsockets.a
+INC_DIRS += $(LIBWEBSOCKETS_DIR)/build-$(TARGET)
+XLDFLAGS += $(LIBWEBSOCKETS_DIR)/build-$(TARGET)/lib/libwebsockets.a
+
+# CURL Requirements
+CURL_DIR = $(TOP_DIR)/framework/curl/curl-8.8.0
+INC_DIRS += $(CURL_DIR)/include
+XLDFLAGS += $(CURL_DIR)/build-$(TARGET)/lib/libcurl.a
 
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
 INC_DIRS += ${TOP_DIR}/include
 
-# CURL Requirements
-CURL_DIR = $(TOP_DIR)/framework/curl/curl-8.8.0
-INC_DIRS += $(CURL_DIR)/include
-XLDFLAGS += $(CURL_DIR)/build/lib/libcurl.a
-
 CFLAGS += -fPIC -Wall -shared   # Flags for compilation
 CFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER
 
-SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
-
-#OBJS := $(SRCS:.c=.o)
-OBJS := $(subst $(TOP_DIR),$(BUILD_DIR),$(SRCS:.c=.o))
-
-INC_DIRS += $(shell find $(SRC_DIRS) -type d)
-INC_FLAGS := $(addprefix -I,$(INC_DIRS))
-XCFLAGS += $(CFLAGS) $(INC_FLAGS)
-
-# Final conversions
-DEPS += $(OBJS:.o=.d)
-
 MKDIR_P ?= @mkdir -p
 TARGET ?= linux
 $(info TARGET [$(TARGET)])
-OPENSSL_LIB_DIR = $(TOP_DIR)/framework/openssl/openssl-OpenSSL_1_1_1w/build/lib/
+
 
 # defaults for target arm
 ifeq ($(TARGET),arm)
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
+OPENSSL_LIB_DIR = $(TOP_DIR)/framework/openssl/openssl-OpenSSL_1_1_1w/build-arm/lib/
 XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl
 else
 #linux case
 # Check if the directory exists
 ifneq ($(wildcard $(OPENSSL_LIB_DIR)),)
+OPENSSL_LIB_DIR = $(TOP_DIR)/framework/openssl/openssl-OpenSSL_1_1_1w/build-linux/lib/
 XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl
 else
 # Commands to run if the directory does not exist
@@ -105,6 +103,18 @@ ifeq ($(TARGET),linux)
 CC := gcc -ggdb -o0 -Wall
 endif
 
+SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
+
+#OBJS := $(SRCS:.c=.o)
+OBJS := $(subst $(TOP_DIR),$(OBJ_DIR),$(SRCS:.c=.o))
+
+INC_DIRS += $(shell find $(SRC_DIRS) -type d)
+INC_FLAGS := $(addprefix -I,$(INC_DIRS))
+XCFLAGS += $(CFLAGS) $(INC_FLAGS)
+
+# Final conversions
+DEPS += $(OBJS:.o=.d)
+
 .PHONY: clean list lib test all framework
 
 all: framework lib
@@ -116,7 +126,7 @@ lib : ${OBJS}
 	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
-$(BUILD_DIR)/%.o: %.c
+$(OBJ_DIR)/%.o: %.c
 	@echo -e ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
 	@$(MKDIR_P) $(dir $@)
 	@$(CC) $(XCFLAGS) -c $< -o $@
@@ -135,7 +145,7 @@ list:
 	@echo -e ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
 
 clean:
-	@echo -e ${GREEN}Performing Clean${NC}
+	@echo -e ${GREEN}Performing Clean for both arm and linux${NC}
 	@$(RM) -rf $(BUILD_DIR)
 	@echo -e ${GREEN}Clean Completed${NC}
 
