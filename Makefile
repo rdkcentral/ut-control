@@ -145,8 +145,8 @@ list:
 	@echo -e ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
 
 clean:
-	@echo -e ${GREEN}Performing Clean for both arm and linux${NC}
-	@$(RM) -rf $(BUILD_DIR)
+	@echo -e ${GREEN}Performing Clean for $(TARGET)${NC}
+	@$(RM) -rf $(BUILD_DIR)/$(TARGET)
 	@echo -e ${GREEN}Clean Completed${NC}
 
 cleanall: clean
