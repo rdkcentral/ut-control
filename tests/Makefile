@@ -45,9 +45,9 @@ ifeq ($(TARGET),arm)
 HAL_LIB_DIR := $(ROOT_DIR)/libs
 endif
 
-YLDFLAGS += -L $(ROOT_DIR)/../lib -lut_control -pthread
+YLDFLAGS += -L $(ROOT_DIR)/../lib-$(TARGET) -lut_control -pthread
 
-TARGET_EXEC = ut_control_test
+TARGET_EXEC = ut_control_test	
 CFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER
 
@@ -69,7 +69,7 @@ build:
 	@echo UT [$@]
 	$(ROOT_DIR)/build.sh
 	make -C ./ut-core test
-	@cp $(ROOT_DIR)/../lib/lib* ${BIN_DIR}
+	@cp $(ROOT_DIR)/../lib-$(TARGET)/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
 	@echo -e ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}
