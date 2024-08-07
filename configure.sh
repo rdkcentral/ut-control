@@ -259,10 +259,10 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
                 ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-arm/lib" --prefix=${CURL_DIR}/build-${TARGET} --host=arm --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
             else
                 # For linux
-                if [ -d "${OPENSSL_DIR}" ]; then
-                    ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-${TARGET}/lib" --prefix=${CURL_DIR}/build-${TARGET} --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
-                else
+                if [ "$OPENSSL_IS_INSTALLED" -eq 1 ]; then
                     ./configure --prefix=$(pwd)/build-${TARGET} --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+                else
+                    ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-${TARGET}/lib" --prefix=${CURL_DIR}/build-${TARGET} --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
                 fi
             fi
             make $@; make $@ install
@@ -279,10 +279,10 @@ if [ "${LIBCURL_IS_INSTALLED}" -eq 0 ]; then
             ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-arm/lib" --prefix=${CURL_DIR}/build-${TARGET} --host=arm --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
         else
             # For linux
-            if [ -d "${OPENSSL_DIR}" ]; then
-                ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-${TARGET}/lib" --prefix=${CURL_DIR}/build-${TARGET} --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
-            else
+            if [ "$OPENSSL_IS_INSTALLED" -eq 1 ]; then
                 ./configure --prefix=$(pwd)/build-${TARGET} --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+            else
+                ./configure CPPFLAGS="-I${OPENSSL_DIR}/build-${TARGET}/include" LDFLAGS="-L${OPENSSL_DIR}/build-${TARGET}/lib" --prefix=${CURL_DIR}/build-${TARGET} --with-ssl=${OPENSSL_DIR}/build-${TARGET} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
             fi
         fi
         make $@; make $@ install
