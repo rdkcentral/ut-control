@@ -31,7 +31,6 @@ INC_DIR =
 export PATH := $(shell pwd)/toolchain:$(PATH)
 
 TOP_DIR = $(UT_CONTROL_DIR)
-BUILD_DIR = $(TOP_DIR)/obj
 BIN_DIR = $(TOP_DIR)/bin
 BUILD_LIBS = yes
 
@@ -51,20 +50,21 @@ TARGET=arm
 else
 TARGET=linux
 endif
+export TARGET
 
-LIB_DIR := $(TOP_DIR)/lib-$(TARGET)
-OBJ_DIR = ${BUILD_DIR}/$(TARGET)
+LIB_DIR := $(TOP_DIR)/lib/$(TARGET)
+BUILD_DIR = $(TOP_DIR)/build/$(TARGET)/obj
 
 # LIBWEBSOCKETS Requirements
-LIBWEBSOCKETS_DIR = $(TOP_DIR)/framework/libwebsockets-4.3.3
+LIBWEBSOCKETS_DIR = $(TOP_DIR)/build/$(TARGET)/libwebsockets
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
-INC_DIRS += $(LIBWEBSOCKETS_DIR)/build-$(TARGET)
-XLDFLAGS += $(LIBWEBSOCKETS_DIR)/build-$(TARGET)/lib/libwebsockets.a
+#INC_DIRS += $(LIBWEBSOCKETS_DIR)/build-$(TARGET)
+XLDFLAGS += $(LIBWEBSOCKETS_DIR)/lib/libwebsockets.a
 
 # CURL Requirements
-CURL_DIR = $(TOP_DIR)/framework/curl/curl-8.8.0
+CURL_DIR = $(TOP_DIR)/build/$(TARGET)/curl
 INC_DIRS += $(CURL_DIR)/include
-XLDFLAGS += $(CURL_DIR)/build-$(TARGET)/lib/libcurl.a
+XLDFLAGS += $(CURL_DIR)/lib/libcurl.a
 
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
@@ -78,7 +78,7 @@ MKDIR_P ?= @mkdir -p
 TARGET ?= linux
 $(info TARGET [$(TARGET)])
 
-OPENSSL_LIB_DIR = $(TOP_DIR)/framework/openssl/openssl-OpenSSL_1_1_1w/build-${TARGET}/lib/
+OPENSSL_LIB_DIR = $(TOP_DIR)/build/$(TARGET)/openssl/lib/
 
 # defaults for target arm
 ifeq ($(TARGET),arm)
@@ -105,7 +105,7 @@ endif
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
 
 #OBJS := $(SRCS:.c=.o)
-OBJS := $(subst $(TOP_DIR),$(OBJ_DIR),$(SRCS:.c=.o))
+OBJS := $(subst $(TOP_DIR),$(BUILD_DIR),$(SRCS:.c=.o))
 
 INC_DIRS += $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
@@ -125,7 +125,7 @@ lib : ${OBJS}
 	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
-$(OBJ_DIR)/%.o: %.c
+$(BUILD_DIR)/%.o: %.c
 	@echo -e ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
 	@$(MKDIR_P) $(dir $@)
 	@$(CC) $(XCFLAGS) -c $< -o $@
@@ -145,7 +145,7 @@ list:
 
 clean:
 	@echo -e ${GREEN}Performing Clean for $(TARGET)${NC}
-	@$(RM) -rf $(BUILD_DIR)/$(TARGET)
+	@$(RM) -rf $(BUILD_DIR)
 	@echo -e ${GREEN}Clean Completed${NC}
 
 cleanall: clean
