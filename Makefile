@@ -146,6 +146,7 @@ list:
 clean:
 	@echo -e ${GREEN}Performing Clean for $(TARGET)${NC}
 	@$(RM) -rf $(BUILD_DIR)
+	@$(RM) -rf ${TOP_DIR}/*.txt
 	@echo -e ${GREEN}Clean Completed${NC}
 
 cleanall: clean

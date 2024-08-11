@@ -91,52 +91,62 @@ else
 fi
 popd > /dev/null
 
-pushd ${FRAMEWORK_DIR} > /dev/null
-check_file_exists() {
-    search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
-    local file_name=$1
-    
-    if find ${search_paths} -type f -name "${file_name}" -print -quit | grep -q .; then
-        echo "found"
-    else
-        echo "not_found"
-    fi
-}
+pushd "${FRAMEWORK_DIR}" > /dev/null
 
 if [ "$TARGET" = "arm" ]; then
     TARGET=arm
-    LIBCURL_IS_SYSTEM_INSTALLED=0
-    OPENSSL_IS_SYSTEM_INSTALLED=0
+    # Extract the sysroot value
+    SYSROOT=$(echo "$CC" | grep -oP '(?<=--sysroot=)[^ ]+')
+    search_paths=$SYSROOT
 else
     TARGET=linux
-    
-    CURL_LIB=$(check_file_exists "libcurl.so*")
-    CURL_HEADER=$(check_file_exists "curl.h")
-    LIBCURL_IS_SYSTEM_INSTALLED=0
-    if [ "$CURL_HEADER" = "found" ] && [ "$CURL_LIB" = "found" ]; then
-        LIBCURL_IS_SYSTEM_INSTALLED=1
-    fi
-    
-    # Search for libssl.so* files and check its version
-    OPENSSL_IS_SYSTEM_INSTALLED=0
-    result=""
     search_paths="/usr/include /usr/local/include /usr/lib /usr/local/lib"
-    for file_path in $(find ${search_paths} -iname "libssl.so.1*"); do
-        # Check the file type and version
-        if file "${file_path}" | grep -i -q "version 1"; then
-            result="${file_path}"
-            break
+fi
+
+OPENSSL_IS_SYSTEM_INSTALLED=0
+# Output the path to a txt file
+output_file="${MY_DIR}/file_path.txt"
+
+# Function to search for a file and dump its path to a file if found
+dump_library_path() {
+    local library_name="$1"
+    local paths="$2"
+
+    for file_path in $(find ${paths} -iname "${library_name}" 2>/dev/null); do
+        # Check if the file is valid and accessible
+        if file "${file_path}" &> /dev/null; then
+            # Dump the key-value pair to the output file
+            echo "${library_name}=${file_path}" >> "${output_file}"
+            echo "${file_path}"    # Return the found path
+            return 0               # Exit the function after finding the first match
         fi
     done
-    
-    # Check package-config file for openssl is available or not
-    OPENSSL_PC=$(check_file_exists "openssl.pc")
-    
-    if [ -n "${result}" ] && [ "$OPENSSL_PC" = "found" ]; then
-        echo "Version 1 of libssl.so is found for ${TARGET}.Also assuming libcrypto is also available in the same path"
-        OPENSSL_IS_SYSTEM_INSTALLED=1
-    fi
+
+    return 1  # Return an error code if the file was not found
+}
+
+# Ensure the output file is created or cleared at the beginning
+> "${output_file}"
+
+# Check package-config file and static library for OpenSSL
+OPENSSL_PC=$(dump_library_path "openssl.pc" "${search_paths}") || echo "openssl.pc not found"
+OPENSSL_STATIC_SSL_LIB=$(dump_library_path "libssl.a" "${search_paths}") || echo "libssl.a not found"
+OPENSSL_STATIC_CRYPTO_LIB=$(dump_library_path "libcrypto.a" "${search_paths}") || echo "libcrypto.a not found"
+
+if [[ -n "$OPENSSL_PC" && -n "$OPENSSL_STATIC_SSL_LIB" && -n "$OPENSSL_STATIC_CRYPTO_LIB" ]]; then
+    echo "openssl.pc, libssl.a, and libcrypto.a are found for ${TARGET}."
+    OPENSSL_IS_SYSTEM_INSTALLED=1
 fi
+
+# Check for curl
+CURL_LIB=$(dump_library_path "libcurl.a" "${search_paths}") || echo "libcurl.a not found"
+CURL_HEADER=$(dump_library_path "curl.h" "${search_paths}") || echo "curl.h not found"
+LIBCURL_IS_SYSTEM_INSTALLED=0
+
+if [[ -n "$CURL_HEADER" && -n "$CURL_LIB" ]]; then
+    LIBCURL_IS_SYSTEM_INSTALLED=1
+fi
+
 popd > /dev/null # ${FRAMEWORK_DIR}
 
 # Switch                             Description                                                 Effect on LWS Build
