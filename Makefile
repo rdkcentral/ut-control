@@ -63,8 +63,13 @@ XLDFLAGS += $(LIBWEBSOCKETS_DIR)/lib/libwebsockets.a
 
 # CURL Requirements
 CURL_DIR = $(TOP_DIR)/build/$(TARGET)/curl
+ifneq ($(wildcard $(CURL_DIR)),)
 INC_DIRS += $(CURL_DIR)/include
 XLDFLAGS += $(CURL_DIR)/lib/libcurl.a
+else
+# Commands to run if the directory does not exist
+XLDFLAGS += -lcurl
+endif
 
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
