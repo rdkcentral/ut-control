@@ -37,8 +37,10 @@ OPENSSL_DIR=${FRAMEWORK_DIR}/openssl/openssl-OpenSSL_1_1_1w
 CMAKE_DIR=${MY_DIR}/host-tools/CMake-3.30.0
 CMAKE_BIN_DIR=${CMAKE_DIR}/build/bin
 HOST_CC=gcc
-TARGET_CC=${CC}
-BUILD_DIR=${MY_DIR}/build/${TARGET}
+BUILD_DIR=${MY_DIR}/build
+LIBWEBSOCKETS_BUILD_DIR=${BUILD_DIR}/${TARGET}/libwebsockets
+OPENSSL_BUILD_DIR=${BUILD_DIR}/${TARGET}/openssl
+CURL_BUILD_DIR=${BUILD_DIR}/${TARGET}/curl
 
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
@@ -125,9 +127,6 @@ dump_library_path() {
     return 1  # Return an error code if the file was not found
 }
 
-# Ensure the output file is created or cleared at the beginning
-> "${output_file}"
-
 # Check package-config file and static library for OpenSSL
 OPENSSL_PC=$(dump_library_path "openssl.pc" "${search_paths}") || echo "openssl.pc not found"
 OPENSSL_STATIC_SSL_LIB=$(dump_library_path "libssl.a" "${search_paths}") || echo "libssl.a not found"
@@ -180,8 +179,8 @@ pushd ${FRAMEWORK_DIR} > /dev/null
 
 build_libwebsockets(){
     cd ${LIBWEBSOCKETS_DIR}
-    mkdir -p ${BUILD_DIR}/libwebsockets
-    cd ${BUILD_DIR}/libwebsockets
+    mkdir -p ${LIBWEBSOCKETS_BUILD_DIR}
+    cd ${LIBWEBSOCKETS_BUILD_DIR}
     ${CMAKE_BIN} ${LIBWEBSOCKETS_DIR} -DLWS_WITH_SSL=OFF -DLWS_WITH_ZIP_FOPS=OFF -DLWS_WITH_ZLIB=OFF -DLWS_WITHOUT_BUILTIN_GETIFADDRS=ON \
     -DLWS_WITHOUT_CLIENT=ON -DLWS_WITHOUT_EXTENSIONS=ON -DLWS_WITHOUT_TESTAPPS=ON -DLWS_WITH_SHARED=ON \
     -DLWS_WITHOUT_TEST_SERVER=ON -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON \
@@ -192,7 +191,7 @@ build_libwebsockets(){
 
 if [ -d "${LIBWEBSOCKETS_DIR}" ]; then
     echo "Framework [libwebsockets] already exists"
-    if [ -d "${MY_DIR}/build/${TARGET}/libwebsockets" ]; then
+    if [ -d "${LIBWEBSOCKETS_BUILD_DIR}" ]; then
         echo "Framework [libwebsockets] already built for ${TARGET}"
     else
         build_libwebsockets
@@ -210,15 +209,15 @@ pushd ${FRAMEWORK_DIR} > /dev/null
 
 build_openssl(){
     cd ${OPENSSL_DIR}
-    mkdir -p ${BUILD_DIR}/openssl
+    mkdir -p ${OPENSSL_BUILD_DIR}
     if [ "$TARGET" = "arm" ]; then
         # For arm
         CROSS_COMPILE=
         COMPILER_FLAGS=$(echo $CC | cut -d' ' -f2-)
-        /usr/bin/perl ./Configure linux-armv4 shared --prefix=${BUILD_DIR}/openssl --openssldir=${OPENSSL_DIR} --cross-compile-prefix=${CROSS_COMPILE} $COMPILER_FLAGS
+        /usr/bin/perl ./Configure linux-armv4 shared --prefix=${OPENSSL_BUILD_DIR} --openssldir=${OPENSSL_BUILD_DIR} --cross-compile-prefix=${CROSS_COMPILE} $COMPILER_FLAGS
     else
         # For linux
-        ./config --prefix=${BUILD_DIR}/openssl
+        ./config --prefix=${OPENSSL_BUILD_DIR}
     fi
     make && make install
 }
@@ -226,7 +225,7 @@ build_openssl(){
 if [ "$OPENSSL_IS_SYSTEM_INSTALLED" -eq 0 ]; then
     if [ -d "${OPENSSL_DIR}" ]; then
         echo "Framework [openssl] already exists"
-        if [ -d "${MY_DIR}/build/${TARGET}/openssl" ]; then
+        if [ -d "${OPENSSL_BUILD_DIR}" ]; then
             echo "Framework [openssl] already built for ${TARGET}"
         else
             echo "Building Framework [openssl] for ${TARGET}"
@@ -246,16 +245,16 @@ pushd ${FRAMEWORK_DIR} > /dev/null
 
 build_curl(){
     cd ${CURL_DIR}
-    mkdir -p ${BUILD_DIR}/curl
+    mkdir -p ${CURL_BUILD_DIR}
     if [ "$TARGET" = "arm" ]; then
         # For arm
-        ./configure CPPFLAGS="-I${BUILD_DIR}/openssl/include" LDFLAGS="-L${BUILD_DIR}/openssl/lib" --prefix=${BUILD_DIR}/curl --host=arm --with-ssl=${BUILD_DIR}/openssl --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
+        ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --host=arm --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
     else
         # For linux
         if [ "$OPENSSL_IS_SYSTEM_INSTALLED" -eq 1 ]; then
-            ./configure --prefix=${BUILD_DIR}/curl --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+            ./configure --prefix=${CURL_BUILD_DIR} --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
         else
-            ./configure CPPFLAGS="-I${BUILD_DIR}/openssl/include" LDFLAGS="-L${BUILD_DIR}/openssl/lib" --prefix=${BUILD_DIR}/curl --with-ssl=${BUILD_DIR}/openssl --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+            ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
         fi
     fi
     make $@; make $@ install
@@ -264,7 +263,7 @@ build_curl(){
 if [ "${LIBCURL_IS_SYSTEM_INSTALLED}" -eq 0 ]; then
     if [ -d "${CURL_DIR}" ]; then
         echo "Framework [curl] already exists"
-        if [ -d "${MY_DIR}/build/${TARGET}/curl" ]; then
+        if [ -d "${CURL_BUILD_DIR}" ]; then
             echo "Framework [curl] already built for ${TARGET}"
         else
             build_curl

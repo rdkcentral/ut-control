@@ -31,7 +31,15 @@ INC_DIR =
 export PATH := $(shell pwd)/toolchain:$(PATH)
 
 TOP_DIR = $(UT_CONTROL_DIR)
-BIN_DIR = $(TOP_DIR)/bin
+
+ifneq ($(TARGET),arm)
+TARGET=linux
+endif
+export TARGET
+
+LIB_DIR := $(TOP_DIR)/build/$(TARGET)/lib
+BUILD_DIR = $(TOP_DIR)/build/$(TARGET)/obj
+BIN_DIR = $(TOP_DIR)/build/bin
 BUILD_LIBS = yes
 
 # Enable libyaml Requirements
@@ -45,20 +53,9 @@ SRC_DIRS += $(ASPRINTF_DIR)
 INC_DIRS = $(LIBFYAML_DIR)/include
 INC_DIRS += $(ASPRINTF_DIR)
 
-ifeq ($(TARGET),arm)
-TARGET=arm
-else
-TARGET=linux
-endif
-export TARGET
-
-LIB_DIR := $(TOP_DIR)/lib/$(TARGET)
-BUILD_DIR = $(TOP_DIR)/build/$(TARGET)/obj
-
 # LIBWEBSOCKETS Requirements
 LIBWEBSOCKETS_DIR = $(TOP_DIR)/build/$(TARGET)/libwebsockets
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
-#INC_DIRS += $(LIBWEBSOCKETS_DIR)/build-$(TARGET)
 XLDFLAGS += $(LIBWEBSOCKETS_DIR)/lib/libwebsockets.a
 
 # CURL Requirements
@@ -121,7 +118,7 @@ DEPS += $(OBJS:.o=.d)
 
 .PHONY: clean list lib test all framework
 
-all: framework lib
+all: framework
 
 # Rule to create the shared library
 lib : ${OBJS}
@@ -139,6 +136,7 @@ $(BUILD_DIR)/%.o: %.c
 framework:
 	@echo -e ${GREEN}"Ensure ut-control framework is present"${NC}
 	@${UT_CONTROL_DIR}/configure.sh TARGET=$(TARGET)
+	make lib
 
 list:
 	@echo ${GREEN}List [$@]${NC}
