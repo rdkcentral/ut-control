@@ -43,8 +43,8 @@ BIN_DIR = $(TOP_DIR)/build/bin
 BUILD_LIBS = yes
 
 # Enable libyaml Requirements
-LIBFYAML_DIR = ${TOP_DIR}/framework/libfyaml-master
-ASPRINTF_DIR = ${TOP_DIR}/framework/asprintf/asprintf.c-master/
+LIBFYAML_DIR = ${TOP_DIR}/framework/$(TARGET)/libfyaml-master
+ASPRINTF_DIR = ${TOP_DIR}/framework/$(TARGET)/asprintf/asprintf.c-master/
 SRC_DIRS = $(LIBFYAML_DIR)/src/lib
 SRC_DIRS += $(LIBFYAML_DIR)/src/thread
 SRC_DIRS += $(LIBFYAML_DIR)/src/util

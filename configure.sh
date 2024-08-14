@@ -28,7 +28,7 @@ echo "[$0] TARGET [${TARGET}]"
 
 pushd ${MY_DIR} > /dev/null
 
-FRAMEWORK_DIR=${MY_DIR}/framework
+FRAMEWORK_DIR=${MY_DIR}/framework/${TARGET}
 LIBYAML_DIR=${FRAMEWORK_DIR}/libfyaml-master
 ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 LIBWEBSOCKETS_DIR=${FRAMEWORK_DIR}/libwebsockets-4.3.3
@@ -37,20 +37,24 @@ OPENSSL_DIR=${FRAMEWORK_DIR}/openssl/openssl-OpenSSL_1_1_1w
 CMAKE_DIR=${MY_DIR}/host-tools/CMake-3.30.0
 CMAKE_BIN_DIR=${CMAKE_DIR}/build/bin
 HOST_CC=gcc
-BUILD_DIR=${MY_DIR}/build
-LIBWEBSOCKETS_BUILD_DIR=${BUILD_DIR}/${TARGET}/libwebsockets
-OPENSSL_BUILD_DIR=${BUILD_DIR}/${TARGET}/openssl
-CURL_BUILD_DIR=${BUILD_DIR}/${TARGET}/curl
+BUILD_DIR=${MY_DIR}/build/${TARGET}
+LIBWEBSOCKETS_BUILD_DIR=${BUILD_DIR}/libwebsockets
+OPENSSL_BUILD_DIR=${BUILD_DIR}/openssl
+CURL_BUILD_DIR=${BUILD_DIR}/curl
 
+mkdir -p ${FRAMEWORK_DIR}
+mkdir -p ${BUILD_DIR}
+popd > /dev/null
+
+pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
 else
     echo "Clone libfyaml in ${LIBYAML_DIR}"
-    wget https://github.com/pantoniou/libfyaml/archive/refs/heads/master.zip --no-check-certificate -P framework/
-    cd framework/
+    wget https://github.com/pantoniou/libfyaml/archive/refs/heads/master.zip --no-check-certificate
     unzip master.zip
     echo "Patching Framework [${PWD}]"
-    cp ../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
+    cp ../../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
     patch -i CorrectWarningsAndBuildIssuesInLibYaml.patch -p0
     echo "Patching Complete"
     #    ./bootstrap.sh
