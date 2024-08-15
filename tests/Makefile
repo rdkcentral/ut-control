@@ -70,26 +70,26 @@ export LIB_DIR
 .PHONY: clean list build skeleton
 
 build:
-	@echo UT [$@]
+	@/bin/echo UT [$@]
 	$(ROOT_DIR)/build.sh
 	make -C ./ut-core test
 	@cp $(LIB_DIR)/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
-	@echo -e ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}
+	@/bin/echo -e ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}
 	@mkdir -p ${BIN_DIR}/assets
 	@cp -r ${ROOT_DIR}/src/assets/* ${BIN_DIR}/assets
 
 list:
-	@echo UT [$@]
+	@/bin/echo UT [$@]
 	make -C ./ut-core list
 
 clean:
-	@echo UT [$@]
+	@/bin/echo UT [$@]
 	@$(RM) -rf $(BIN_DIR)
 
 cleanall:
-	@echo UT [$@]
+	@/bin/echo UT [$@]
 	@$(RM) -rf $(BIN_DIR)
 	make -C ../ -f Makefile clean
 	make -C ./ut-core clean

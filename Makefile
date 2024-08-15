@@ -21,7 +21,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
 
-$(info $(shell echo -e ${GREEN}Building [$(TARGET_LIB)]${NC}))
+$(info $(shell /bin/echo -e ${GREEN}Building [$(TARGET_LIB)]${NC}))
 
 UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -122,40 +122,41 @@ all: framework
 
 # Rule to create the shared library
 lib : ${OBJS}
-	@echo -e ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
+	@/bin/echo -e ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
 	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
-	@echo -e ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
+	@/bin/echo -e ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
 	@$(MKDIR_P) $(dir $@)
 	@$(CC) $(XCFLAGS) -c $< -o $@
 
 # Ensure the framework is built
 framework:
-	@echo -e ${GREEN}"Ensure ut-control framework is present"${NC}
+	@/bin/echo -e ${GREEN}"Ensure ut-control framework is present"${NC}
 	@${UT_CONTROL_DIR}/configure.sh TARGET=$(TARGET)
 	make lib
 
 list:
-	@echo ${GREEN}List [$@]${NC}
-	@echo -e ${YELLOW}INC_DIRS:${NC} ${INC_DIRS}
-	@echo -e ${YELLOW}SRC_DIRS:${NC} ${SRC_DIRS}
-	@echo -e ${YELLOW}CFLAGS:${NC} ${CFLAGS}
-	@echo -e ${YELLOW}XLDFLAGS:${NC} ${XLDFLAGS}
-	@echo -e ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
+	@/bin/echo ${GREEN}List [$@]${NC}
+	@/bin/echo -e ${YELLOW}INC_DIRS:${NC} ${INC_DIRS}
+	@/bin/echo -e ${YELLOW}SRC_DIRS:${NC} ${SRC_DIRS}
+	@/bin/echo -e ${YELLOW}CFLAGS:${NC} ${CFLAGS}
+	@/bin/echo -e ${YELLOW}XLDFLAGS:${NC} ${XLDFLAGS}
+	@/bin/echo -e ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
 
 clean:
-	@echo -e ${GREEN}Performing Clean for $(TARGET)${NC}
+	@/bin/echo -e ${GREEN}Performing Clean for $(TARGET)${NC}
 	@$(RM) -rf $(BUILD_DIR)
 	@$(RM) -rf ${TOP_DIR}/*.txt
-	@echo -e ${GREEN}Clean Completed${NC}
+	@/bin/echo -e ${GREEN}Clean Completed${NC}
 
 cleanall: clean
-	@echo -e ${GREEN}Performing Clean on frameworks [$(TOP_DIR)/framework]${NC}
+	@/bin/echo -e ${GREEN}Performing Clean on frameworks [$(TOP_DIR)/framework] and build [$(TOP_DIR)/build/]${NC}
 	@${RM} -rf $(TOP_DIR)/framework
+	@${RM} -rf $(TOP_DIR)/build/
 
 cleanhost-tools:
-	@echo -e ${GREEN}Performing Clean on host-tools [$(TOP_DIR)/host-tools]${NC}
+	@/bin/echo -e ${GREEN}Performing Clean on host-tools [$(TOP_DIR)/host-tools]${NC}
 	@${RM} -rf $(TOP_DIR)/host-tools
