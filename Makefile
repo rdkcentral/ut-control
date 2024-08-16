@@ -20,8 +20,9 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 NC='\033[0m'
+ECHOE = /bin/echo -e
 
-$(info $(shell /bin/echo -e ${GREEN}Building [$(TARGET_LIB)]${NC}))
+$(info $(shell $(ECHOE) ${GREEN}Building [$(TARGET_LIB)]${NC}))
 
 UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -32,19 +33,21 @@ export PATH := $(shell pwd)/toolchain:$(PATH)
 
 TOP_DIR = $(UT_CONTROL_DIR)
 
-ifneq ($(TARGET),arm)
-TARGET=linux
+# TARGET must be supplied by the user
+ifeq ($(TARGET),)
+$(error "TARGET is not set, exiting")
 endif
-export TARGET
 
-LIB_DIR := $(TOP_DIR)/build/$(TARGET)/lib
-BUILD_DIR = $(TOP_DIR)/build/$(TARGET)/obj
+FRAMEWORK_SRC_DIR = $(TOP_DIR)/framework/$(TARGET)
+FRAMEWORK_BUILD_DIR = $(TOP_DIR)/build/$(TARGET)
+LIB_DIR := $(FRAMEWORK_BUILD_DIR)/lib
+BUILD_DIR = $(FRAMEWORK_BUILD_DIR)/obj
 BIN_DIR = $(TOP_DIR)/build/bin
 BUILD_LIBS = yes
 
 # Enable libyaml Requirements
-LIBFYAML_DIR = ${TOP_DIR}/framework/$(TARGET)/libfyaml-master
-ASPRINTF_DIR = ${TOP_DIR}/framework/$(TARGET)/asprintf/asprintf.c-master/
+LIBFYAML_DIR = $(FRAMEWORK_SRC_DIR)/libfyaml-master
+ASPRINTF_DIR = $(FRAMEWORK_SRC_DIR)/asprintf/asprintf.c-master/
 SRC_DIRS = $(LIBFYAML_DIR)/src/lib
 SRC_DIRS += $(LIBFYAML_DIR)/src/thread
 SRC_DIRS += $(LIBFYAML_DIR)/src/util
@@ -54,12 +57,12 @@ INC_DIRS = $(LIBFYAML_DIR)/include
 INC_DIRS += $(ASPRINTF_DIR)
 
 # LIBWEBSOCKETS Requirements
-LIBWEBSOCKETS_DIR = $(TOP_DIR)/build/$(TARGET)/libwebsockets
+LIBWEBSOCKETS_DIR = $(FRAMEWORK_BUILD_DIR)/libwebsockets
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
 XLDFLAGS += $(LIBWEBSOCKETS_DIR)/lib/libwebsockets.a
 
 # CURL Requirements
-CURL_DIR = $(TOP_DIR)/build/$(TARGET)/curl
+CURL_DIR = $(FRAMEWORK_BUILD_DIR)/curl
 ifneq ($(wildcard $(CURL_DIR)),)
 INC_DIRS += $(CURL_DIR)/include
 XLDFLAGS += $(CURL_DIR)/lib/libcurl.a
@@ -80,7 +83,7 @@ MKDIR_P ?= @mkdir -p
 TARGET ?= linux
 $(info TARGET [$(TARGET)])
 
-OPENSSL_LIB_DIR = $(TOP_DIR)/build/$(TARGET)/openssl/lib/
+OPENSSL_LIB_DIR = $(FRAMEWORK_BUILD_DIR)/openssl/lib/
 
 # defaults for target arm
 ifeq ($(TARGET),arm)
@@ -122,41 +125,41 @@ all: framework
 
 # Rule to create the shared library
 lib : ${OBJS}
-	@/bin/echo -e ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
+	@$(ECHOE) ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
 	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
-	@/bin/echo -e ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
+	@$(ECHOE) ${GREEN}Building [${YELLOW}$<${GREEN}]${NC}
 	@$(MKDIR_P) $(dir $@)
 	@$(CC) $(XCFLAGS) -c $< -o $@
 
 # Ensure the framework is built
 framework:
-	@/bin/echo -e ${GREEN}"Ensure ut-control framework is present"${NC}
-	@${UT_CONTROL_DIR}/configure.sh TARGET=$(TARGET)
+	@$(ECHOE) ${GREEN}"Ensure ut-control framework is present"${NC}
+	@${UT_CONTROL_DIR}/configure.sh $(TARGET)
 	make lib
 
 list:
-	@/bin/echo ${GREEN}List [$@]${NC}
-	@/bin/echo -e ${YELLOW}INC_DIRS:${NC} ${INC_DIRS}
-	@/bin/echo -e ${YELLOW}SRC_DIRS:${NC} ${SRC_DIRS}
-	@/bin/echo -e ${YELLOW}CFLAGS:${NC} ${CFLAGS}
-	@/bin/echo -e ${YELLOW}XLDFLAGS:${NC} ${XLDFLAGS}
-	@/bin/echo -e ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
+	@$(ECHOE) ${GREEN}List [$@]${NC}
+	@$(ECHOE) ${YELLOW}INC_DIRS:${NC} ${INC_DIRS}
+	@$(ECHOE) ${YELLOW}SRC_DIRS:${NC} ${SRC_DIRS}
+	@$(ECHOE) ${YELLOW}CFLAGS:${NC} ${CFLAGS}
+	@$(ECHOE) ${YELLOW}XLDFLAGS:${NC} ${XLDFLAGS}
+	@$(ECHOE) ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
 
 clean:
-	@/bin/echo -e ${GREEN}Performing Clean for $(TARGET)${NC}
+	@$(ECHOE) ${GREEN}Performing Clean for $(TARGET)${NC}
 	@$(RM) -rf $(BUILD_DIR)
 	@$(RM) -rf ${TOP_DIR}/*.txt
-	@/bin/echo -e ${GREEN}Clean Completed${NC}
+	@$(ECHOE) ${GREEN}Clean Completed${NC}
 
 cleanall: clean
-	@/bin/echo -e ${GREEN}Performing Clean on frameworks [$(TOP_DIR)/framework] and build [$(TOP_DIR)/build/]${NC}
+	@$(ECHOE) ${GREEN}Performing Clean on frameworks [$(TOP_DIR)/framework] and build [$(TOP_DIR)/build/]${NC}
 	@${RM} -rf $(TOP_DIR)/framework
 	@${RM} -rf $(TOP_DIR)/build/
 
 cleanhost-tools:
-	@/bin/echo -e ${GREEN}Performing Clean on host-tools [$(TOP_DIR)/host-tools]${NC}
+	@$(ECHOE) ${GREEN}Performing Clean on host-tools [$(TOP_DIR)/host-tools]${NC}
 	@${RM} -rf $(TOP_DIR)/host-tools

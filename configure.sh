@@ -24,6 +24,11 @@ set -e # error out if required
 SCRIPT_EXEC="$(realpath $0)"
 MY_DIR="$(dirname $SCRIPT_EXEC)"
 
+if [[ "$1" != "linux" && "$1" != "arm" ]]; then
+  echo "Error: argument must be 'linux' or 'arm'"
+  exit 1
+fi
+TARGET=${1}
 echo "[$0] TARGET [${TARGET}]"
 
 pushd ${MY_DIR} > /dev/null
@@ -54,6 +59,7 @@ else
     wget https://github.com/pantoniou/libfyaml/archive/refs/heads/master.zip --no-check-certificate
     unzip master.zip
     echo "Patching Framework [${PWD}]"
+    # Copy the patch file from src directory
     cp ../../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
     patch -i CorrectWarningsAndBuildIssuesInLibYaml.patch -p0
     echo "Patching Complete"
