@@ -23,6 +23,11 @@
 /* System Includes */
 #include <stdarg.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #define UT_LOG_MAX_LINE_SIZE (255) /**!< Max string size displayed by `UT_LOG`. */
 #define UT_LOG_MAX_PATH      (260) /**!< Default maximum path length. */
 
@@ -97,5 +102,9 @@ void UT_log(const char *function, int line, const char *format, ...);
  * @param ... - Variable arguments for the format string.
  */
 void UT_logPrefix(const char *function, int line, const char *prefix, const char *format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UT_LOG_H */

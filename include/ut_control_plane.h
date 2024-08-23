@@ -20,7 +20,12 @@
 
 #include <ut_kvp.h>
 
-/* Definations */
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+/* Definition */
 #define UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES (32) /*!< Maximum number of registered callback entries. */
 
 /**!
@@ -80,3 +85,7 @@ void UT_ControlPlane_Stop(ut_controlPlane_instance_t *pInstance);
  * @param pInstance - Handle to the control plane instance to be destroyed.
  */
 void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance );
+
+#ifdef __cplusplus
+}
+#endif

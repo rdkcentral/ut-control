@@ -27,7 +27,7 @@
 #include <ut.h>
 #include <ut_kvp.h>
 
-#include "ut_test_common.h"
+#include "../common/ut_test_common.h"
 
 #define KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE "assets/no_data_file.yaml"
 #define KVP_VALID_TEST_ZERO_LENGTH_YAML_FILE "assets/zero_length.yaml"

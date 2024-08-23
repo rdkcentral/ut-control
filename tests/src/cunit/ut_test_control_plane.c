@@ -31,7 +31,7 @@
 
 #include <ut_control_plane.h>
 
-#include "ut_test_common.h"
+#include "../common/ut_test_common.h"
 
 #define UT_CONTROL_YAML_FILE "example.yaml"
 #define UT_CONTROL_JSON_FILE "example.json"
