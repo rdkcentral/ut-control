@@ -45,8 +45,10 @@ ifeq ($(DGTEST),)
 $(info DGTEST FORCED TO 0)
 DGTEST=0
 SRC_DIRS = $(ROOT_DIR)/src/cunit $(ROOT_DIR)/src/common
+TARGET_EXEC = ut_control_test
 else
 SRC_DIRS = $(ROOT_DIR)/src/gtest $(ROOT_DIR)/src/common
+TARGET_EXEC = ut_control_gtest
 endif
 
 $(info TARGET [$(TARGET)])
@@ -58,7 +60,6 @@ endif
 
 YLDFLAGS += -L$(LIB_DIR) -lut_control -pthread
 
-TARGET_EXEC = ut_control_test	
 CFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER
 

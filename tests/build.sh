@@ -65,6 +65,7 @@ else
     #git checkout ${UT_CORE_PROJECT_VERSION} //Commented this as tests can be on latest ut-core
     git checkout feature/gh11-cpp-suppport-ut-core
     ./build.sh no_ut_control DGTEST=${DGTEST}
+    ./build.sh no_ut_control DGTEST=${!DGTEST} // making sure both gtest and cunit are downloaded
     #cd ..
     #./${0} $@
 fi
