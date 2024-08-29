@@ -85,7 +85,15 @@ run_make_with_logs() {
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}Make command executed successfully.${NC}"
     else
-        error_exit "Make command failed. Check the logs in make_log.txt"
+        echo -e "Make command failed. Check the logs in make_log.txt"
+    fi
+
+    echo -e "${YELLOW}Running make for GTEST...logs redirected to $PWD/make_log_gtest.txt${NC}"
+    make TARGET="$architecture_type" DGTEST=1 > make_log_gtest.txt 2>&1
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Make command executed successfully.${NC}"
+    else
+        echo -e "Make command failed. Check the logs in make_log_gtest.txt"
     fi
 
     # Execute make -C tests/ and redirect the log to a file
@@ -94,7 +102,15 @@ run_make_with_logs() {
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}Make -C tests/ command executed successfully.${NC}"
     else
-        error_exit "Make -C tests/ command failed. Check the logs in make_test_log.txt"
+        echo -e "Make -C tests/ command failed. Check the logs in make_test_log.txt"
+    fi
+
+    echo -e "${YELLOW}Running make -C tests/ got GTEST...logs redirected to $PWD/make_gtest_log.txt${NC}"
+    make TARGET="$architecture_type" -C tests/ DGTEST=1 > make_gtest_log.txt 2>&1
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Make -C tests/ command executed successfully.${NC}"
+    else
+        echo -e "Make -C tests/ command failed. Check the logs in make_gtest_log.txt"
     fi
 }
 
@@ -109,6 +125,8 @@ run_checks() {
     CURL_STATIC_LIB="build/${architecture_type}/curl/lib/libcurl.a"
     OPENSSL_STATIC_LIB="build/${architecture_type}/openssl/lib/libssl.a"
     CMAKE_HOST_BIN="host-tools/CMake-3.30.0/build/bin/cmake"
+    GTEST_STATIC_LIB="tests/ut-core/build/${architecture_type}/gtest/lib/libgtest.a"
+    GTEST_MAIN_STATIC_LIB="tests/ut-core/build/${architecture_type}/gtest/lib/libgtest_main.a"
 
     echo -e "${RED}RESULTS for ${environment} ${NC}"
 
@@ -180,6 +198,20 @@ run_checks() {
         else
             echo -e "${RED}CMake host binary exists. FAIL ${NC}"
         fi
+    fi
+
+    # Test for gtest static library
+    if [ -f "$GTEST_STATIC_LIB" ]; then
+        echo -e "${GREEN}$GTEST_STATIC_LIB exists. PASS${NC}"
+    else
+        echo -e "${RED}GTEST static lib does not exist. FAIL ${NC}"
+    fi
+
+    # Test for gtest main static library
+    if [ -f "$GTEST_MAIN_STATIC_LIB" ]; then
+        echo -e "${GREEN}$GTEST_MAIN_STATIC_LIB exists. PASS${NC}"
+    else
+        echo -e "${RED}GTEST main static lib does not exist. FAIL ${NC}"
     fi
 
     echo -e "${RED}==========================================================${NC}"
