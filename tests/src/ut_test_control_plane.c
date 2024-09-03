@@ -337,7 +337,7 @@ void test_ut_control_get_map_value( void )
 void test_ut_control_get_map_string( void )
 {
     UT_LOG("test_ut_control_get_map_string()\n");
-    UT_ASSERT_EQUAL(UT_Control_GetMapString(numericMaptable, 1), "one");
+    UT_ASSERT_STRING_EQUAL(UT_Control_GetMapString(numericMaptable, 1), "one");
 }
 
 void register_cp_function()
