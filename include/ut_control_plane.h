@@ -34,6 +34,12 @@ typedef enum
     UT_CONTROL_PLANE_STATUS_INVALID_PARAM     /*!< Invalid parameter passed. */
 } ut_control_plane_status_t;
 
+typedef struct
+{
+    char *string;
+    int32_t value;
+} ut_control_keyStringMapping_t;
+
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
 /** @brief  Callback function type for handling control plane messages. */
@@ -80,3 +86,30 @@ void UT_ControlPlane_Stop(ut_controlPlane_instance_t *pInstance);
  * @param pInstance - Handle to the control plane instance to be destroyed.
  */
 void UT_ControlPlane_Exit( ut_controlPlane_instance_t *pInstance );
+
+/**
+ * @brief Retrieves the mapped value corresponding to the given search string from the key map table.
+ *
+ * This function searches the provided key map table (`conversionMap`) for the specified `searchString`.
+ * If the `searchString` is found in the map, the corresponding mapped value is returned.
+ * If the `searchString` is not found, the function returns the `onNotFoundValue`.
+ *
+ * @param conversionMap Pointer to the key map table that contains key-value pairs.
+ * @param searchString  Pointer to the string that is being searched for in the map.
+ * @param onNotFoundValue The value to return if the `searchString` is not found in the map.
+ * @return The mapped value associated with `searchString` if found, otherwise `onNotFoundValue`.
+ */
+uint32_t UT_Control_GetMapValue(const ut_control_keyStringMapping_t *conversionMap, char *searchString, int onNotFoundValue);
+
+/**
+ * @brief Retrieves the mapped string corresponding to the given key from the key map table.
+ *
+ * This function searches the provided key map table (`conversionMap`) for the specified integer `key`.
+ * If the `key` is found in the map, the corresponding string is returned.
+ * If the `key` is not found, the function returns `NULL`.
+ *
+ * @param conversionMap Pointer to the key map table that contains key-string pairs.
+ * @param key The integer key for which the mapped string is being searched.
+ * @return Pointer to the string associated with `key` if found, otherwise `NULL`.
+ */
+char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key);
