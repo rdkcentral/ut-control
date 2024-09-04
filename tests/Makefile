@@ -32,6 +32,7 @@ BIN_DIR := $(ROOT_DIR)/build/bin
 TOP_DIR := $(ROOT_DIR)
 ECHOE = /bin/echo -e
 
+SRC_DIRS = $(ROOT_DIR)/src
 INC_DIRS := $(ROOT_DIR)/../include
 LIB_DIR = $(ROOT_DIR)/../build/${TARGET}/lib
 BUILD_DIR = $(ROOT_DIR)/build/$(TARGET)/obj
@@ -41,18 +42,7 @@ $(info TARGET FORCED TO Linux)
 TARGET=linux
 endif
 
-ifeq ($(DGTEST),)
-$(info DGTEST FORCED TO 0)
-DGTEST=0
-SRC_DIRS = $(ROOT_DIR)/src/cunit $(ROOT_DIR)/src/common
-TARGET_EXEC = ut_control_test
-else
-SRC_DIRS = $(ROOT_DIR)/src/gtest $(ROOT_DIR)/src/common
-TARGET_EXEC = ut_control_gtest
-endif
-
 $(info TARGET [$(TARGET)])
-$(info DGTEST [$(DGTEST)])
 
 ifeq ($(TARGET),arm)
 HAL_LIB_DIR := $(ROOT_DIR)/libs
@@ -60,6 +50,7 @@ endif
 
 YLDFLAGS += -L$(LIB_DIR) -lut_control -pthread
 
+TARGET_EXEC = ut_control_test
 CFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER
 
@@ -76,7 +67,6 @@ export HAL_LIB_DIR
 export TARGET_EXEC
 export BUILD_DIR
 export LIB_DIR
-export DGTEST
 
 .PHONY: clean list build skeleton
 

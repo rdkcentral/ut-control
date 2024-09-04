@@ -34,7 +34,6 @@ UT_PROJECT_MAJOR_VERSION="3."
 TEST_REPO=git@github.com:rdkcentral/ut-core.git
 
 echo "TARGET= [$TARGET] from [$0]"
-echo "DGTEST= [$DGTEST] from [$0]"
 
 # This function checks the latest version of UT core and recommends an upgrade if reuqired
 function check_next_revision()
@@ -64,8 +63,7 @@ else
     cd ./ut-core
     #git checkout ${UT_CORE_PROJECT_VERSION} //Commented this as tests can be on latest ut-core
     git checkout feature/gh11-cpp-suppport-ut-core
-    ./build.sh no_ut_control DGTEST=${DGTEST}
-    ./build.sh no_ut_control DGTEST=${!DGTEST} // making sure both gtest and cunit are downloaded
+    ./build.sh no_ut_control
     #cd ..
     #./${0} $@
 fi
