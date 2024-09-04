@@ -529,6 +529,40 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
     return UT_CONTROL_PLANE_STATUS_OK;
 }
 
+uint32_t UT_Control_GetMapValue(const ut_control_keyStringMapping_t *conversionMap, char *searchString, int defaultValue)
+{
+    if (conversionMap == NULL || searchString == NULL)
+    {
+        return defaultValue;
+    }
+
+    for (int32_t i = 0; conversionMap[i].string != NULL; i++)
+    {
+        if (strcmp(searchString, conversionMap[i].string) == 0)
+        {
+            return conversionMap[i].value;
+        }
+    }
+    return defaultValue;
+}
+
+char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key)
+{
+    if (conversionMap == NULL)
+    {
+        return NULL;
+    }
+
+    for (int32_t i = 0; conversionMap[i].string != NULL; i++)
+    {
+        if (key == conversionMap[i].value)
+        {
+            return conversionMap[i].string;
+        }
+    }
+    return NULL;
+}
+
 /** Static Functions */
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance)
 {
