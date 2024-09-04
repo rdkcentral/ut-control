@@ -38,11 +38,18 @@
 
 static UT_test_suite_t *gpAssertSuite1 = NULL;
 static UT_test_suite_t *gpAssertSuite2 = NULL;
+static UT_test_suite_t *gpAssertSuite3 = NULL;
 
 static ut_controlPlane_instance_t *gInstance = NULL;
 static volatile bool gMessageRecievedYAML = false;
 static volatile bool gMessageRecievedJSON = false;
 static test_ut_memory_t gUserDataYaml, gUserDataJson;
+
+const static ut_control_keyStringMapping_t numericMaptable [] = {
+  { "one", (int32_t)1 },
+  { "two", (int32_t)2 },
+  { "three", (int32_t)3 }
+};
 
 void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData);
 
@@ -321,6 +328,18 @@ void test_ut_control_performExit( void )
     UT_ControlPlane_Exit(gInstance);
 }
 
+void test_ut_control_get_map_value( void )
+{
+    UT_LOG("test_ut_control_get_map_value()\n");
+    UT_ASSERT(UT_Control_GetMapValue(numericMaptable, "three", 0) == 3);
+}
+
+void test_ut_control_get_map_string( void )
+{
+    UT_LOG("test_ut_control_get_map_string()\n");
+    UT_ASSERT_STRING_EQUAL(UT_Control_GetMapString(numericMaptable, 1), "one");
+}
+
 void register_cp_function()
 {
     /* L1 - ut_control function tests */
@@ -338,5 +357,10 @@ void register_cp_function()
     UT_add_test(gpAssertSuite2, "ut-cp run client", run_client_function);
     UT_add_test(gpAssertSuite2, "ut-cp Stop", test_ut_control_performStop);
     UT_add_test(gpAssertSuite2, "ut-cp Exit", test_ut_control_performExit);
+
+    gpAssertSuite3 = UT_add_suite("L1 - ut_control mapping tests", NULL, NULL);
+    assert(gpAssertSuite3 != NULL);
+    UT_add_test(gpAssertSuite3, "ut-control Get Map Value", test_ut_control_get_map_value);
+    UT_add_test(gpAssertSuite3, "ut-control get Map String", test_ut_control_get_map_string);
 
 }
