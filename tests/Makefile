@@ -48,9 +48,9 @@ ifeq ($(TARGET),arm)
 HAL_LIB_DIR := $(ROOT_DIR)/libs
 endif
 
-YLDFLAGS += -L $(LIB_DIR) -lut_control -pthread
+YLDFLAGS += -L$(LIB_DIR) -lut_control -pthread
 
-TARGET_EXEC = ut_control_test	
+TARGET_EXEC = ut_control_test
 CFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER
 
