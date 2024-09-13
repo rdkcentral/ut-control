@@ -23,6 +23,11 @@
 /* System Includes */
 #include <stdarg.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #define UT_LOG_MAX_LINE_SIZE (255) /**!< Max string size displayed by `UT_LOG`. */
 #define UT_LOG_MAX_PATH      (260) /**!< Default maximum path length. */
 
@@ -39,23 +44,23 @@
 
 // Macro for Basic Logging
 /**! Logs a message with file, line, and optional prefix. */
-#define UT_LOG(format, ...)                 UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_MAGENTA"LOG   "UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
+#define UT_LOG(format, ...)                 UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_MAGENTA "LOG   " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
 /**! Logs a message with a custom prefix (file and line are included). */
 #define UT_LOG_PREFIX(prefix, format, ...)  UT_logPrefix(__FILE__, __LINE__, prefix, format, ## __VA_ARGS__)
 
 // Macros for Different Log Levels
 /**! Logs a step in a test sequence. */
-#define UT_LOG_STEP(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_BLUE"STEP  "UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
+#define UT_LOG_STEP(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_BLUE "STEP  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
 /**! Logs informational messages. */
-#define UT_LOG_INFO(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_CYAN"INFO  "UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
+#define UT_LOG_INFO(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_CYAN "INFO  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
 /**! Logs debug-level messages. */
-#define UT_LOG_DEBUG(format, ...)           UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_MAGENTA"DEBUG "UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
+#define UT_LOG_DEBUG(format, ...)           UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_MAGENTA "DEBUG " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
 /**! Logs warning messages. */
-#define UT_LOG_WARNING(format, ...)         UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_YELLOW"WARN  "UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
+#define UT_LOG_WARNING(format, ...)         UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_YELLOW "WARN  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
 /**! Logs error messages. */
-#define UT_LOG_ERROR(format, ...)           UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED"ERROR "UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
+#define UT_LOG_ERROR(format, ...)           UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ERROR " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
 /**! Logs assertion failure messages with a prefix. */
-#define UT_LOG_ASSERT(prefix, format, ...)  UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED"ASSERT"UT_LOG_ASCII_NC, UT_LOG_ASCII_RED#prefix":"UT_LOG_ASCII_NC #format, ## __VA_ARGS__)
+#define UT_LOG_ASSERT(prefix, format, ...)  UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ASSERT  " UT_LOG_ASCII_NC, UT_LOG_ASCII_RED#prefix ":" UT_LOG_ASCII_NC #format, ## __VA_ARGS__)
 
 
 /**!
@@ -97,5 +102,9 @@ void UT_log(const char *function, int line, const char *format, ...);
  * @param ... - Variable arguments for the format string.
  */
 void UT_logPrefix(const char *function, int line, const char *prefix, const char *format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* UT_LOG_H */

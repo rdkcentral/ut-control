@@ -20,7 +20,12 @@
 
 #include <ut_kvp.h>
 
-/* Definations */
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+/* Definition */
 #define UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES (32) /*!< Maximum number of registered callback entries. */
 
 /**!
@@ -113,3 +118,7 @@ uint32_t UT_Control_GetMapValue(const ut_control_keyStringMapping_t *conversionM
  * @return Pointer to the string associated with `key` if found, otherwise `NULL`.
  */
 char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key);
+
+#ifdef __cplusplus
+}
+#endif
