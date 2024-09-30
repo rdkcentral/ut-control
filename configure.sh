@@ -35,7 +35,11 @@ pushd ${MY_DIR} > /dev/null
 
 FRAMEWORK_DIR=${MY_DIR}/framework/${TARGET}
 LIBYAML_DIR=${FRAMEWORK_DIR}/libfyaml-master
+LIBYAML_VERSION=592ccc17552ba3eb51b479432986d8786c4fbbe0 #July 23, 2023
+
 ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
+ASPRINTF_VERSION=0.0.3
+
 LIBWEBSOCKETS_DIR=${FRAMEWORK_DIR}/libwebsockets-4.3.3
 CURL_DIR=${FRAMEWORK_DIR}/curl/curl-8.8.0
 OPENSSL_DIR=${FRAMEWORK_DIR}/openssl/openssl-OpenSSL_1_1_1w
@@ -55,9 +59,11 @@ pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
 else
-    echo "Clone libfyaml in ${LIBYAML_DIR}"
-    wget https://github.com/pantoniou/libfyaml/archive/refs/heads/master.zip --no-check-certificate
-    unzip master.zip
+    echo "wget libfyaml in ${LIBYAML_DIR}"
+    # Pull fixed version
+    wget https://github.com/pantoniou/libfyaml/archive/${LIBYAML_VERSION}.zip --no-check-certificate
+    unzip ${LIBYAML_VERSION}.zip
+    mv libfyaml-${LIBYAML_VERSION} libfyaml-master
     echo "Patching Framework [${PWD}]"
     # Copy the patch file from src directory
     cp ../../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
@@ -73,10 +79,12 @@ pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${ASPRINTF_DIR}" ]; then
     echo "Framework [asprintf] already exists"
 else
-    echo "Clone asprintf in ${ASPRINTF_DIR}"
-    wget https://github.com/jwerle/asprintf.c/archive/refs/heads/master.zip -P asprintf/. --no-check-certificate
+    echo "wget asprintf in ${ASPRINTF_DIR}"
+    # Pull fixed version 
+    wget https://github.com/jwerle/asprintf.c/archive/refs/tags/${ASPRINTF_VERSION}.zip -P asprintf/. --no-check-certificate
     cd asprintf
-    unzip master.zip
+    unzip ${ASPRINTF_VERSION}.zip
+    mv asprintf.c-${ASPRINTF_VERSION} asprintf.c-master
     rm asprintf.c-master/test.c
 fi
 popd > /dev/null
@@ -105,9 +113,13 @@ popd > /dev/null
 
 pushd "${FRAMEWORK_DIR}" > /dev/null
 
-if [ "$TARGET" = "arm" ]; then
+if [ "$TARGET" == "arm" ]; then
     TARGET=arm
     # Extract the sysroot value
+    if [ "${CC}" == "" ]; then
+        echo "CC is not set.. Exiting"
+        exit 1
+    fi
     SYSROOT=$(echo "$CC" | grep -oP '(?<=--sysroot=)[^ ]+')
     search_paths=$SYSROOT
 else
