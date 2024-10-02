@@ -35,7 +35,8 @@ pushd ${MY_DIR} > /dev/null
 
 FRAMEWORK_DIR=${MY_DIR}/framework/${TARGET}
 LIBYAML_DIR=${FRAMEWORK_DIR}/libfyaml-master
-LIBYAML_VERSION=592ccc17552ba3eb51b479432986d8786c4fbbe0 #July 23, 2023
+LIBYAML_VERSION=997b480cc4239a7f55771535dff52ad69bd4eb5b #30th September 2023
+#LIBYAML_VERSION=592ccc17552ba3eb51b479432986d8786c4fbbe0 #July 23, 2023
 
 ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 ASPRINTF_VERSION=0.0.3
@@ -64,11 +65,6 @@ else
     wget https://github.com/pantoniou/libfyaml/archive/${LIBYAML_VERSION}.zip --no-check-certificate
     unzip ${LIBYAML_VERSION}.zip
     mv libfyaml-${LIBYAML_VERSION} libfyaml-master
-    echo "Patching Framework [${PWD}]"
-    # Copy the patch file from src directory
-    cp ../../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
-    patch -i CorrectWarningsAndBuildIssuesInLibYaml.patch -p0
-    echo "Patching Complete"
     #    ./bootstrap.sh
     #    ./configure --prefix=${LIBYAML_DIR}
     #    make
@@ -132,7 +128,8 @@ OPENSSL_IS_SYSTEM_INSTALLED=0
 output_file="${MY_DIR}/file_path.txt"
 
 # Function to search for a file and dump its path to a file if found
-dump_library_path() {
+dump_library_path()
+{
     local library_name="$1"
     local paths="$2"
 
@@ -199,7 +196,8 @@ popd > /dev/null # ${FRAMEWORK_DIR}
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 
-build_libwebsockets(){
+build_libwebsockets()
+{
     cd ${LIBWEBSOCKETS_DIR}
     mkdir -p ${LIBWEBSOCKETS_BUILD_DIR}
     cd ${LIBWEBSOCKETS_BUILD_DIR}
@@ -209,11 +207,12 @@ build_libwebsockets(){
     -DLWS_WITHOUT_DAEMONIZE=ON -DCMAKE_C_FLAGS=-fPIC -DLWS_WITH_NO_LOGS=ON -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DLWS_HAVE_LIBCAP=0
     make $@
+    touch ${LIBWEBSOCKETS_BUILD_DIR}/.build_complete
 }
 
 if [ -d "${LIBWEBSOCKETS_DIR}" ]; then
     echo "Framework [libwebsockets] already exists"
-    if [ -d "${LIBWEBSOCKETS_BUILD_DIR}" ]; then
+    if [ -f "${LIBWEBSOCKETS_BUILD_DIR}/.build_complete" ]; then
         echo "Framework [libwebsockets] already built for ${TARGET}"
     else
         build_libwebsockets
@@ -229,7 +228,8 @@ popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 
-build_openssl(){
+build_openssl()
+{
     cd ${OPENSSL_DIR}
     mkdir -p ${OPENSSL_BUILD_DIR}
     if [ "$TARGET" = "arm" ]; then
@@ -242,12 +242,13 @@ build_openssl(){
         ./config --prefix=${OPENSSL_BUILD_DIR}
     fi
     make && make install
+    touch ${OPENSSL_BUILD_DIR}/.build_complete
 }
 
 if [ "$OPENSSL_IS_SYSTEM_INSTALLED" -eq 0 ]; then
     if [ -d "${OPENSSL_DIR}" ]; then
         echo "Framework [openssl] already exists"
-        if [ -d "${OPENSSL_BUILD_DIR}" ]; then
+        if [ -f "${OPENSSL_BUILD_DIR}/.build_complete" ]; then
             echo "Framework [openssl] already built for ${TARGET}"
         else
             echo "Building Framework [openssl] for ${TARGET}"
@@ -265,11 +266,13 @@ popd > /dev/null # ${FRAMEWORK_DIR}
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 
-build_curl(){
+build_curl()
+{
     cd ${CURL_DIR}
     mkdir -p ${CURL_BUILD_DIR}
     if [ "$TARGET" = "arm" ]; then
         # For arm
+        export SSL_LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib"
         ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --host=arm --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
     else
         # For linux
@@ -280,12 +283,13 @@ build_curl(){
         fi
     fi
     make $@; make $@ install
+    touch ${CURL_BUILD_DIR}/.build_complete
 }
 
 if [ "${LIBCURL_IS_SYSTEM_INSTALLED}" -eq 0 ]; then
     if [ -d "${CURL_DIR}" ]; then
         echo "Framework [curl] already exists"
-        if [ -d "${CURL_BUILD_DIR}" ]; then
+        if [ -f "${CURL_BUILD_DIR}/.build_complete" ]; then
             echo "Framework [curl] already built for ${TARGET}"
         else
             build_curl
