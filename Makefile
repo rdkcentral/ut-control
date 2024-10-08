@@ -75,8 +75,8 @@ endif
 SRC_DIRS += ${TOP_DIR}/src
 INC_DIRS += ${TOP_DIR}/include
 
-CFLAGS += -fPIC -Wall -shared   # Flags for compilation
-CFLAGS += -DNDEBUG
+XCFLAGS += -fPIC -Wall -shared   # Flags for compilation
+XCFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER
 
 MKDIR_P ?= @mkdir -p
@@ -127,7 +127,7 @@ all: framework
 lib : ${OBJS}
 	@$(ECHOE) ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
-	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
+	@$(CC) $(XFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
