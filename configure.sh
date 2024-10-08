@@ -35,8 +35,8 @@ pushd ${MY_DIR} > /dev/null
 
 FRAMEWORK_DIR=${MY_DIR}/framework/${TARGET}
 LIBYAML_DIR=${FRAMEWORK_DIR}/libfyaml-master
-LIBYAML_VERSION=997b480cc4239a7f55771535dff52ad69bd4eb5b #30th September 2023
-#LIBYAML_VERSION=592ccc17552ba3eb51b479432986d8786c4fbbe0 #July 23, 2023
+LIBYAML_VERSION=997b480cc4239a7f55771535dff52ad69bd4eb5b #30th September 2024
+#LIBYAML_VERSION=592ccc17552ba3eb51b479432986d8786c4fbbe0 #July 23, 2024
 
 ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 ASPRINTF_VERSION=0.0.3
@@ -277,7 +277,6 @@ build_curl()
     mkdir -p ${CURL_BUILD_DIR}
     if [ "$TARGET" = "arm" ]; then
         # For arm
-        export SSL_LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib"
         ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --host=arm --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
     else
         # For linux
