@@ -18,3 +18,7 @@ Licensed under the MIT License
 
 This repository make use of the libwebsockets framework, which is licensed under the MIT License,
 https://github.com/warmcat/libwebsockets?tab=License-1-ov-file
+
+This product includes software developed by the OpenSSL Project for use in the OpenSSL Toolkit. (http://www.openssl.org/)
+Copyright (c) 1998-2018 The OpenSSL Project. All rights reserved.
+Licensed under the OPENSSL License
