@@ -56,6 +56,9 @@ SRC_DIRS += $(ASPRINTF_DIR)
 INC_DIRS = $(LIBFYAML_DIR)/include
 INC_DIRS += $(ASPRINTF_DIR)
 
+# LIBFYAML Requirements
+XLDFLAGS += -pthread
+
 # LIBWEBSOCKETS Requirements
 LIBWEBSOCKETS_DIR = $(FRAMEWORK_BUILD_DIR)/libwebsockets
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
@@ -127,7 +130,7 @@ all: framework
 lib : ${OBJS}
 	@$(ECHOE) ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
-	@$(CC) $(XFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
+	@$(CC) $(XCFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
@@ -167,3 +170,9 @@ cleanall: clean
 cleanhost-tools:
 	@$(ECHOE) ${GREEN}Performing Clean on host-tools [$(TOP_DIR)/host-tools]${NC}
 	@${RM} -rf $(TOP_DIR)/host-tools
+
+printenv:
+	@echo "Environment variables: [UT]"
+	@echo "---------------------------"
+	@$(foreach v, $(.VARIABLES), $(info $(v) = $($(v))))
+	@echo "---------------------------"
