@@ -57,21 +57,6 @@ mkdir -p ${BUILD_DIR}
 popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
-if [ -d "${LIBYAML_DIR}" ]; then
-    echo "Framework [libfyaml] already exists"
-else
-    echo "wget libfyaml in ${LIBYAML_DIR}"
-    # Pull fixed version
-    wget https://github.com/pantoniou/libfyaml/archive/${LIBYAML_VERSION}.zip --no-check-certificate
-    unzip ${LIBYAML_VERSION}.zip
-    mv libfyaml-${LIBYAML_VERSION} libfyaml-master
-    #    ./bootstrap.sh
-    #    ./configure --prefix=${LIBYAML_DIR}
-    #    make
-fi
-popd > /dev/null
-
-pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${ASPRINTF_DIR}" ]; then
     echo "Framework [asprintf] already exists"
 else
@@ -82,6 +67,26 @@ else
     unzip ${ASPRINTF_VERSION}.zip
     mv asprintf.c-${ASPRINTF_VERSION} asprintf.c-master
     rm asprintf.c-master/test.c
+fi
+popd > /dev/null
+
+pushd ${FRAMEWORK_DIR} > /dev/null
+if [ -d "${LIBYAML_DIR}" ]; then
+    echo "Framework [libfyaml] already exists"
+else
+    echo "wget libfyaml in ${LIBYAML_DIR}"
+    # Pull fixed version
+    wget https://github.com/pantoniou/libfyaml/archive/${LIBYAML_VERSION}.zip --no-check-certificate
+    unzip ${LIBYAML_VERSION}.zip
+    mv libfyaml-${LIBYAML_VERSION} libfyaml-master
+    echo "Patching Framework [${PWD}]"
+    # Copy the patch file from src directory
+    cp ../../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
+    patch -i CorrectWarningsAndBuildIssuesInLibYaml.patch -p0
+    echo "Patching Complete"
+    #    ./bootstrap.sh
+    #    ./configure --prefix=${LIBYAML_DIR}
+    #    make
 fi
 popd > /dev/null
 

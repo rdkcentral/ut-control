@@ -7,3 +7,14 @@ listed below.  Your use of this material within the component is also subject to
 conditions of these licenses.  The LICENSE file contains the text of all the licenses which apply
 within this component.
 
+libyaml
+This framework uses the libfyaml library (https://github.com/pantoniou/libfyaml), which is:
+Copyright (c) 2019 Pantelis Antoniou <pantelis.antoniou@konsulko.com>
+Licensed under the MIT License
+
+It also uses asprintf.c (https://github.com/jwerle/asprintf.c) which is:
+Copyright (c) 2014 Little Star Media, Inc.
+Licensed under the MIT License
+
+This repository make use of the libwebsockets framework, which is licensed under the MIT License,
+https://github.com/warmcat/libwebsockets?tab=License-1-ov-file

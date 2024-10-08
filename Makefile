@@ -151,8 +151,12 @@ list:
 
 clean:
 	@$(ECHOE) ${GREEN}Performing Clean for $(TARGET)${NC}
+	@$(ECHOE) ${GREEN}rm -rf $(BUILD_DIR)${NC}
 	@$(RM) -rf $(BUILD_DIR)
+	@$(ECHOE) ${GREEN}rm -rf ${TOP_DIR}/*.txt${NC}
 	@$(RM) -rf ${TOP_DIR}/*.txt
+	@${ECHOE} rm [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
+	#@$(RM) -fr $(LIB_DIR)/$(TARGET_LIB)
 	@$(ECHOE) ${GREEN}Clean Completed${NC}
 
 cleanall: clean
