@@ -66,6 +66,10 @@ else
     unzip ${ASPRINTF_VERSION}.zip
     mv asprintf.c-${ASPRINTF_VERSION} asprintf.c-master
     rm asprintf.c-master/test.c
+    echo "Patching Framework [${PWD}]"
+    cd asprintf.c-master
+    cp ../../../../src/asprintf/patches/FixWarningsInAsprintf.patch  .
+    patch -i FixWarningsInAsprintf.patch -p0
 fi
 popd > /dev/null
 

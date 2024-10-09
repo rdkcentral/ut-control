@@ -1,0 +1,22 @@
+#Date: October 9, 2024
+#Subject: [PATCH] Patch to fix compilation warning in asprintf directory version:0.0.3.
+#
+#Source: Uses code from the asprintf.c
+#See NOTICE for license details.
+#
+#Signed-off-by: kanjoe24 <165808281+kanjoe24@users.noreply.github.com>
+#---
+#
+#==========================================================================================
+--- asprintf.c.bak	2024-10-09 15:03:52.193525005 +0000
++++ asprintf.c	2024-10-09 15:05:37.379514246 +0000
+@@ -40,7 +40,8 @@
+ 
+   // apply variadic arguments to
+   // sprintf with format to get size
+-  size = vsnprintf(NULL, size, fmt, tmpa);
++  char dummy_buffer[1];
++  size = vsnprintf(dummy_buffer, size, fmt, tmpa);
+ 
+   // toss args
+   va_end(tmpa);
