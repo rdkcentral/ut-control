@@ -154,12 +154,12 @@ list:
 
 clean:
 	@$(ECHOE) ${GREEN}Performing Clean for $(TARGET)${NC}
-	@$(ECHOE) ${GREEN}rm -rf $(BUILD_DIR)${NC}
+	@$(ECHOE) ${GREEN}rm -rf [${YELLOW}$(BUILD_DIR)${GREEN}]${NC}
 	@$(RM) -rf $(BUILD_DIR)
-	@$(ECHOE) ${GREEN}rm -rf ${TOP_DIR}/*.txt${NC}
+	@$(ECHOE) ${GREEN}rm -rf [${YELLOW}${TOP_DIR}/*.txt${GREEN}]${NC}
 	@$(RM) -rf ${TOP_DIR}/*.txt
-	@${ECHOE} rm [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
-	#@$(RM) -fr $(LIB_DIR)/$(TARGET_LIB)
+	@${ECHOE} ${GREEN}rm -fr [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
+	@$(RM) -fr $(LIB_DIR)/$(TARGET_LIB)
 	@$(ECHOE) ${GREEN}Clean Completed${NC}
 
 cleanall: clean
