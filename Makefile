@@ -16,13 +16,13 @@
 
 TARGET_LIB = libut_control.so
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
+RED:='\033[0;31m'
+GREEN:='\033[0;32m'
+YELLOW:='\033[0;33m'
+NC:='\033[0m'
 ECHOE = /bin/echo -e
 
-$(info $(shell $(ECHOE) ${GREEN}Building [$(TARGET_LIB)]${NC}))
+$(info $(shell $(ECHOE) ${GREEN}Building ${YELLOW}[$(TARGET_LIB)]${NC}))
 
 UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -172,7 +172,8 @@ cleanhost-tools:
 	@${RM} -rf $(TOP_DIR)/host-tools
 
 printenv:
-	@echo "Environment variables: [UT]"
-	@echo "---------------------------"
-	@$(foreach v, $(.VARIABLES), $(info $(v) = $($(v))))
-	@echo "---------------------------"
+	@$(ECHOE) "Environment variables: [UT]"
+	@$(ECHOE) "---------------------------"
+	@$(foreach v, $(.VARIABLES), \
+		$(info $(v) = $($(v)))))
+	@$(ECHOE) "---------------------------"
