@@ -1,4 +1,6 @@
 # User defined
+build
+file_path.txt
 tests/obj/*
 .lastlogin
 framework/**
