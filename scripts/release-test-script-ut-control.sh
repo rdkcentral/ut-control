@@ -41,6 +41,7 @@ fi
 if [ -z "$REPO_URL" ]; then
     REPO_URL=git@github.com:rdkcentral/ut-control.git
 fi
+REPO_NAME=$(basename "$REPO_URL" .git)
 
 # # Set compiler type based on the environment passed
 # case "$environment" in
@@ -186,6 +187,37 @@ run_checks() {
     echo -e "${RED}==========================================================${NC}"
 }
 
+print_results() {
+    pushd ${MY_DIR} > /dev/null
+
+    #Results for ubuntu
+    PLAT_DIR="${REPO_NAME}-ubuntu"
+    pushd ${PLAT_DIR} > /dev/null
+    run_checks "ubuntu" "linux" "$ut_control_branch_name"
+    popd > /dev/null
+
+    #Results for VM_SYNC
+    PLAT_DIR="${REPO_NAME}-VM-SYNC"
+    pushd ${PLAT_DIR} > /dev/null
+    run_checks "VM-SYNC" "linux" $ut_control_branch_name
+    popd > /dev/null
+
+    #Results for dunfell-arm
+    PLAT_DIR="${REPO_NAME}-dunfell_arm"
+    pushd ${PLAT_DIR} > /dev/null
+    run_checks "dunfell_arm" "arm" $ut_control_branch_name
+    popd > /dev/null
+
+    #Results for dunfell-linux
+    PLAT_DIR="${REPO_NAME}-dunfell_linux"
+    pushd ${PLAT_DIR} > /dev/null
+    run_checks "dunfell_linux" "linux" $ut_control_branch_name
+    popd > /dev/null
+
+    popd > /dev/null
+
+}
+
 # Environment-specific setups and execution
 export -f run_make_with_logs
 export -f run_checks
@@ -221,7 +253,7 @@ run_on_dunfell_arm() {
 
 run_on_vm_sync_linux() {
     pushd ${MY_DIR} > /dev/null
-    SETUP_ENV="sc docker run --local vm-sync"
+    SETUP_ENV="sc docker run vm-sync"
     run_git_clone "VM-SYNC"
     /bin/bash -c "$SETUP_ENV '$(declare -f run_make_with_logs); run_make_with_logs 'linux';'"
     run_checks "VM-SYNC" "linux" $ut_control_branch_name
@@ -232,5 +264,6 @@ run_on_vm_sync_linux() {
 #( run_on_ubuntu_linux ) &
 #( run_on_dunfell_linux ) &
 #wait
-#run_on_vm_sync_linux
-run_on_dunfell_arm
+run_on_vm_sync_linux
+#run_on_dunfell_arm
+print_results
