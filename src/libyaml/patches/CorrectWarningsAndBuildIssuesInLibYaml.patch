@@ -8,26 +8,6 @@
 #---
 #
 #==========================================================================================
-diff -crB libfyaml-master/src/lib/fy-composer.h libfyaml-master-updated/src/lib/fy-composer.h
-*** libfyaml-master/src/lib/fy-composer.h	2024-04-22 17:20:09.000000000 +0000
---- libfyaml-master-updated/src/lib/fy-composer.h	2024-05-10 12:50:19.165421994 +0000
-***************
-*** 48,54 ****
-  
-  struct fy_composer *fy_composer_create(struct fy_composer_cfg *cfg);
-  void fy_composer_destroy(struct fy_composer *fyc);
-! int fy_composer_process_event(struct fy_composer *fyc, struct fy_event *fye);
-  
-  struct fy_composer_cfg *fy_composer_get_cfg(struct fy_composer *fyc);
-  void *fy_composer_get_cfg_userdata(struct fy_composer *fyc);
---- 48,54 ----
-  
-  struct fy_composer *fy_composer_create(struct fy_composer_cfg *cfg);
-  void fy_composer_destroy(struct fy_composer *fyc);
-! enum fy_composer_return fy_composer_process_event(struct fy_composer *fyc, struct fy_event *fye);
-  
-  struct fy_composer_cfg *fy_composer_get_cfg(struct fy_composer *fyc);
-  void *fy_composer_get_cfg_userdata(struct fy_composer *fyc);
 diff -crB libfyaml-master/src/lib/fy-diag.c libfyaml-master-updated/src/lib/fy-diag.c
 *** libfyaml-master/src/lib/fy-diag.c	2024-04-22 17:20:09.000000000 +0000
 --- libfyaml-master-updated/src/lib/fy-diag.c	2024-05-10 12:59:03.172799624 +0000
