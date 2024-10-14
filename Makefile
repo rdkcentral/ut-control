@@ -16,13 +16,13 @@
 
 TARGET_LIB = libut_control.so
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
+RED:='\033[0;31m'
+GREEN:='\033[0;32m'
+YELLOW:='\033[0;33m'
+NC:='\033[0m'
 ECHOE = /bin/echo -e
 
-$(info $(shell $(ECHOE) ${GREEN}Building [$(TARGET_LIB)]${NC}))
+$(info $(shell $(ECHOE) ${GREEN}Building ${YELLOW}[$(TARGET_LIB)]${NC}))
 
 UT_CONTROL_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -56,6 +56,9 @@ SRC_DIRS += $(ASPRINTF_DIR)
 INC_DIRS = $(LIBFYAML_DIR)/include
 INC_DIRS += $(ASPRINTF_DIR)
 
+# LIBFYAML Requirements
+XLDFLAGS += -pthread
+
 # LIBWEBSOCKETS Requirements
 LIBWEBSOCKETS_DIR = $(FRAMEWORK_BUILD_DIR)/libwebsockets
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
@@ -75,8 +78,8 @@ endif
 SRC_DIRS += ${TOP_DIR}/src
 INC_DIRS += ${TOP_DIR}/include
 
-CFLAGS += -fPIC -Wall -shared   # Flags for compilation
-CFLAGS += -DNDEBUG
+XCFLAGS += -fPIC -Wall -shared   # Flags for compilation
+XCFLAGS += -DNDEBUG
 # CFLAGS += -DWEBSOCKET_SERVER
 
 MKDIR_P ?= @mkdir -p
@@ -127,7 +130,7 @@ all: framework
 lib : ${OBJS}
 	@$(ECHOE) ${GREEN}Generating lib [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
 	@$(MKDIR_P) $(LIB_DIR)
-	@$(CC) $(CFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
+	@$(CC) $(XCFLAGS) -o $(LIB_DIR)/$(TARGET_LIB) $^ $(XLDFLAGS)
 
 # Make any c source
 $(BUILD_DIR)/%.o: %.c
@@ -151,8 +154,12 @@ list:
 
 clean:
 	@$(ECHOE) ${GREEN}Performing Clean for $(TARGET)${NC}
+	@$(ECHOE) ${GREEN}rm -rf [${YELLOW}$(BUILD_DIR)${GREEN}]${NC}
 	@$(RM) -rf $(BUILD_DIR)
+	@$(ECHOE) ${GREEN}rm -rf [${YELLOW}${TOP_DIR}/*.txt${GREEN}]${NC}
 	@$(RM) -rf ${TOP_DIR}/*.txt
+	@${ECHOE} ${GREEN}rm -fr [${YELLOW}$(LIB_DIR)/$(TARGET_LIB)${GREEN}]${NC}
+	@$(RM) -fr $(LIB_DIR)/$(TARGET_LIB)
 	@$(ECHOE) ${GREEN}Clean Completed${NC}
 
 cleanall: clean
@@ -163,3 +170,10 @@ cleanall: clean
 cleanhost-tools:
 	@$(ECHOE) ${GREEN}Performing Clean on host-tools [$(TOP_DIR)/host-tools]${NC}
 	@${RM} -rf $(TOP_DIR)/host-tools
+
+printenv:
+	@$(ECHOE) "Environment variables: [UT]"
+	@$(ECHOE) "---------------------------"
+	@$(foreach v, $(.VARIABLES), \
+		$(info $(v) = $($(v)))))
+	@$(ECHOE) "---------------------------"
