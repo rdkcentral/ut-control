@@ -3,9 +3,23 @@
 This Bash script automates the process of cloning PR branch on ut-control Git repository, compiling code for different environments, and running checks to ensure the setup is correct. It supports environments such as **Ubuntu**, **Dunfell Linux**, **Dunfell ARM**, and **VM-SYNC**.
 where:
    Dunfell Linux : is a docker with linux environment
-   Dunfell ARM : is a docker simulating the arm environment.
+   Dunfell ARM : is a docker simulating the arm environment for yocto version dunfell
+   Kirkstone ARM : is a docker simulating the arm environment for yocto version kirkstone
    VM-SYNC : is a docker simulating the RDK linux environment
- With these validations, it ensures if the PR is good for merge and has not broken the basic requirements.
+With these validations, it ensures if the PR is good for merge and has not broken the basic requirements.
+
+Following table gives an overview:
+
+|#|Target|Docker|Expectation
+|---|-----|-----------|---------
+|1|make TARGET=arm|rdk-dunfell|builds ut-control for target arm
+|2|make TARGET=arm|rdk-kirkstone|builds ut-control for target arm
+|3|make TARGET=linux|vm-sync|builds ut-control for target linux
+|4|make TARGET=linux|none|builds ut-control for target linux
+|5|make -C tests/ TARGET=arm|rdk-dunfell|builds ut-control tests for target arm
+|6|make -C tests/  TARGET=arm|rdk-kirkstone|builds ut-control tests for target arm
+|7|make -C tests/ TARGET=linux|vm-sync|builds ut-control tests for target linux
+|8|make -C tests/ TARGET=linux|none|builds ut-control tests for target linux
 
 ## Key Features
 

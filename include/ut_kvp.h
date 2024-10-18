@@ -25,6 +25,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /**! Status codes for the unit testing (UT) Key-Value Pair (KVP) framework. */
 typedef enum
 {
@@ -253,4 +258,9 @@ unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *psz
  * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`,
  *`ut_kvp_getInt64Field`
  */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* __UT_KVP_H__ */

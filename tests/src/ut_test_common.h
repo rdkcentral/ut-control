@@ -24,6 +24,10 @@
 /* Module Includes */
 #include <ut_log.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 typedef struct
 {
     char *buffer;
@@ -45,3 +49,7 @@ typedef struct
  * - Non-zero error code on failure (e.g., file not found, memory allocation failure).
  */
 int read_file_into_memory(const char* filename, test_ut_memory_t* pInstance);
+
+#ifdef __cplusplus
+}
+#endif

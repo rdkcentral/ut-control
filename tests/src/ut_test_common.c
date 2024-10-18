@@ -59,7 +59,7 @@ int read_file_into_memory(const char* filename, test_ut_memory_t* pInstance)
     rewind(file);
 
     // Allocate memory for the file contents
-    pInstance->buffer = malloc(pInstance->length + 1);
+    pInstance->buffer = (char *)malloc(pInstance->length + 1);
     if (pInstance->buffer == NULL)
     {
         UT_LOG_ERROR("malloc");

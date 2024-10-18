@@ -28,11 +28,14 @@
 #*
 #* ******************************************************************************
 ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-BIN_DIR := $(ROOT_DIR)/bin
+BIN_DIR := $(ROOT_DIR)/build/bin
 TOP_DIR := $(ROOT_DIR)
+ECHOE = /bin/echo -e
 
 SRC_DIRS = $(ROOT_DIR)/src
 INC_DIRS := $(ROOT_DIR)/../include
+LIB_DIR = $(ROOT_DIR)/../build/${TARGET}/lib
+BUILD_DIR = $(ROOT_DIR)/build/$(TARGET)/obj
 
 ifeq ($(TARGET),)
 $(info TARGET FORCED TO Linux)
@@ -45,7 +48,7 @@ ifeq ($(TARGET),arm)
 HAL_LIB_DIR := $(ROOT_DIR)/libs
 endif
 
-YLDFLAGS += -L $(ROOT_DIR)/../lib -lut_control -pthread
+YLDFLAGS += -L$(LIB_DIR) -lut_control -pthread
 
 TARGET_EXEC = ut_control_test
 CFLAGS += -DNDEBUG
@@ -62,30 +65,32 @@ export TARGET
 export TOP_DIR
 export HAL_LIB_DIR
 export TARGET_EXEC
+export BUILD_DIR
+export LIB_DIR
 
 .PHONY: clean list build skeleton
 
 build:
-	@echo UT [$@]
+	@$(ECHOE) UT [$@]
 	$(ROOT_DIR)/build.sh
 	make -C ./ut-core test
-	@cp $(ROOT_DIR)/../lib/lib* ${BIN_DIR}
+	@cp $(LIB_DIR)/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
-	@echo -e ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}
+	@$(ECHOE) ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}
 	@mkdir -p ${BIN_DIR}/assets
 	@cp -r ${ROOT_DIR}/src/assets/* ${BIN_DIR}/assets
 
 list:
-	@echo UT [$@]
+	@$(ECHOE) UT [$@]
 	make -C ./ut-core list
 
 clean:
-	@echo UT [$@]
+	@$(ECHOE) UT [$@]
 	@$(RM) -rf $(BIN_DIR)
 
 cleanall:
-	@echo UT [$@]
+	@$(ECHOE) UT [$@]
 	@$(RM) -rf $(BIN_DIR)
 	make -C ../ -f Makefile clean
 	make -C ./ut-core clean
