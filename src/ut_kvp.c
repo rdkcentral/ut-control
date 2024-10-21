@@ -113,7 +113,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 
     if (access(fileName, F_OK) != 0)
     {
-        UT_LOG_DEBUG("[%s] cannot be accesed", fileName);
+        UT_LOG_ERROR("[%s] cannot be accesed", fileName);
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
     pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
@@ -476,7 +476,7 @@ bool ut_kvp_fieldPresent( ut_kvp_instance_t *pInstance, const char *pszKey)
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
-        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        UT_LOG_ERROR("node not found for key = %s : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
         return false;
     }
 
@@ -530,7 +530,7 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
-        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        UT_LOG_ERROR("node not found for key = %s : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
         return UT_KVP_STATUS_KEY_NOT_FOUND;
     }
 
@@ -593,7 +593,7 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
-        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        UT_LOG_ERROR("node not found for key = %s : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
         return 0;
     }
 
@@ -659,7 +659,7 @@ unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *psz
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if (node == NULL)
     {
-        UT_LOG_ERROR("node not found: UT_KVP_STATUS_KEY_NOT_FOUND");
+        UT_LOG_ERROR("node not found for key = %s : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
         return NULL;
     }
 
