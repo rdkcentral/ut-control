@@ -476,7 +476,8 @@ bool ut_kvp_fieldPresent( ut_kvp_instance_t *pInstance, const char *pszKey)
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
-        UT_LOG_ERROR("node not found for key = %s : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
+        //UT_LOG_DEBUG("node not found for key = [%s] : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
+        //Commented this out now, will uncomment it once logging module is upgraded
         return false;
     }
 
@@ -530,7 +531,7 @@ ut_kvp_status_t ut_kvp_getStringField( ut_kvp_instance_t *pInstance, const char 
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
-        UT_LOG_ERROR("node not found for key = %s : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
+        UT_LOG_ERROR("node not found for key = [%s] : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
         return UT_KVP_STATUS_KEY_NOT_FOUND;
     }
 
@@ -593,7 +594,7 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if ( node == NULL )
     {
-        UT_LOG_ERROR("node not found for key = %s : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
+        UT_LOG_ERROR("node not found for key = [%s] : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
         return 0;
     }
 
@@ -659,7 +660,7 @@ unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *psz
     node = fy_node_by_path(root, zKey, -1, FYNWF_DONT_FOLLOW);
     if (node == NULL)
     {
-        UT_LOG_ERROR("node not found for key = %s : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
+        UT_LOG_ERROR("node not found for key = [%s] : UT_KVP_STATUS_KEY_NOT_FOUND", pszKey);
         return NULL;
     }
 
