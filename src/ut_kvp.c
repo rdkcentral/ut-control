@@ -598,7 +598,7 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
         return 0;
     }
 
-    if (!fy_node_is_sequence(node))
+    if (fy_node_is_sequence(node) == false)
     {
         return 0; // Early return on negative check
     }
