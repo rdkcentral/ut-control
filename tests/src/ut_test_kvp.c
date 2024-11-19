@@ -305,6 +305,9 @@ void test_ut_kvp_list(void)
     uint32_t result;
     int count;
 
+    count = ut_kvp_getListCount(gpMainTestInstance, "decodeTest/checkFloat");
+    UT_ASSERT( count == 0 );
+
     count = ut_kvp_getListCount(gpMainTestInstance, "decodeTest/checkStringList");
     UT_ASSERT( count == 3 );
 
