@@ -8,9 +8,9 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": false,
-      "cwd": "${workspaceFolder}/tests/bin/",
-      "program": "${workspaceFolder}/tests/bin/ut_control_test",
-      "environment": [ {"name": "LD_LIBRARY_PATH", "value":"${workspaceFolder}/tests/bin/"} ],
+      "cwd": "${workspaceFolder}/tests/build/bin/",
+      "program": "${workspaceFolder}/tests/build/bin/ut_control_test",
+      "environment": [ {"name": "LD_LIBRARY_PATH", "value":"${workspaceFolder}/tests/build/bin/"} ],
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

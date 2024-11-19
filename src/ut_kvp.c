@@ -598,14 +598,16 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey)
         return 0;
     }
 
-    if (fy_node_is_sequence(node))
+    if (fy_node_is_sequence(node) == false)
     {
-        count = fy_node_sequence_item_count(node);
-        if (count == -1)
-        {
-            UT_LOG_ERROR("fy_node_sequence_item_count() returned error\n ");
-            return 0;
-        }
+        return 0; // Early return on negative check
+    }
+
+    count = fy_node_sequence_item_count(node);
+    if (count == -1)
+    {
+        UT_LOG_ERROR("fy_node_sequence_item_count() returned error\n");
+        return 0;
     }
 
     return count;
