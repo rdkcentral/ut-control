@@ -37,6 +37,7 @@
 #define KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML "assets/include/single-include-file.yaml"
 #define KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML "assets/include/single-include-url.yaml"
 #define KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML "assets/include/depth_check.yaml"
+#define KVP_VALID_TEST_YAML_CONFIG_FILE "assets/config-test.yaml"
 
 static ut_kvp_instance_t *gpMainTestInstance = NULL;
 static UT_test_suite_t *gpKVPSuite = NULL;
@@ -49,6 +50,7 @@ static UT_test_suite_t *gpKVPSuite7 = NULL;
 static UT_test_suite_t *gpKVPSuite8 = NULL;
 static UT_test_suite_t *gpKVPSuite9 = NULL;
 static UT_test_suite_t *gpKVPSuite10 = NULL;
+static UT_test_suite_t *gpKVPSuite11 = NULL;
 
 static int test_ut_kvp_createGlobalYAMLInstance(void);
 static int test_ut_kvp_createGlobalJSONInstance(void);
@@ -741,6 +743,34 @@ void test_ut_kvp_fieldPresent_on_main_yaml(void)
 
 }
 
+void test_ut_kvp_add_multiple_profile(void)
+{
+    ut_kvp_status_t status;
+
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_YAML_CONFIG_FILE )");
+    status = ut_kvp_open( gpMainTestInstance, KVP_VALID_TEST_YAML_CONFIG_FILE);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML )");
+    status = ut_kvp_open( gpMainTestInstance, KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML )");
+    status = ut_kvp_open( gpMainTestInstance, KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    char* kvpData = ut_kvp_getData(gpMainTestInstance);
+
+    if(kvpData != NULL)
+    {
+        // Print the emitted KVP string
+        printf("%s\n", kvpData);
+
+        // Free the emitted KVP string
+           free(kvpData);
+    }
+}
+
 static void create_delete_kvp_instance_for_given_file(const char* filename)
 {
     ut_kvp_instance_t *pInstance = NULL;
@@ -1024,6 +1054,35 @@ static int test_ut_kvp_createGlobalYAMLInstanceForIncludeFileViaYaml( void)
 
 }
 
+static int test_ut_kvp_createGlobalYAMLInstanceForMultipleProfileInputs( void)
+{
+    /*Creating global instance for multiple profile support, so that the values
+    **in integrated yaml can be tested
+    */
+
+    ut_kvp_status_t status;
+
+    gpMainTestInstance = ut_kvp_createInstance();
+    if ( gpMainTestInstance == NULL )
+    {
+        assert( gpMainTestInstance != NULL );
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        return -1;
+    }
+
+    status = ut_kvp_open( gpMainTestInstance, KVP_VALID_TEST_YAML_FILE);
+    assert( status == UT_KVP_STATUS_SUCCESS );
+
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        return -1;
+    }
+
+    return 0;
+
+}
+
 static int test_ut_kvp_freeGlobalInstance( void )
 {
     ut_kvp_destroyInstance( gpMainTestInstance );
@@ -1130,4 +1189,9 @@ void register_kvp_functions( void )
 
     UT_add_test(gpKVPSuite10, "kvp bool from main yaml", test_ut_kvp_bool_on_main_yaml);
     UT_add_test(gpKVPSuite10, "kvp node presence from main yaml", test_ut_kvp_fieldPresent_on_main_yaml);
+
+    gpKVPSuite11 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml multiple profile inputs", test_ut_kvp_createGlobalYAMLInstanceForMultipleProfileInputs, test_ut_kvp_freeGlobalInstance);
+    assert(gpKVPSuite11 != NULL);
+
+    UT_add_test(gpKVPSuite11, "kvp multiple profile", test_ut_kvp_add_multiple_profile);
 }
