@@ -162,7 +162,14 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
-    pInternal->fy_handle = fy_document_build_from_malloc_string(NULL, pData, length);
+    if (pInternal->fy_handle)
+    {
+        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(fy_document_build_from_malloc_string(NULL, pData, length)));
+    }
+    else
+    {
+        pInternal->fy_handle = fy_document_build_from_malloc_string(NULL, pData, length);
+    }
 
     if (NULL == pInternal->fy_handle)
     {

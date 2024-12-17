@@ -761,13 +761,50 @@ void test_ut_kvp_add_multiple_profile(void)
 
     char* kvpData = ut_kvp_getData(gpMainTestInstance);
 
+    if (kvpData != NULL)
+    {
+        // Print the emitted KVP string
+        printf("%s\n", kvpData);
+
+        // Free the emitted KVP string
+        free(kvpData);
+    }
+}
+
+void test_ut_kvp_add_multiple_profile_using_open_memory(void)
+{
+    ut_kvp_status_t status;
+
+    UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_YAML_CONFIG_FILE);
+    if (read_file_into_memory(KVP_VALID_TEST_YAML_CONFIG_FILE, &gKVPData) == 0)
+    {
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+    }
+
+    UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
+    if (read_file_into_memory(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML, &gKVPData) == 0)
+    {
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+    }
+
+    UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
+    if (read_file_into_memory(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML, &gKVPData) == 0)
+    {
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+    }
+
+    char* kvpData = ut_kvp_getData(gpMainTestInstance);
+
     if(kvpData != NULL)
     {
         // Print the emitted KVP string
         printf("%s\n", kvpData);
 
         // Free the emitted KVP string
-           free(kvpData);
+        free(kvpData);
     }
 }
 
@@ -1194,4 +1231,5 @@ void register_kvp_functions( void )
     assert(gpKVPSuite11 != NULL);
 
     UT_add_test(gpKVPSuite11, "kvp multiple profile", test_ut_kvp_add_multiple_profile);
+    UT_add_test(gpKVPSuite11, "kvp multiple profile using open memory", test_ut_kvp_add_multiple_profile_using_open_memory);
 }
