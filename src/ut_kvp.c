@@ -116,7 +116,15 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         UT_LOG_ERROR("[%s] cannot be accesed", fileName);
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
-    pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
+
+    if(pInternal->fy_handle)
+    {
+        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(fy_document_build_from_file(NULL, fileName)));
+    }
+    else
+    {
+        pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
+    }
 
     if (NULL == pInternal->fy_handle)
     {
@@ -154,7 +162,14 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
-    pInternal->fy_handle = fy_document_build_from_malloc_string(NULL, pData, length);
+    if (pInternal->fy_handle)
+    {
+        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(fy_document_build_from_malloc_string(NULL, pData, length)));
+    }
+    else
+    {
+        pInternal->fy_handle = fy_document_build_from_malloc_string(NULL, pData, length);
+    }
 
     if (NULL == pInternal->fy_handle)
     {
@@ -913,28 +928,9 @@ static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
     {
-        // Merge mappings
-        struct fy_node_pair *pair;
-        void *iter = NULL;
-
-        while ((pair = fy_node_mapping_iterate(includeNode, &iter)) != NULL)
+        if (fy_node_insert(mainNode, includeNode) != 0)
         {
-            struct fy_node *key = fy_node_pair_key(pair);
-            struct fy_node *value = fy_node_pair_value(pair);
-            const char *key_str = fy_node_get_scalar(key, NULL);
-
-            if (key_str && strstr(key_str, "include") == NULL)
-            {
-                if (fy_node_insert(mainNode, includeNode) != 0)
-                {
-                    UT_LOG_ERROR("Node merge failed");
-                }
-            }
-            else
-            {
-                fy_node_free(key);
-                fy_node_free(value);
-            }
+            UT_LOG_ERROR("Node merge failed");
         }
     }
     else
