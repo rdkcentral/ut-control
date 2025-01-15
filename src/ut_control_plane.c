@@ -288,26 +288,155 @@ static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void
     return 0;
 }
 #else
+
 static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
     cp_message_t msg;
-    ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t* )lws_context_user(lws_get_context(wsi));
+    ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)lws_context_user(lws_get_context(wsi));
     struct per_session_data__http *perSessionData = (struct per_session_data__http *)user;
 
     switch (reason)
     {
-        case LWS_CALLBACK_HTTP: {
-            UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
-            char *requested_uri = (char *)in;
 
+        case LWS_CALLBACK_HTTP:
+        {
+            UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
+
+            char *requested_uri = (char *)in; // Use the 'in' parameter to get the URI
+            char query_string[256] = {0};     // Buffer for the query string
+            char accept_header[256] = {0};    // Buffer for the Accept header
+            char response[1024] = {0};        // Buffer for the response
+            char *key = NULL;
+            char *value = NULL;
+            unsigned char buffer[LWS_PRE + 1024]; // Allocate buffer for headers and body
+            unsigned char *p = buffer + LWS_PRE; // Pointer to start of usable buffer space
+            unsigned char *end = buffer + sizeof(buffer); // Pointer to end of buffer
+
+
+            UT_CONTROL_PLANE_DEBUG("Requested URI: %s\n", requested_uri);
+
+            // Handle GET request for /api/getKVP
+            if (strcmp(requested_uri, "/api/getKVP") == 0)
+            {
+                // Extract the query string (if any)
+                if (lws_hdr_copy(wsi, query_string, sizeof(query_string), WSI_TOKEN_HTTP_URI_ARGS) > 0)
+                {
+                    UT_CONTROL_PLANE_DEBUG("Query String: %s\n", query_string);
+
+                    // Parse key-value pairs from the query string
+                    key = strtok(query_string, "=");
+                    value = strtok(NULL, "&");
+
+                    if (key && value)
+                    {
+                        UT_CONTROL_PLANE_DEBUG("Received GET parameter: %s = %s\n", key, value);
+                    }
+                }
+
+                // Extract the Accept header
+                if (lws_hdr_copy(wsi, accept_header, sizeof(accept_header), WSI_TOKEN_HTTP_ACCEPT) > 0)
+                {
+                    UT_CONTROL_PLANE_DEBUG("Accept Header: %s\n", accept_header);
+                }
+                else
+                {
+                    UT_CONTROL_PLANE_ERROR("Missing Accept header\n");
+                    lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, NULL);
+                    return -1; // Missing Accept header
+                }
+
+                // Check for valid key parameter
+                if (key && strcmp(key, "key") == 0)
+                {
+                    if (strcmp(value, "json") == 0 && strncmp(accept_header, "application/json", 16) == 0)
+                    {
+                        // Format pInternal as JSON
+                        snprintf(response, sizeof(response),
+                                 "{\"field1\": \"%s\", \"field2\": %d, \"field3\": \"%s\"}",
+                                 "value1", 123, "value3");
+
+                        // Add HTTP headers
+                        if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK, "application/json", strlen(response), &p, end) < 0)
+                        {
+                            return -1; // Failed to add headers
+                        }
+
+                        // Finalize headers
+                        if (lws_finalize_http_header(wsi, &p, end) < 0)
+                        {
+                            return -1; // Failed to finalize headers
+                        }
+
+                        // Write headers
+                        if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+                        {
+                            return -1; // Failed to write headers
+                        }
+
+                        // Write body
+                        if (lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP_FINAL) < 0)
+                        {
+                            return -1; // Failed to write body
+                        }
+
+                        return 1; // HTTP request handled
+                    }
+                    else if (strcmp(value, "yaml") == 0 && strncmp(accept_header, "application/x-yaml", 18) == 0)
+                    {
+                        // Format pInternal as YAML
+                        snprintf(response, sizeof(response),
+                                 "field1: %s\nfield2: %d\nfield3: %s\n",
+                                 "value1", 123, "value3");
+
+                        // Add HTTP headers
+                        if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK, "application/json", strlen(response), &p, end) < 0)
+                        {
+                            return -1; // Failed to add headers
+                        }
+
+                        // Finalize headers
+                        if (lws_finalize_http_header(wsi, &p, end) < 0)
+                        {
+                            return -1; // Failed to finalize headers
+                        }
+
+                        // Write headers
+                        if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+                        {
+                            return -1; // Failed to write headers
+                        }
+
+                        // Write body
+                        if (lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP_FINAL) < 0)
+                        {
+                            return -1; // Failed to write body
+                        }
+
+                        return 1; // HTTP request handled
+                    }
+                    else
+                    {
+                        UT_CONTROL_PLANE_ERROR("Invalid key value or unsupported Accept header\n");
+                        lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, NULL);
+                        return -1;
+                    }
+                }
+                else
+                {
+                    UT_CONTROL_PLANE_ERROR("Missing or invalid key parameter\n");
+                    lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, NULL);
+                    return -1;
+                }
+            }
+            // Handle POST request for /api/postKVP
             if (strcmp(requested_uri, "/api/postKVP") == 0)
             {
                 lws_callback_on_writable(wsi);
-                return 0;
+                return 0; // Let the body handling process continue
             }
+
             break;
         }
-
         case LWS_CALLBACK_HTTP_BODY:
         {
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
@@ -322,6 +451,7 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                 else
                 {
                     // POST data too large
+                    UT_CONTROL_PLANE_ERROR("POST data too large\n");
                     return -1;
                 }
             }
@@ -351,12 +481,13 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                 // lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP);
                 return 1; // HTTP request handled
             }
+            break;
         }
 
         default:
             break;
-    }
-    return 0;
+        }
+            return 0;
 }
 
 #endif
