@@ -289,6 +289,69 @@ static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void
 }
 #else
 
+static char* create_response(ut_cp_instance_internal_t *pInternal, const char* key, const char* type)
+{
+    ut_kvp_instance_t *pkvpInstance = NULL;
+    ut_kvp_status_t status;
+    char result_kvp[UT_KVP_MAX_ELEMENT_SIZE] = {0xff};
+    char* response = NULL;
+
+    for (uint32_t i = 0; i < pInternal->callback_entry_index; i++)
+    {
+        CallbackEntry_t entry = pInternal->callbackEntryList[i];
+        void *userData = malloc(strlen(entry.userData) + 1); // +1 for null terminator
+        if (userData == NULL)
+        {
+            UT_CONTROL_PLANE_ERROR("Memory allocation failed\n");
+            return NULL; // Handle memory allocation failure
+        }
+        memcpy(userData, entry.userData, strlen(entry.userData) + 1);
+
+        pkvpInstance = ut_kvp_createInstance();
+
+        /* Note: userData data will be freed by the destoryInstance() function */
+        status = ut_kvp_openMemory(pkvpInstance, userData, strlen(entry.userData));
+        if (status != UT_KVP_STATUS_SUCCESS)
+        {
+            UT_CONTROL_PLANE_ERROR("ut_kvp_open() - Read Failure\n");
+            ut_kvp_destroyInstance(pkvpInstance);
+            return NULL;
+        }
+        if (UT_KVP_STATUS_SUCCESS == ut_kvp_getStringField(pkvpInstance, key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE))
+        {
+            response = ut_kvp_getDataOfType(pkvpInstance, type);
+        }
+        ut_kvp_destroyInstance(pkvpInstance);
+    }
+
+    return response;
+}
+
+// Helper function to send error response
+static int send_error_response(struct lws *wsi, int status, const char *content_type, const char *body)
+{
+    unsigned char buffer[LWS_PRE + 1024];
+    unsigned char *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer);
+
+    // Add HTTP headers
+    if (lws_add_http_common_headers(wsi, status, content_type, strlen(body), &p, end) < 0)
+        return -1;
+
+    // Finalize headers
+    if (lws_finalize_http_header(wsi, &p, end) < 0)
+        return -1;
+
+    // Write headers
+    if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+        return -1;
+
+    // Write body
+    if (lws_write(wsi, (unsigned char *)body, strlen(body), LWS_WRITE_HTTP_FINAL) < 0)
+        return -1;
+
+    return 0;
+}
+
 static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
     cp_message_t msg;
@@ -305,9 +368,8 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
             char *requested_uri = (char *)in; // Use the 'in' parameter to get the URI
             char query_string[256] = {0};     // Buffer for the query string
             char accept_header[256] = {0};    // Buffer for the Accept header
-            char response[1024] = {0};        // Buffer for the response
+            char *response = NULL;
             char *key = NULL;
-            char *value = NULL;
             unsigned char buffer[LWS_PRE + 1024]; // Allocate buffer for headers and body
             unsigned char *p = buffer + LWS_PRE; // Pointer to start of usable buffer space
             unsigned char *end = buffer + sizeof(buffer); // Pointer to end of buffer
@@ -323,14 +385,23 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                 {
                     UT_CONTROL_PLANE_DEBUG("Query String: %s\n", query_string);
 
-                    // Parse key-value pairs from the query string
-                    key = strtok(query_string, "=");
-                    value = strtok(NULL, "&");
-
-                    if (key && value)
+                    // Directly look for the "key=" prefix in the query string
+                    char *key_param = strstr(query_string, "key=");
+                    if (key_param != NULL)
                     {
-                        UT_CONTROL_PLANE_DEBUG("Received GET parameter: %s = %s\n", key, value);
+                        key = key_param + 4; // Extract the value part (skip "key=")
+                        UT_CONTROL_PLANE_DEBUG("Parsed Query Parameter: key=%s\n", key);
                     }
+                    else
+                    {
+                        UT_CONTROL_PLANE_ERROR("Query parameter 'key' not found\n");
+                        key = NULL; // Ensure key is NULL if not found
+                    }
+                }
+                else
+                {
+                    UT_CONTROL_PLANE_ERROR("Failed to extract query string\n");
+                    key = NULL; // Ensure key is NULL if query string is absent
                 }
 
                 // Extract the Accept header
@@ -341,19 +412,27 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                 else
                 {
                     UT_CONTROL_PLANE_ERROR("Missing Accept header\n");
-                    lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, NULL);
-                    return -1; // Missing Accept header
+                    const char *error_response = "{\"error\": \"Missing Accept header\"}";
+                    if (send_error_response(wsi, HTTP_STATUS_BAD_REQUEST, "application/json", error_response) < 0)
+                        return -1;
+                    return -1;
                 }
 
                 // Check for valid key parameter
-                if (key && strcmp(key, "key") == 0)
+                if (key)
                 {
-                    if (strcmp(value, "json") == 0 && strncmp(accept_header, "application/json", 16) == 0)
+                    if (strncmp(accept_header, "application/json", 16) == 0)
                     {
-                        // Format pInternal as JSON
-                        snprintf(response, sizeof(response),
-                                 "{\"field1\": \"%s\", \"field2\": %d, \"field3\": \"%s\"}",
-                                 "value1", 123, "value3");
+                        response = create_response(pInternal, key, "json");
+
+                        if (response == NULL)
+                        {
+                            UT_CONTROL_PLANE_ERROR("Failed to create response\n");
+                            const char *error_response = "{\"error\": \"Internal Server Error\"}";
+                            if (send_error_response(wsi, HTTP_STATUS_INTERNAL_SERVER_ERROR, "application/json", error_response) < 0)
+                                return -1;
+                            return -1;
+                        }
 
                         // Add HTTP headers
                         if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK, "application/json", strlen(response), &p, end) < 0)
@@ -378,15 +457,23 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                         {
                             return -1; // Failed to write body
                         }
+
+                        free(response);
 
                         return 1; // HTTP request handled
                     }
-                    else if (strcmp(value, "yaml") == 0 && strncmp(accept_header, "application/x-yaml", 18) == 0)
+                    else if (strncmp(accept_header, "application/x-yaml", 18) == 0)
                     {
-                        // Format pInternal as YAML
-                        snprintf(response, sizeof(response),
-                                 "field1: %s\nfield2: %d\nfield3: %s\n",
-                                 "value1", 123, "value3");
+                        response = create_response(pInternal, key, "yaml");
+
+                        if (response == NULL)
+                        {
+                            UT_CONTROL_PLANE_ERROR("Failed to create response\n");
+                            const char *error_response = "error: Internal Server Error\n";
+                            if (send_error_response(wsi, HTTP_STATUS_INTERNAL_SERVER_ERROR, "application/x-yaml", error_response) < 0)
+                                return -1;
+                            return -1;
+                        }
 
                         // Add HTTP headers
                         if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK, "application/json", strlen(response), &p, end) < 0)
@@ -411,13 +498,17 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                         {
                             return -1; // Failed to write body
                         }
+
+                        free(response);
 
                         return 1; // HTTP request handled
                     }
                     else
                     {
                         UT_CONTROL_PLANE_ERROR("Invalid key value or unsupported Accept header\n");
-                        lws_return_http_status(wsi, HTTP_STATUS_BAD_REQUEST, NULL);
+                        const char *error_response = "{\"error\": \"Unsupported Accept header or invalid type\"}";
+                        if (send_error_response(wsi, HTTP_STATUS_BAD_REQUEST, "application/json", error_response) < 0)
+                            return -1;
                         return -1;
                     }
                 }

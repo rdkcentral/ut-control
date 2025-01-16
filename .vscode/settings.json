@@ -64,7 +64,14 @@
     "ut_control_plane.h": "c",
     "ut.h": "c",
     "ut_log.h": "c",
-    "tuple": "c"
+    "tuple": "c",
+    "array": "c",
+    "compare": "c",
+    "functional": "c",
+    "type_traits": "c",
+    "utility": "c",
+    "istream": "c",
+    "ostream": "c"
   },
   "cmake.configureOnOpen": true
 }
