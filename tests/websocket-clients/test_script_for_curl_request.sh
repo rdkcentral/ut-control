@@ -4,35 +4,48 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No color
 
 # Define test scripts and expected results
 declare -A tests=(
     ["./curl-get-client-yaml-incorrect.sh"]="error: Internal Server Error"
     ["./curl-get-client-yaml.sh"]="---
-test:
-  yamlData: somevalue
-  x: 1
-  on: true
-test2:
-  yamlData1: somevalue1
-  y: 2
-  off: false"
+name: John Doe
+age: 30
+email: johndoe@example.com
+isMarried: false
+children:
+- name: Alice
+  age: 5
+- name: Bob
+  age: 3
+hobbies:
+- reading
+- cycling
+- traveling"
     ["./curl-get-client-json-incorrect.sh"]='{"error": "Internal Server Error"}'
     ["./curl-get-client-json.sh"]='{
-  "test": {
-    "jsonData": "somevalue",
-    "x": 1,
-    "on": true
-  },
-  "test2": {
-    "jsonData1": "somevalue1",
-    "y": 2,
-    "off": false
-  }
+  "name": "John Doe",
+  "age": 30,
+  "email": "johndoe@example.com",
+  "isMarried": false,
+  "children": [
+    {
+      "name": "Alice",
+      "age": 5
+    },
+    {
+      "name": "Bob",
+      "age": 3
+    }
+  ],
+  "hobbies": [
+    "reading",
+    "cycling",
+    "traveling"
+  ]
 }'
-    ["./curl-get-client-no-header.sh"]='{"error": "Unsupported Accept header or invalid type"}'
+    ["./curl-get-client-no-header.sh"]='{"error": "Unsupported Accept header"}'
     ["./curl-push-client-binary.sh"]=""
     ["./curl-push-client-json.sh"]=""
     ["./curl-push-client-yaml.sh"]=""
@@ -41,16 +54,22 @@ test2:
 # Loop through tests and validate output
 for script in "${!tests[@]}"; do
     echo "Running: $script"
-    output=$($script)
-    expected="${tests[$script]}"
+    # Capture script output, removing leading/trailing whitespace
+    output=$($script | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    # Remove any color codes from output (if present)
+    output=$(echo "$output" | sed -r 's/\x1B(\[[0-9;]*[JKmsu]|\(B)//g')
 
+    # Get the expected result, also trimming any whitespace
+    expected=$(echo "${tests[$script]}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+    # Compare outputs
     if [[ "$output" == "$expected" ]]; then
         echo -e "${GREEN}Test Passed: Output matches expected result.${NC}"
     else
         echo -e "${RED}Test Failed: Output does not match expected result.${NC}"
         echo -e "${YELLOW}Expected:${NC}"
         echo "$expected"
-        echo "${YELLOW}Got:${NC}"
+        echo -e "${YELLOW}Got:${NC}"
         echo "$output"
     fi
     echo "---------------------------------"

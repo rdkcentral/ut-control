@@ -35,6 +35,8 @@
 
 #define UT_CONTROL_YAML_FILE "example.yaml"
 #define UT_CONTROL_JSON_FILE "example.json"
+#define UT_CONTROL_GET_FILE_JSON "get_example.json"
+#define UT_CONTROL_GET_FILE_YAML "get_example.yaml"
 
 static UT_test_suite_t *gpAssertSuite1 = NULL;
 static UT_test_suite_t *gpAssertSuite2 = NULL;
@@ -43,7 +45,7 @@ static UT_test_suite_t *gpAssertSuite3 = NULL;
 static ut_controlPlane_instance_t *gInstance = NULL;
 static volatile bool gMessageRecievedYAML = false;
 static volatile bool gMessageRecievedJSON = false;
-static test_ut_memory_t gUserDataYaml, gUserDataJson;
+static test_ut_memory_t gUserDataYaml, gUserDataJson, gUserDataGetJson, gUserDataGetYaml;
 
 const static ut_control_keyStringMapping_t numericMaptable [] = {
   { "one", (int32_t)1 },
@@ -52,6 +54,8 @@ const static ut_control_keyStringMapping_t numericMaptable [] = {
 };
 
 void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData);
+char* testGETCallback(char *key, ut_kvp_instance_t *instance, void* userData, const char* format);
+
 
 /* L1 Function tests */
 static void test_ut_control_l1_testInitExit()
@@ -217,6 +221,19 @@ void testJSONCallback(char *key, ut_kvp_instance_t *instance, void* userData)
     gMessageRecievedJSON = true;
 }
 
+char* testGETCallback(char *key, ut_kvp_instance_t *instance, void* userData, const char* format)
+{
+    char *kvpData;
+    printf("*******************************Inside testGETCallback************************\n");
+    kvpData = ut_kvp_getDataOfType(instance, format);
+
+    if (kvpData == NULL)
+    {
+        return NULL;
+    }
+    return kvpData;
+}
+
 static void UT_ControlPlane_Sigint_Handler(int sig)
 {
     UT_LOG("Signal Handler invoked\n");
@@ -264,6 +281,28 @@ static void test_ut_control_performStart()
     }
 
     gMessageRecievedJSON = false;
+
+    if (read_file_into_memory(UT_CONTROL_GET_FILE_YAML, &gUserDataGetYaml) == 0)
+    {
+        if (gUserDataGetYaml.buffer != NULL)
+        {
+            printf("Original Yaml file\n%s", (char*)gUserDataGetYaml.buffer);
+        }
+
+        UT_LOG("UT_ControlPlane_RegisterStringCallbackOnMessage() client testGETCallback - Positive \n");
+        UT_ControlPlane_RegisterStringCallbackOnMessage(gInstance, "/v1/callMyFunction", &testGETCallback, (void *)gUserDataGetYaml.buffer);
+    }
+
+    if (read_file_into_memory(UT_CONTROL_GET_FILE_JSON, &gUserDataGetJson) == 0)
+    {
+        if (gUserDataGetJson.buffer != NULL)
+        {
+            printf("Original Json file\n%s", (char*)gUserDataGetJson.buffer);
+        }
+
+        UT_LOG("UT_ControlPlane_RegisterStringCallbackOnMessage() client testGETCallback - Positive \n");
+        UT_ControlPlane_RegisterStringCallbackOnMessage(gInstance, "/v1/callMyFunction2", &testGETCallback, (void *)gUserDataGetJson.buffer);
+    }
 }
 
 void run_client_function()
@@ -276,7 +315,7 @@ void run_client_function()
     UT_LOG("Please Run the command `./python-client-send-json.py or/& ./python-client-send-yaml.py` from another terminal and press return;'\n");
     UT_LOG("In order to pass the test you need to run each of the python scripts'\n");
 #else
-    UT_LOG("Please Run the command `./curl-requests-script.sh` or `test_script_for_curl_request.sh` from another terminal and press return;'\n");
+    UT_LOG("Please Run the command `test_script_for_curl_request.sh` from another terminal and press return;'\n");
     UT_LOG("In order to pass the test you need to run each of the curl scripts'\n");
 #endif
 
