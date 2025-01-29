@@ -54,7 +54,7 @@ const static ut_control_keyStringMapping_t numericMaptable [] = {
 };
 
 void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData);
-char* testGETCallback(char *key, ut_kvp_instance_t *instance, void* userData, const char* format);
+char* testGETCallback(char *key, void* userData);
 
 
 /* L1 Function tests */
@@ -221,17 +221,10 @@ void testJSONCallback(char *key, ut_kvp_instance_t *instance, void* userData)
     gMessageRecievedJSON = true;
 }
 
-char* testGETCallback(char *key, ut_kvp_instance_t *instance, void* userData, const char* format)
+char* testGETCallback(char *key, void* userData)
 {
-    char *kvpData;
-    printf("*******************************Inside testGETCallback************************\n");
-    kvpData = ut_kvp_getDataOfType(instance, format);
-
-    if (kvpData == NULL)
-    {
-        return NULL;
-    }
-    return kvpData;
+    printf("*******************************Inside testGETCallback*******************************\n");
+    return (char*) userData;
 }
 
 static void UT_ControlPlane_Sigint_Handler(int sig)
@@ -266,6 +259,17 @@ static void test_ut_control_performStart()
 
     gMessageRecievedYAML = false;
 
+    if (read_file_into_memory(UT_CONTROL_GET_FILE_JSON, &gUserDataGetJson) == 0)
+    {
+        if (gUserDataGetJson.buffer != NULL)
+        {
+            printf("Original Json file\n%s", (char*)gUserDataGetJson.buffer);
+        }
+
+        UT_LOG("UT_ControlPlane_RegisterAPIEndpointHandler() client testGETCallback - Positive \n");
+        UT_ControlPlane_RegisterAPIEndpointHandler(gInstance, "/v1/callMyFunction2", &testGETCallback, (void *)gUserDataGetJson.buffer);
+    }
+
     UT_ControlPlane_Start(gInstance);
 
     /* This should still work after start */
@@ -289,19 +293,8 @@ static void test_ut_control_performStart()
             printf("Original Yaml file\n%s", (char*)gUserDataGetYaml.buffer);
         }
 
-        UT_LOG("UT_ControlPlane_RegisterStringCallbackOnMessage() client testGETCallback - Positive \n");
-        UT_ControlPlane_RegisterStringCallbackOnMessage(gInstance, "/v1/callMyFunction", &testGETCallback, (void *)gUserDataGetYaml.buffer);
-    }
-
-    if (read_file_into_memory(UT_CONTROL_GET_FILE_JSON, &gUserDataGetJson) == 0)
-    {
-        if (gUserDataGetJson.buffer != NULL)
-        {
-            printf("Original Json file\n%s", (char*)gUserDataGetJson.buffer);
-        }
-
-        UT_LOG("UT_ControlPlane_RegisterStringCallbackOnMessage() client testGETCallback - Positive \n");
-        UT_ControlPlane_RegisterStringCallbackOnMessage(gInstance, "/v1/callMyFunction2", &testGETCallback, (void *)gUserDataGetJson.buffer);
+        UT_LOG("UT_ControlPlane_RegisterAPIEndpointHandler() client testGETCallback - Positive \n");
+        UT_ControlPlane_RegisterAPIEndpointHandler(gInstance, "/v1/callMyFunction", &testGETCallback, (void *)gUserDataGetYaml.buffer);
     }
 }
 

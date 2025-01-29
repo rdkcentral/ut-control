@@ -41,7 +41,7 @@ typedef struct
 {
   char key[UT_KVP_MAX_ELEMENT_SIZE];
   ut_control_callback_t pCallback;
-  ut_control_string_callback_t pStringCallback;
+  ut_control_REST_API_callback_t pStringCallback;
   void* userData;
 }CallbackEntry_t;
 
@@ -308,9 +308,10 @@ static int compareStrings(const char *str1, const char *str2)
 
 static char* create_response(ut_cp_instance_internal_t *pInternal, const char* key, const char* type)
 {
+    char* response = NULL;
+    char* kvpData = NULL;
     ut_kvp_instance_t *pkvpInstance = NULL;
     ut_kvp_status_t status;
-    char* response = NULL;
 
     for (uint32_t i = 0; i < pInternal->callback_entry_index; i++)
     {
@@ -318,15 +319,17 @@ static char* create_response(ut_cp_instance_internal_t *pInternal, const char* k
 
         if (compareStrings(entry.key, key) == 0)
         {
+            kvpData = entry.pStringCallback((char *)key, entry.userData);
+
             pkvpInstance = ut_kvp_createInstance();
-            status = ut_kvp_openMemory(pkvpInstance, entry.userData, strlen(entry.userData));
+            status = ut_kvp_openMemory(pkvpInstance, kvpData, strlen(kvpData));
             if (status != UT_KVP_STATUS_SUCCESS)
             {
-                UT_CONTROL_PLANE_ERROR("ut_kvp_open() - Read Failure\n");
+                UT_CONTROL_PLANE_ERROR("ut_kvp_openMemory() - Read Failure\n");
                 ut_kvp_destroyInstance(pkvpInstance);
                 return NULL;
             }
-            response = entry.pStringCallback((char*)key, pkvpInstance, entry.userData, type);
+            response = ut_kvp_getDataOfType(pkvpInstance, type);
             ut_kvp_destroyInstance(pkvpInstance);
         }
     }
@@ -359,6 +362,67 @@ static int send_error_response(struct lws *wsi, int status, const char *content_
     return 0;
 }
 
+// Function to send error response
+static int send_error(void *wsi, int status, const char *accept_header, const char *json_msg, const char *yaml_msg)
+{
+    const char *response_format = "application/json";
+    const char *error_response = json_msg;
+
+    if (strncmp(accept_header, "application/x-yaml", 18) == 0)
+    {
+        response_format = "application/x-yaml";
+        error_response = yaml_msg;
+    }
+
+    return send_error_response(wsi, status, response_format, error_response) < 0 ? -1 : -1;
+}
+
+// Function to validate Accept header
+static int validate_accept_header(void *wsi, char *accept_header, size_t size)
+{
+    if (lws_hdr_copy(wsi, accept_header, size, WSI_TOKEN_HTTP_ACCEPT) <= 0 ||
+        strncmp(accept_header, "application", 11) != 0)
+    {
+        UT_CONTROL_PLANE_ERROR("Missing or Invalid Accept header\n");
+        return send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                          "{\"error\": \"Missing or Invalid Accept header\"}",
+                          "error: Missing or Invalid Accept header\n");
+    }
+    return 0; // Success
+}
+
+// Function to extract key from URI
+static int extract_key(const char *requested_uri, char *key, size_t size)
+{
+    char *key_start = (char* )requested_uri + 5; // Skip "/api/"
+    if (strlen(key_start) == 0)
+    {
+        UT_CONTROL_PLANE_ERROR("Missing key in the URI\n");
+        return -1;
+    }
+    strncpy(key, key_start, size - 1);
+    UT_CONTROL_PLANE_DEBUG("Extracted Key: %s\n", key);
+    return 0; // Success
+}
+
+// Function to determine response format
+static char *determine_response_format(void *pInternal, const char *key, const char *accept_header)
+{
+    if (strncmp(accept_header, "application/json", 16) == 0)
+    {
+        return create_response(pInternal, key, "json");
+    }
+    else if (strncmp(accept_header, "application/x-yaml", 18) == 0)
+    {
+        return create_response(pInternal, key, "yaml");
+    }
+    else
+    {
+        UT_CONTROL_PLANE_ERROR("Internal Server Error\n");
+        return NULL;
+    }
+}
+
 static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
     cp_message_t msg;
@@ -372,10 +436,9 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
         {
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
 
-            char *requested_uri = (char *)in; // Use the 'in' parameter to get the URI
-            char accept_header[256] = {0};    // Buffer for the Accept header
+            char *requested_uri = (char *)in;     // Use the 'in' parameter to get the URI
+            char accept_header[128] = {0};        // Buffer for the Accept header
             unsigned char buffer[LWS_PRE + 1024]; // Allocate buffer for headers and body
-
 
             UT_CONTROL_PLANE_DEBUG("Requested URI: %s\n", requested_uri);
 
@@ -386,172 +449,69 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                 return 0; // Let the body handling process continue
             }
 
-            // Handle GET request for /api/getKVP
-            if (strncmp(requested_uri, "/api/", 5) == 0)
+            // Handle GET request for /api/<REST_API_NAME>
+
+            // Validate Accept header
+            if (validate_accept_header(wsi, accept_header, sizeof(accept_header)) < 0)
             {
-                // Extract the key from the URI (part after "/api/")
-                char *key_start = requested_uri + 5; // Skip "/api/"
-                char key[256] = {0};
-                strncpy(key, key_start, sizeof(key) - 1);
-
-                UT_CONTROL_PLANE_DEBUG("Extracted Key: %s\n", key);
-
-                // Extract the Accept header
-                char accept_header[128] = {0};
-                if (lws_hdr_copy(wsi, accept_header, sizeof(accept_header), WSI_TOKEN_HTTP_ACCEPT) > 0)
-                {
-                    UT_CONTROL_PLANE_DEBUG("Accept Header: %s\n", accept_header);
-                }
-                else
-                {
-                    UT_CONTROL_PLANE_ERROR("Missing Accept header\n");
-
-                    const char *error_response_json = "{\"error\": \"Missing Accept header\"}";
-                    const char *error_response_yaml = "error: Missing Accept header\n";
-
-                    // Default to JSON if Accept header is missing
-                    const char *response_format = "application/json";
-                    const char *error_response = error_response_json;
-
-                    if (strncmp(accept_header, "application/x-yaml", 18) == 0)
-                    {
-                        response_format = "application/x-yaml";
-                        error_response = error_response_yaml;
-                    }
-
-                    if (send_error_response(wsi, HTTP_STATUS_BAD_REQUEST, response_format, error_response) < 0)
-                        return -1;
-                    return -1;
-                }
-
-                // Check if key is valid
-                if (strlen(key) == 0)
-                {
-                    UT_CONTROL_PLANE_ERROR("Missing key in the URI\n");
-
-                    const char *error_response_json = "{\"error\": \"Missing key in URI\"}";
-                    const char *error_response_yaml = "error: Missing key in URI\n";
-
-                    const char *response_format = "application/json";
-                    const char *error_response = error_response_json;
-
-                    if (strncmp(accept_header, "application/x-yaml", 18) == 0)
-                    {
-                        response_format = "application/x-yaml";
-                        error_response = error_response_yaml;
-                    }
-
-                    if (send_error_response(wsi, HTTP_STATUS_BAD_REQUEST, response_format, error_response) < 0)
-                        return -1;
-                    return -1;
-                }
-
-                // Generate response based on Accept header
-                char *response = NULL;
-                if (strncmp(accept_header, "application/json", 16) == 0)
-                {
-                    response = create_response(pInternal, key, "json");
-                }
-                else if (strncmp(accept_header, "application/x-yaml", 18) == 0)
-                {
-                    response = create_response(pInternal, key, "yaml");
-                }
-                else
-                {
-                    UT_CONTROL_PLANE_ERROR("Unsupported Accept header\n");
-
-                    const char *error_response_json = "{\"error\": \"Unsupported Accept header\"}";
-                    const char *error_response_yaml = "error: Unsupported Accept header\n";
-
-                    const char *response_format = "application/json";
-                    const char *error_response = error_response_json;
-
-                    if (strncmp(accept_header, "application/x-yaml", 18) == 0)
-                    {
-                        response_format = "application/x-yaml";
-                        error_response = error_response_yaml;
-                    }
-
-                    if (send_error_response(wsi, HTTP_STATUS_BAD_REQUEST, response_format, error_response) < 0)
-                        return -1;
-                    return -1;
-                }
-
-                // Check if response generation succeeded
-                if (response == NULL)
-                {
-                    UT_CONTROL_PLANE_ERROR("Failed to create response\n");
-
-                    const char *error_response_json = "{\"error\": \"Internal Server Error\"}";
-                    const char *error_response_yaml = "error: Internal Server Error\n";
-
-                    const char *response_format = "application/json";
-                    const char *error_response = error_response_json;
-
-                    if (strncmp(accept_header, "application/x-yaml", 18) == 0)
-                    {
-                        response_format = "application/x-yaml";
-                        error_response = error_response_yaml;
-                    }
-
-                    if (send_error_response(wsi, HTTP_STATUS_INTERNAL_SERVER_ERROR, response_format, error_response) < 0)
-                        return -1;
-                    return -1;
-                }
-
-                // Add HTTP headers
-                unsigned char *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer) - 1;
-                if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK, accept_header, strlen(response), &p, end) < 0)
-                {
-                    free(response);
-                    return -1; // Failed to add headers
-                }
-
-                // Finalize headers
-                if (lws_finalize_http_header(wsi, &p, end) < 0)
-                {
-                    free(response);
-                    return -1; // Failed to finalize headers
-                }
-
-                // Write headers
-                if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
-                {
-                    free(response);
-                    return -1; // Failed to write headers
-                }
-
-                // Write body
-                if (lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP_FINAL) < 0)
-                {
-                    free(response);
-                    return -1; // Failed to write body
-                }
-
-                free(response);
-
-                return 1; // HTTP request handled successfully
-            }
-            else
-            {
-                UT_CONTROL_PLANE_ERROR("Invalid URI: %s\n", requested_uri);
-
-                const char *error_response_json = "{\"error\": \"Invalid URI\"}";
-                const char *error_response_yaml = "error: Invalid URI\n";
-
-                const char *response_format = "application/json";
-                const char *error_response = error_response_json;
-
-                if (strncmp(accept_header, "application/x-yaml", 18) == 0)
-                {
-                    response_format = "application/x-yaml";
-                    error_response = error_response_yaml;
-                }
-
-                if (send_error_response(wsi, HTTP_STATUS_NOT_FOUND, response_format, error_response) < 0)
-                    return -1;
                 return -1;
             }
+
+            // Validate URI
+            if (strncmp(requested_uri, "/api/", 5) != 0)
+            {
+                UT_CONTROL_PLANE_ERROR("Invalid URI: %s\n", requested_uri);
+                return send_error(wsi, HTTP_STATUS_NOT_FOUND, accept_header,
+                                  "{\"error\": \"Internal Server Error\"}",
+                                  "error: Internal Server Error\n");
+            }
+
+            // Extract key
+            char key[256] = {0};
+            if (extract_key(requested_uri, key, sizeof(key)) < 0)
+            {
+                return send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                                  "{\"error\": \"Missing key in URI\"}",
+                                  "error: Missing key in URI\n");
+            }
+
+            // Determine response format
+            char *response = determine_response_format(pInternal, key, accept_header);
+            if (response == NULL)
+            {
+                return send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                                  "{\"error\": \"Internal Server Error\"}",
+                                  "error: Internal Server Error\n");
+            }
+
+            // Send response
+            unsigned char *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer) - 1;
+            if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK, accept_header, strlen(response), &p, end) < 0)
+            {
+                free(response);
+                return -1;
+            }
+
+            if (lws_finalize_http_header(wsi, &p, end) < 0)
+            {
+                free(response);
+                return -1;
+            }
+
+            if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+            {
+                free(response);
+                return -1;
+            }
+
+            if (lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP_FINAL) < 0)
+            {
+                free(response);
+                return -1;
+            }
+
+            free(response);
+            return 1; // HTTP request handled successfully
 
             break;
         }
@@ -779,40 +739,40 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
     return UT_CONTROL_PLANE_STATUS_OK;
 }
 
-ut_control_plane_status_t UT_ControlPlane_RegisterStringCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_string_callback_t callbackFunction, void *userData)
+ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(ut_controlPlane_instance_t *pInstance, char *restAPI, ut_control_REST_API_callback_t callbackFunction, void *userData)
+
 {
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
 
-    if ( pInternal == NULL )
+    if (pInternal == NULL)
     {
         UT_CONTROL_PLANE_ERROR("Invalid Handle\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_HANDLE;
     }
 
-    if ( key == NULL )
+    if (restAPI == NULL)
     {
         UT_CONTROL_PLANE_ERROR("Invalid Param\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-    if ( callbackFunction == NULL )
+    if (callbackFunction == NULL)
     {
         UT_CONTROL_PLANE_ERROR("NULL callbackFunction\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-     if ( userData == NULL )
+    if (userData == NULL)
     {
         UT_CONTROL_PLANE_ERROR("NULL userData\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-
-    if ( pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES )
+    if (pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES)
     {
         return UT_CONTROL_PLANE_STATUS_LIST_FULL;
     }
-    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,UT_KVP_MAX_ELEMENT_SIZE);
+    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, restAPI, UT_KVP_MAX_ELEMENT_SIZE);
     pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = NULL;
     pInternal->callbackEntryList[pInternal->callback_entry_index].userData = userData;
     pInternal->callbackEntryList[pInternal->callback_entry_index].pStringCallback = callbackFunction;

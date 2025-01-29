@@ -45,7 +45,7 @@ hobbies:
     "traveling"
   ]
 }'
-    ["./curl-get-client-no-header.sh"]='{"error": "Unsupported Accept header"}'
+    ["./curl-get-client-no-header.sh"]='{"error": "Missing or Invalid Accept header"}'
     ["./curl-push-client-binary.sh"]=""
     ["./curl-push-client-json.sh"]=""
     ["./curl-push-client-yaml.sh"]=""

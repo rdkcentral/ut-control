@@ -47,34 +47,31 @@ typedef struct
 
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
-/** @brief  Callback function type for handling control plane messages. */
 /**
- * @typedef ut_control_callback_t
- * @brief A callback function type for handling control operations.
+ * @brief Callback function type for handling control plane POST triggers.
  *
- * This callback function is called with a key, an instance of ut_kvp_instance_t,
- * and user-defined data.
+ * This callback function is invoked when a POST request is received
+ * at a registered endpoint and the triggerKey is matched on the incoming data.
  *
- * @param key The key associated with the control operation.
- * @param instance A pointer to a ut_kvp_instance_t instance.
- * @param userData A pointer to user-defined data.
+ * @param triggerKey The trigger key that was matched.
+ * @param instance The key-value pair instance containing the incoming data.
+ * @param userData User-defined data passed to the callback function.
  */
-typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, void *userData );
+typedef void (*ut_control_callback_t)(char *triggerKey, ut_kvp_instance_t *instance, void *userData);
 
 /**
- * @typedef ut_control_string_callback_t
- * @brief A callback function type for handling control operations with formatted strings.
+ * @brief Callback function type for handling control plane GET API calls.
  *
- * This callback function is called with a key, an instance of ut_kvp_instance_t,
- * user-defined data, and a format string. It returns a formatted string.
+ * This callback function is invoked when a GET request is received
+ * at a registered endpoint. It allows the user to implement the
+ * REST API call.
  *
- * @param key The key associated with the control operation.
- * @param instance A pointer to a ut_kvp_instance_t instance.
- * @param userData A pointer to user-defined data.
- * @param format A constant character pointer representing the format string.
- * @return A formatted string.
+ * @param restAPI The name of the REST API being called.
+ * @param userData User-defined data passed to the callback function.
+ *
+ * @returns A character string containing the result of the API call, in JSON or YAML format
  */
-typedef char* (*ut_control_string_callback_t)( char *key, ut_kvp_instance_t *instance, void *userData, const char* format );
+typedef char *(*ut_control_REST_API_callback_t)(char *restAPI, void *userData);
 
 /**
  * @brief Initializes a control plane instance.
@@ -101,22 +98,24 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
                                                                     void *userData);
 
 /**
- * @brief Registers a string callback function for a specific message key in the control plane instance.
+ * @brief Registers a callback function to handle requests for a specific REST API GET endpoint.
  *
- * This function allows the user to register a callback function that will be invoked when a message
- * with the specified key is received by the control plane instance.
+ * This function registers a callback function that will be invoked when a request
+ * is received for the specified REST API endpoint. The callback function will be
+ * responsible for parsing the request, processing it, and generating a response.
  *
- * @param pInstance Pointer to the control plane instance.
- * @param key The key associated with the message for which the callback is to be registered.
- * @param callbackFunction The callback function to be invoked when the message with the specified key is received.
+ * @param pInstance A pointer to the control plane instance.
+ * @param restAPI The name of the REST API GET endpoint.
+ * @param callbackFunction The callback function to be invoked.
  * @param userData User-defined data to be passed to the callback function.
  *
- * @return Status of the registration operation.
+ * @returns A status code indicating the success or failure of the registration.
  */
-ut_control_plane_status_t UT_ControlPlane_RegisterStringCallbackOnMessage(ut_controlPlane_instance_t *pInstance,
-                                                                    char *key,
-                                                                    ut_control_string_callback_t callbackFunction,
-                                                                    void *userData);
+ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(
+    ut_controlPlane_instance_t *pInstance,
+    char *restAPI,
+    ut_control_REST_API_callback_t callbackFunction,
+    void *userData);
 
 /**
  * @brief Starts the control plane listening for incoming messages.
