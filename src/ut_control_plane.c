@@ -40,9 +40,10 @@
 typedef struct
 {
   char key[UT_KVP_MAX_ELEMENT_SIZE];
-  ut_control_callback_t pCallback;
-  ut_control_REST_API_callback_t pStringCallback;
+  ut_control_REST_API_POST_callback_t pCallback;
+  ut_control_REST_API_GET_callback_t pStringCallback;
   void* userData;
+  eRestApi_t pRestApi;
 }CallbackEntry_t;
 
 typedef enum
@@ -87,7 +88,8 @@ static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void
 static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 #define MAX_POST_DATA_SIZE 4096
 
-struct per_session_data__http {
+struct per_session_data_http
+{
     char post_data[MAX_POST_DATA_SIZE];
     int post_data_len;
 };
@@ -158,7 +160,7 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
     status = ut_kvp_openMemory(pkvpInstance, mssg->message, mssg->size );
     if (status != UT_KVP_STATUS_SUCCESS)
     {
-        UT_CONTROL_PLANE_ERROR("ut_kvp_open() - Read Failure\n");
+        UT_CONTROL_PLANE_ERROR("ut_kvp_openMemory() - Read Failure\n");
         ut_kvp_destroyInstance(pkvpInstance);
         return;
     }
@@ -322,6 +324,7 @@ static char* create_response(ut_cp_instance_internal_t *pInternal, const char* k
             kvpData = entry.pStringCallback((char *)key, entry.userData);
 
             pkvpInstance = ut_kvp_createInstance();
+            // The `kvpData` memory passed gets freed as part of destroy instance
             status = ut_kvp_openMemory(pkvpInstance, kvpData, strlen(kvpData));
             if (status != UT_KVP_STATUS_SUCCESS)
             {
@@ -345,19 +348,27 @@ static int send_error_response(struct lws *wsi, int status, const char *content_
 
     // Add HTTP headers
     if (lws_add_http_common_headers(wsi, status, content_type, strlen(body), &p, end) < 0)
+    {
         return -1;
+    }
 
     // Finalize headers
     if (lws_finalize_http_header(wsi, &p, end) < 0)
+    {
         return -1;
+    }
 
     // Write headers
     if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+    {
         return -1;
+    }
 
     // Write body
     if (lws_write(wsi, (unsigned char *)body, strlen(body), LWS_WRITE_HTTP_FINAL) < 0)
+    {
         return -1;
+    }
 
     return 0;
 }
@@ -367,6 +378,7 @@ static int send_error(void *wsi, int status, const char *accept_header, const ch
 {
     const char *response_format = "application/json";
     const char *error_response = json_msg;
+    int result;
 
     if (strncmp(accept_header, "application/x-yaml", 18) == 0)
     {
@@ -374,7 +386,8 @@ static int send_error(void *wsi, int status, const char *accept_header, const ch
         error_response = yaml_msg;
     }
 
-    return send_error_response(wsi, status, response_format, error_response) < 0 ? -1 : -1;
+    result = send_error_response(wsi, status, response_format, error_response) < 0 ? -1 : -1;
+    return result;
 }
 
 // Function to validate Accept header
@@ -416,18 +429,17 @@ static char *determine_response_format(void *pInternal, const char *key, const c
     {
         return create_response(pInternal, key, "yaml");
     }
-    else
-    {
-        UT_CONTROL_PLANE_ERROR("Internal Server Error\n");
-        return NULL;
-    }
+
+    UT_CONTROL_PLANE_ERROR("Internal Server Error\n");
+    return NULL;
 }
 
 static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
     cp_message_t msg;
+    int result = 0;
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)lws_context_user(lws_get_context(wsi));
-    struct per_session_data__http *perSessionData = (struct per_session_data__http *)user;
+    struct per_session_data_http *perSessionData = (struct per_session_data_http *)user;
 
     switch (reason)
     {
@@ -442,9 +454,9 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
 
             UT_CONTROL_PLANE_DEBUG("Requested URI: %s\n", requested_uri);
 
-            // Handle POST request for /api/postRequest
-            if (strcmp(requested_uri, "/api/postRequest") == 0)
-            {
+            // Handle POST request based on Token-Type
+            if (lws_hdr_total_length(wsi, WSI_TOKEN_POST_URI)) {
+                lwsl_user("Received a POST request\n");
                 lws_callback_on_writable(wsi);
                 return 0; // Let the body handling process continue
             }
@@ -461,27 +473,30 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
             if (strncmp(requested_uri, "/api/", 5) != 0)
             {
                 UT_CONTROL_PLANE_ERROR("Invalid URI: %s\n", requested_uri);
-                return send_error(wsi, HTTP_STATUS_NOT_FOUND, accept_header,
+                result = send_error(wsi, HTTP_STATUS_NOT_FOUND, accept_header,
                                   "{\"error\": \"Internal Server Error\"}",
                                   "error: Internal Server Error\n");
+                return result;
             }
 
             // Extract key
             char key[256] = {0};
             if (extract_key(requested_uri, key, sizeof(key)) < 0)
             {
-                return send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                result = send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
                                   "{\"error\": \"Missing key in URI\"}",
                                   "error: Missing key in URI\n");
+                return result;
             }
 
             // Determine response format
             char *response = determine_response_format(pInternal, key, accept_header);
             if (response == NULL)
             {
-                return send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                result = send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
                                   "{\"error\": \"Internal Server Error\"}",
                                   "error: Internal Server Error\n");
+                return result;
             }
 
             // Send response
@@ -588,7 +603,7 @@ static struct lws_protocols protocols[] = {
     {
         "http-only",
         callback_http,
-        sizeof(struct per_session_data__http),
+        sizeof(struct per_session_data_http),
         MAX_POST_DATA_SIZE,
     },
     { NULL, NULL, 0, 0 }
@@ -697,7 +712,7 @@ void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
     pInternal->state_machine_thread_handle = 0;
 }
 
-ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction, void *userData)
+ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_REST_API_POST_callback_t callbackFunction, void *userData, eRestApi_t restApiType)
 {
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
 
@@ -719,12 +734,17 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-     if ( userData == NULL )
+    if ( userData == NULL )
     {
         UT_CONTROL_PLANE_ERROR("NULL userData\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
+    if ( restApiType == INVALID )
+    {
+        UT_CONTROL_PLANE_ERROR("Invalid Rest API\n");
+        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
+    }
 
     if ( pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES )
     { 
@@ -734,12 +754,16 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
     pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = callbackFunction;
     pInternal->callbackEntryList[pInternal->callback_entry_index].userData = userData;
     pInternal->callbackEntryList[pInternal->callback_entry_index].pStringCallback = NULL;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pRestApi = restApiType;
     pInternal->callback_entry_index++;
     UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", pInternal->callback_entry_index);
     return UT_CONTROL_PLANE_STATUS_OK;
 }
 
-ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(ut_controlPlane_instance_t *pInstance, char *restAPI, ut_control_REST_API_callback_t callbackFunction, void *userData)
+ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(
+    ut_controlPlane_instance_t *pInstance,
+    char *restAPI,
+    ut_control_rest_api_handler_t *handler)
 
 {
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
@@ -756,15 +780,21 @@ ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(ut_controlP
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-    if (callbackFunction == NULL)
+    if (handler->callbackFunctionGET == NULL && handler->callbackFunctionPOST == NULL)
     {
-        UT_CONTROL_PLANE_ERROR("NULL callbackFunction\n");
+        UT_CONTROL_PLANE_ERROR("NULL callbackFunctions\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-    if (userData == NULL)
+    if (handler->userData == NULL && handler->restApiType == POST)
     {
         UT_CONTROL_PLANE_ERROR("NULL userData\n");
+        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
+    }
+
+    if (handler->restApiType == INVALID)
+    {
+        UT_CONTROL_PLANE_ERROR("Invalid Rest API\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
@@ -773,9 +803,10 @@ ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(ut_controlP
         return UT_CONTROL_PLANE_STATUS_LIST_FULL;
     }
     strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, restAPI, UT_KVP_MAX_ELEMENT_SIZE);
-    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = NULL;
-    pInternal->callbackEntryList[pInternal->callback_entry_index].userData = userData;
-    pInternal->callbackEntryList[pInternal->callback_entry_index].pStringCallback = callbackFunction;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = handler->callbackFunctionPOST;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].userData = handler->userData;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pStringCallback = handler->callbackFunctionGET;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pRestApi = handler->restApiType;
     pInternal->callback_entry_index++;
     UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", pInternal->callback_entry_index);
     return UT_CONTROL_PLANE_STATUS_OK;

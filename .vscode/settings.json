@@ -71,7 +71,8 @@
     "type_traits": "c",
     "utility": "c",
     "istream": "c",
-    "ostream": "c"
+    "ostream": "c",
+    "libwebsockets.h": "c"
   },
   "cmake.configureOnOpen": true
 }
