@@ -39,12 +39,16 @@
 
 typedef struct
 {
-  char key[UT_KVP_MAX_ELEMENT_SIZE];
-  ut_control_REST_API_POST_callback_t pCallback;
-  ut_control_REST_API_GET_callback_t pStringCallback;
-  void* userData;
-  eRestApi_t pRestApi;
-}CallbackEntry_t;
+    ut_control_on_message_callback_t pCallback;
+    ut_control_endpoint_callback_t pStringCallback;
+}Callback_type_t;
+
+typedef struct
+{
+    char key[UT_KVP_MAX_ELEMENT_SIZE];
+    Callback_type_t pCallbackType;
+    void *userData;
+} CallbackEntry_t;
 
 typedef enum
 {
@@ -170,7 +174,7 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
         if (UT_KVP_STATUS_SUCCESS == ut_kvp_getStringField(pkvpInstance, entry.key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE))
         {
             // call callback
-            entry.pCallback(entry.key, pkvpInstance, entry.userData);
+            entry.pCallbackType.pCallback(entry.key, pkvpInstance, entry.userData);
         }
     }
     ut_kvp_destroyInstance(pkvpInstance);
@@ -321,7 +325,7 @@ static char* create_response(ut_cp_instance_internal_t *pInternal, const char* k
 
         if (compareStrings(entry.key, key) == 0)
         {
-            kvpData = entry.pStringCallback((char *)key, entry.userData);
+            kvpData = entry.pCallbackType.pStringCallback((char *)key, entry.userData);
 
             pkvpInstance = ut_kvp_createInstance();
             // The `kvpData` memory passed gets freed as part of destroy instance
@@ -712,7 +716,7 @@ void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
     pInternal->state_machine_thread_handle = 0;
 }
 
-ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_REST_API_POST_callback_t callbackFunction, void *userData, eRestApi_t restApiType)
+ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_on_message_callback_t callbackFunction, void *userData)
 {
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
 
@@ -740,30 +744,20 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-    if ( restApiType == INVALID )
-    {
-        UT_CONTROL_PLANE_ERROR("Invalid Rest API\n");
-        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
-    }
-
     if ( pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES )
     { 
         return UT_CONTROL_PLANE_STATUS_LIST_FULL;
     } 
     strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,UT_KVP_MAX_ELEMENT_SIZE);
-    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = callbackFunction;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallbackType.pCallback = callbackFunction;
     pInternal->callbackEntryList[pInternal->callback_entry_index].userData = userData;
-    pInternal->callbackEntryList[pInternal->callback_entry_index].pStringCallback = NULL;
-    pInternal->callbackEntryList[pInternal->callback_entry_index].pRestApi = restApiType;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallbackType.pStringCallback = NULL;
     pInternal->callback_entry_index++;
     UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", pInternal->callback_entry_index);
     return UT_CONTROL_PLANE_STATUS_OK;
 }
 
-ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(
-    ut_controlPlane_instance_t *pInstance,
-    char *restAPI,
-    ut_control_rest_api_handler_t *handler)
+ut_control_plane_status_t UT_ControlPlane_RegisterEndPointCallback(ut_controlPlane_instance_t *pInstance, char *restAPI, ut_control_endpoint_callback_t callbackFunction, void *userData)
 
 {
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
@@ -780,22 +774,15 @@ ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-    if (handler->callbackFunctionGET == NULL && handler->callbackFunctionPOST == NULL)
+    if (callbackFunction == NULL)
     {
-        UT_CONTROL_PLANE_ERROR("NULL callbackFunctions\n");
+        UT_CONTROL_PLANE_ERROR("NULL callbackFunction\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-    if (handler->userData == NULL && handler->restApiType == POST)
+    if (userData == NULL)
     {
         UT_CONTROL_PLANE_ERROR("NULL userData\n");
-        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
-    }
-
-    if (handler->restApiType == INVALID)
-    {
-        UT_CONTROL_PLANE_ERROR("Invalid Rest API\n");
-        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
     if (pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES)
@@ -803,10 +790,9 @@ ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(
         return UT_CONTROL_PLANE_STATUS_LIST_FULL;
     }
     strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, restAPI, UT_KVP_MAX_ELEMENT_SIZE);
-    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = handler->callbackFunctionPOST;
-    pInternal->callbackEntryList[pInternal->callback_entry_index].userData = handler->userData;
-    pInternal->callbackEntryList[pInternal->callback_entry_index].pStringCallback = handler->callbackFunctionGET;
-    pInternal->callbackEntryList[pInternal->callback_entry_index].pRestApi = handler->restApiType;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallbackType.pCallback = NULL;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].userData = userData;
+    pInternal->callbackEntryList[pInternal->callback_entry_index].pCallbackType.pStringCallback = callbackFunction;
     pInternal->callback_entry_index++;
     UT_CONTROL_PLANE_DEBUG("callback_entry_index : %d\n", pInternal->callback_entry_index);
     return UT_CONTROL_PLANE_STATUS_OK;

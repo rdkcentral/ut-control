@@ -45,48 +45,33 @@ typedef struct
     int32_t value;
 } ut_control_keyStringMapping_t;
 
-typedef enum
-{
-    POST = 0,
-    GET,
-    INVALID
-}eRestApi_t;
-
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
 /**
- * @brief Callback function type for handling REST_API from POST triggers.
+ * @brief Callback function type for handling POST triggers.
  *
  * This callback function is invoked when a POST request is received
- * at a registered endpoint and the triggerKey is matched on the incoming data.
+ * at the ut control server and the triggerKey is matched on the incoming data.
  *
  * @param triggerKey The trigger key that was matched.
  * @param instance The key-value pair instance containing the incoming data.
  * @param userData User-defined data passed to the callback function.
  */
-typedef void (*ut_control_REST_API_POST_callback_t)(char *triggerKey, ut_kvp_instance_t *instance, void *userData);
+typedef void (*ut_control_on_message_callback_t)(char *triggerKey, ut_kvp_instance_t *instance, void *userData);
 
 /**
  * @brief Callback function for handling REST_API from GET triggers.
  *
  * This callback function is invoked when a GET request is received
- * at a registered endpoint. It allows the user to implement the
- * REST API call.
+ * at UT control server and the rest api name of the GET request matches the restAPI parameter
+ * registered with the UT control server.
  *
  * @param restAPI The name of the REST API being called.
  * @param userData User-defined data passed to the callback function.
  *
- * @returns A character string containing the result of the API call, in JSON or YAML format
+ * @returns A character string containing the result of the API call
  */
-typedef char *(*ut_control_REST_API_GET_callback_t)(char *restAPI, void *userData);
-
-typedef struct
-{
-    ut_control_REST_API_GET_callback_t callbackFunctionGET;
-    ut_control_REST_API_POST_callback_t callbackFunctionPOST;
-    eRestApi_t restApiType; // POST = 0, GET = 1
-    void *userData;         // user-defined data
-} ut_control_rest_api_handler_t;
+typedef char *(*ut_control_endpoint_callback_t)(char *restAPI, void *userData);
 
 /**
  * @brief Initializes a control plane instance.
@@ -96,23 +81,21 @@ typedef struct
 ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
 
 /**
- * @brief Registers a callback function for a specific message key.
+ * @brief Registers a callback function to pattern match a key from the POST request
  * @param pInstance - Handle to the control plane instance.
  * @param key - Null-terminated string representing the message key to trigger the callback.
  * @param callbackFunction - Callback function to be invoked when the key is received.
  * @param userData - Handle to the caller instance.
- * @param restApiType - Type of REST API to be registered.(POST = 0, GET = 1)
  * @returns Status of the registration operation (`ut_control_plane_status_t`).
  * @retval UT_CONTROL_PLANE_STATUS_OK - Success
  * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE  - Invalid control plane instance handle.
  * @retval UT_CONTROL_PLANE_STATUS_INVALID_PARAM - Invalid parameter passed
  * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL  - Callback list is full
- * *******************NOTE: This function will be deprecated in future major releases.*******************
  */
 ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance,
                                                                     char *key,
-                                                                    ut_control_REST_API_POST_callback_t callbackFunction,
-                                                                    void *userData, eRestApi_t restApiType);
+                                                                    ut_control_on_message_callback_t callbackFunction,
+                                                                    void *userData);
 
 /**
  * @brief Registers a callback function for REST API endpoint.
@@ -122,14 +105,16 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
  *
  * @param pInstance A pointer to the control plane instance.
  * @param restAPI The name of the REST API endpoint in case of GET or message key for POST.
- * @param handler A structure containing callback functions and metadata.
- *
- * @returns A status code indicating the success or failure of the registration.
+ * @param userData NULL by default. Optionally, can be used as a handle to the caller instance.
+ * @returns Status of the registration operation (`ut_control_plane_status_t`).
+ * @retval UT_CONTROL_PLANE_STATUS_OK - Success
+ * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE  - Invalid control plane instance handle.
+ * @retval UT_CONTROL_PLANE_STATUS_INVALID_PARAM - Invalid parameter passed
+ * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL  - Callback list is full
  */
-ut_control_plane_status_t UT_ControlPlane_RegisterAPIEndpointHandler(
+ut_control_plane_status_t UT_ControlPlane_RegisterEndPointCallback(
     ut_controlPlane_instance_t *pInstance,
-    char *restAPI,
-    ut_control_rest_api_handler_t *handler);
+    char *restAPI, ut_control_endpoint_callback_t callbackFunction, void *userData);
 
 /**
  * @brief Starts the control plane listening for incoming messages.

@@ -41,6 +41,7 @@
 static UT_test_suite_t *gpAssertSuite1 = NULL;
 static UT_test_suite_t *gpAssertSuite2 = NULL;
 static UT_test_suite_t *gpAssertSuite3 = NULL;
+static UT_test_suite_t *gpAssertSuite4 = NULL;
 
 static ut_controlPlane_instance_t *gInstance = NULL;
 static volatile bool gMessageRecievedYAML = false;
@@ -126,66 +127,91 @@ static void test_ut_control_l1_testStartStop()
     UT_LOG("test_ut_control_l1_testStartStop\n");
 }
 
-static void test_ut_control_l1_regsiterCallback()
+static void test_ut_control_l1_regsiter_on_message_Callback()
 {
     ut_controlPlane_instance_t *pInstance;
     ut_control_plane_status_t status;
     void* userData = (void* )strdup("testJSONCallbackStringInvalidParam");
 
-    UT_LOG("\ntest_ut_control_l1_regsiterCallback\n");
+    UT_LOG("\test_ut_control_l1_regsiter_on_message_Callback\n");
 
     pInstance = UT_ControlPlane_Init(9000);
     UT_ASSERT(pInstance != NULL);
 
-    ut_control_rest_api_handler_t handler = {
-        .callbackFunctionGET = &testGETJSONCallback,
-        .callbackFunctionPOST = &testYAMLCallback,
-        .userData = userData,
-        .restApiType = POST
-    };
-    status = UT_ControlPlane_RegisterAPIEndpointHandler(pInstance, NULL, &handler);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, NULL, &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
 
-    handler.callbackFunctionGET = NULL;
-    handler.callbackFunctionPOST = NULL;
-    status = UT_ControlPlane_RegisterAPIEndpointHandler(pInstance, "test/yamlData", &handler);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", NULL, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
 
-    handler.callbackFunctionGET = &testGETYamlCallback;
-    handler.callbackFunctionPOST = &testYAMLCallback;
-    handler.userData = NULL;
-    status = UT_ControlPlane_RegisterAPIEndpointHandler(pInstance, "test/yamlData", &handler);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback, NULL);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
 
-    handler.userData = userData;
-    handler.restApiType = INVALID;
-    status = UT_ControlPlane_RegisterAPIEndpointHandler(pInstance, "test/yamlData", &handler);
-    UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
-
-    handler.restApiType = POST;
-    status = UT_ControlPlane_RegisterAPIEndpointHandler(NULL, "test/yamlData", &handler);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(NULL, "test/yamlData", &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_HANDLE);
 
-    status = UT_ControlPlane_RegisterAPIEndpointHandler(pInstance, "ttest/yamlData", &handler);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "ttest/yamlData", &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_OK);
     free(userData); //freeing the userData after registration
 
     userData = (void* )strdup("testJSONCallbackString");
     for (int i = 0; i< UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES - 1; i++ )
     {
-        status = UT_ControlPlane_RegisterAPIEndpointHandler(pInstance, "test/yamlData", &handler);
+        status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback, userData);
         UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_OK);
     }
     free(userData); //freeing the userData after registration
 
     userData = (void* )strdup("testJSONCallbackString");
-    status = UT_ControlPlane_RegisterAPIEndpointHandler(pInstance, "test/yamlData", &handler);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_LIST_FULL);
     free(userData); //freeing the userData after registration
 
     UT_ControlPlane_Exit(pInstance);
 
-    UT_LOG("test_ut_control_l1_regsiterCallback\n");
+    UT_LOG("test_ut_control_l1_regsiter_on_message_Callback\n");
+}
+
+static void test_ut_control_l1_regsiter_endpoint_Callback()
+{
+    ut_controlPlane_instance_t *pInstance;
+    ut_control_plane_status_t status;
+    void* userData = (void* )strdup("testJSONCallbackStringInvalidParam");
+
+    UT_LOG("\ntest_ut_control_l1_regsiter_endpoint_Callback\n");
+
+    pInstance = UT_ControlPlane_Init(9000);
+    UT_ASSERT(pInstance != NULL);
+
+    status = UT_ControlPlane_RegisterEndPointCallback(pInstance, NULL, &testGETJSONCallback, userData);
+    UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
+
+    status = UT_ControlPlane_RegisterEndPointCallback(pInstance, "/v1/callMyFunction2", NULL, userData);
+    UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_PARAM);
+
+    status = UT_ControlPlane_RegisterEndPointCallback(NULL, "/v1/callMyFunction2", &testGETJSONCallback, userData);
+    UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_INVALID_HANDLE);
+
+    status = UT_ControlPlane_RegisterEndPointCallback(pInstance, "/v1/callMyFunction2", &testGETJSONCallback, userData);
+    UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_OK);
+    free(userData); //freeing the userData after registration
+
+    userData = (void* )strdup("testJSONCallbackString");
+    for (int i = 0; i< UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES - 1; i++ )
+    {
+        status = UT_ControlPlane_RegisterEndPointCallback(pInstance, "/v1/callMyFunction2", &testGETJSONCallback, userData);
+        UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_OK);
+    }
+    free(userData); //freeing the userData after registration
+
+    userData = (void* )strdup("testJSONCallbackString");
+    status = UT_ControlPlane_RegisterEndPointCallback(pInstance, "/v1/callMyFunction2", &testGETJSONCallback, userData);
+    UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_LIST_FULL);
+    free(userData); //freeing the userData after registration
+
+    UT_ControlPlane_Exit(pInstance);
+
+    UT_LOG("test_ut_control_l1_regsiter_endpoint_Callback\n");
 }
 
 /* L2 Testing functions */
@@ -328,18 +354,11 @@ static void test_ut_control_performInit( void )
 
 static void test_ut_control_performStart()
 {
-    ut_control_rest_api_handler_t handler = {
-        .callbackFunctionGET = &testGETJSONCallback,
-        .callbackFunctionPOST = &testYAMLCallback,
-        .userData = NULL,
-        .restApiType = INVALID
-    };
-
     UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback - Negative\n");
-    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, NULL, POST);
+    UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, NULL);
 
-    UT_LOG("UT_ControlPlane_RegisterAPIEndpointHandler() client testGETJSONCallback - Negative\n");
-    UT_ControlPlane_RegisterAPIEndpointHandler(gInstance, "/v1/callMyFunction2", &handler);
+    UT_LOG("UT_ControlPlane_RegisterEndPointCallback() client testGETJSONCallback - Negative\n");
+    UT_ControlPlane_RegisterEndPointCallback(gInstance, "/v1/callMyFunction2", NULL, NULL);
 
     if (read_file_into_memory(UT_CONTROL_YAML_FILE, &gUserDataYaml) == 0)
     {
@@ -348,24 +367,14 @@ static void test_ut_control_performStart()
             printf("Original Yaml file\n%s", (char*)gUserDataYaml.buffer);
         }
 
-        handler.restApiType = POST;
-        handler.userData = (void *)gUserDataYaml.buffer;
-        handler.callbackFunctionPOST = &testYAMLCallback;
-        handler.callbackFunctionGET = NULL;
-
-        UT_LOG("UT_ControlPlane_RegisterAPIEndpointHandler() client testYAMLCallback - Positive\n");
-        UT_ControlPlane_RegisterAPIEndpointHandler(gInstance, "test/yamlData", &handler);
+        UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback - Positive\n");
+        UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, &gUserDataYaml.buffer);
     }
 
     gMessageRecievedYAML = false;
 
-    handler.restApiType = GET;
-    handler.userData = NULL;
-    handler.callbackFunctionPOST = NULL;
-    handler.callbackFunctionGET = &testGETJSONCallback;
-
-    UT_LOG("UT_ControlPlane_RegisterAPIEndpointHandler() client testGETJSONCallback - Positive \n");
-    UT_ControlPlane_RegisterAPIEndpointHandler(gInstance, "/v1/callMyFunction2", &handler);
+    UT_LOG("UT_ControlPlane_RegisterEndPointCallback() client testGETJSONCallback - Positive \n");
+    UT_ControlPlane_RegisterEndPointCallback(gInstance, "/v1/callMyFunction2", &testGETJSONCallback, NULL);
 
     UT_ControlPlane_Start(gInstance);
 
@@ -377,24 +386,14 @@ static void test_ut_control_performStart()
             printf("Original Json file\n%s", (char*)gUserDataJson.buffer);
         }
 
-        handler.restApiType = POST;
-        handler.userData = (void *)gUserDataJson.buffer;
-        handler.callbackFunctionPOST = &testJSONCallback;
-        handler.callbackFunctionGET = NULL;
-
-        UT_LOG("UT_ControlPlane_RegisterAPIEndpointHandler() client testJSONCallback - Positive \n");
-        UT_ControlPlane_RegisterAPIEndpointHandler(gInstance, "test2/jsonData1", &handler);
+        UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testJSONCallback - Positive \n");
+        UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2/jsonData1", &testJSONCallback, &gUserDataJson.buffer);
     }
 
     gMessageRecievedJSON = false;
 
-    handler.restApiType = GET;
-    handler.userData = NULL;
-    handler.callbackFunctionPOST = NULL;
-    handler.callbackFunctionGET = &testGETYamlCallback;
-
-    UT_LOG("UT_ControlPlane_RegisterAPIEndpointHandler() client testGETYamlCallback - Positive \n");
-    UT_ControlPlane_RegisterAPIEndpointHandler(gInstance, "/v1/callMyFunction", &handler);
+    UT_LOG("UT_ControlPlane_RegisterEndPointCallback() client testGETYamlCallback - Positive \n");
+    UT_ControlPlane_RegisterEndPointCallback(gInstance, "/v1/callMyFunction", &testGETYamlCallback, NULL);
 }
 
 void run_client_function()
@@ -477,8 +476,12 @@ void register_cp_function()
     gpAssertSuite1 = UT_add_suite("L1 - ut_control function tests", NULL, NULL);
     assert(gpAssertSuite1 != NULL);
     UT_add_test(gpAssertSuite1, "ut-cp Init Exit", test_ut_control_l1_testInitExit);
-    UT_add_test(gpAssertSuite1, "ut-cp register callback", test_ut_control_l1_regsiterCallback);
+    UT_add_test(gpAssertSuite1, "ut-cp register on message callback", test_ut_control_l1_regsiter_on_message_Callback);
     UT_add_test(gpAssertSuite1, "ut-cp websocket service", test_ut_control_l1_testStartStop);
+
+    gpAssertSuite4 = UT_add_suite("L1 - ut_control function tests for end point cb", (UT_InitialiseFunction_t) test_ut_control_l1_testInitExit, (UT_CleanupFunction_t) test_ut_control_l1_testStartStop);
+    assert(gpAssertSuite4 != NULL);
+    UT_add_test(gpAssertSuite4, "ut-cp register end point callback", test_ut_control_l1_regsiter_endpoint_Callback);
 
     /* L2 - ut_control Module tests */
     gpAssertSuite2 = UT_add_suite("L2 - ut_control Module tests", NULL, NULL);
