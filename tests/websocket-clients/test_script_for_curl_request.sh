@@ -49,7 +49,43 @@ hobbies:
     ["./curl-push-client-binary.sh"]=""
     ["./curl-push-client-json.sh"]=""
     ["./curl-push-client-yaml.sh"]=""
-)
+    ["./curl-get-filtered-client-json.sh"]='{
+  "name": "John Doe",
+  "age": 30,
+  "email": "johndoe@example.com",
+  "isMarried": false,
+  "children": [
+    {
+      "name": "Alice",
+      "age": 5
+    },
+    {
+      "name": "Bob",
+      "age": 3
+    }
+  ],
+  "hobbies": [
+    "reading",
+    "cycling",
+    "traveling"
+  ],
+  "pData": "category=X&price_lt=Y"
+}'
+  ["./curl-get-filtered-client-yaml.sh"]='---
+name: John Doe
+age: 30
+email: johndoe@example.com
+isMarried: false
+children:
+- name: Alice
+  age: 5
+- name: Bob
+  age: 3
+hobbies:
+- reading
+- cycling
+- traveling
+pData: category=X&price_lt=Y')
 
 # Loop through tests and validate output
 for script in "${!tests[@]}"; do

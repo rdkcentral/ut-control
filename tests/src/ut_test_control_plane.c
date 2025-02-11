@@ -199,33 +199,67 @@ char* testRestJSONCallback(const char *restApi, const char* requestType, ut_kvp_
         }
 
         // Construct the JSON string using sprintf
-        sprintf(jsonString,
-                "{\n"
-                "  \"name\": \"John Doe\",\n"
-                "  \"age\": %d,\n"
-                "  \"email\": \"%s\",\n"
-                "  \"isMarried\": %s,\n"
-                "  \"children\": [\n"
-                "    {\n"
-                "      \"name\": \"%s\",\n"
-                "      \"age\": %d\n"
-                "    },\n"
-                "    {\n"
-                "      \"name\": \"%s\",\n"
-                "      \"age\": %d\n"
-                "    }\n"
-                "  ],\n"
-                "  \"hobbies\": [\n"
-                "    \"%s\",\n"
-                "    \"%s\",\n"
-                "    \"%s\"\n"
-                "  ]\n"
-                "}",
-                30, "johndoe@example.com", "false",
-                "Alice", 5,
-                "Bob", 3,
-                "reading", "cycling", "traveling");
+        if (instance != NULL)
+        {
+            sprintf(jsonString,
+                    "{\n"
+                    "  \"name\": \"John Doe\",\n"
+                    "  \"age\": %d,\n"
+                    "  \"email\": \"%s\",\n"
+                    "  \"isMarried\": %s,\n"
+                    "  \"children\": [\n"
+                    "    {\n"
+                    "      \"name\": \"%s\",\n"
+                    "      \"age\": %d\n"
+                    "    },\n"
+                    "    {\n"
+                    "      \"name\": \"%s\",\n"
+                    "      \"age\": %d\n"
+                    "    }\n"
+                    "  ],\n"
+                    "  \"hobbies\": [\n"
+                    "    \"%s\",\n"
+                    "    \"%s\",\n"
+                    "    \"%s\"\n"
+                    "  ]\n"
+                    "pData: %s\n"
+                    "}",
+                    30, "johndoe@example.com", "false",
+                    "Alice", 5,
+                    "Bob", 3,
+                    "reading", "cycling", "traveling", (char *)instance);
 
+            UT_LOG("pData = [%s]\n", (char *)instance);
+        }
+        else
+        {
+            sprintf(jsonString,
+                    "{\n"
+                    "  \"name\": \"John Doe\",\n"
+                    "  \"age\": %d,\n"
+                    "  \"email\": \"%s\",\n"
+                    "  \"isMarried\": %s,\n"
+                    "  \"children\": [\n"
+                    "    {\n"
+                    "      \"name\": \"%s\",\n"
+                    "      \"age\": %d\n"
+                    "    },\n"
+                    "    {\n"
+                    "      \"name\": \"%s\",\n"
+                    "      \"age\": %d\n"
+                    "    }\n"
+                    "  ],\n"
+                    "  \"hobbies\": [\n"
+                    "    \"%s\",\n"
+                    "    \"%s\",\n"
+                    "    \"%s\"\n"
+                    "  ]\n"
+                    "}",
+                    30, "johndoe@example.com", "false",
+                    "Alice", 5,
+                    "Bob", 3,
+                    "reading", "cycling", "traveling");
+        }
         return jsonString; // Return the allocated JSON string
     }
     else
@@ -261,26 +295,53 @@ char* testRestYamlCallback(const char *restApi, const char* requestType, ut_kvp_
         }
 
         // Construct the YAML string using sprintf
-        sprintf(yamlString,
-                "---\n"
-                "name: John Doe\n"
-                "age: %d\n"
-                "email: %s\n"
-                "isMarried: %s\n"
-                "children:\n"
-                "  - name: %s\n"
-                "    age: %d\n"
-                "  - name: %s\n"
-                "    age: %d\n"
-                "hobbies:\n"
-                "  - %s\n"
-                "  - %s\n"
-                "  - %s\n",
-                30, "johndoe@example.com", "false",
-                "Alice", 5,
-                "Bob", 3,
-                "reading", "cycling", "traveling");
+        if (instance != NULL)
+        {
+            sprintf(yamlString,
+                    "---\n"
+                    "name: John Doe\n"
+                    "age: %d\n"
+                    "email: %s\n"
+                    "isMarried: %s\n"
+                    "children:\n"
+                    "  - name: %s\n"
+                    "    age: %d\n"
+                    "  - name: %s\n"
+                    "    age: %d\n"
+                    "hobbies:\n"
+                    "  - %s\n"
+                    "  - %s\n"
+                    "  - %s\n"
+                    "pData: %s\n",
+                    30, "johndoe@example.com", "false",
+                    "Alice", 5,
+                    "Bob", 3,
+                    "reading", "cycling", "traveling", (char *)instance);
+            UT_LOG("pData = [%s]\n", (char *)instance);
+        }
+        else
+        {
+            sprintf(yamlString,
+                    "---\n"
+                    "name: John Doe\n"
+                    "age: %d\n"
+                    "email: %s\n"
+                    "isMarried: %s\n"
+                    "children:\n"
+                    "  - name: %s\n"
+                    "    age: %d\n"
+                    "  - name: %s\n"
+                    "    age: %d\n"
+                    "hobbies:\n"
+                    "  - %s\n"
+                    "  - %s\n"
+                    "  - %s\n",
+                    30, "johndoe@example.com", "false",
+                    "Alice", 5,
+                    "Bob", 3,
+                    "reading", "cycling", "traveling");
 
+        }
         return yamlString; // Return the allocated Yaml string
     }
     else

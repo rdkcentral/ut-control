@@ -97,6 +97,7 @@ struct per_session_data_http
 #endif
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance);
 static char gPostKey[UT_KVP_MAX_ELEMENT_SIZE];
+static char gQueryString[UT_KVP_MAX_ELEMENT_SIZE];
 
 /* Local Fucntions*/
 static void enqueue_message(cp_message_t *data, ut_cp_instance_internal_t *pInternal )
@@ -323,7 +324,14 @@ static char* create_response(ut_cp_instance_internal_t *pInternal, const char* k
 
         if (compareStrings(entry.key, key) == 0)
         {
-            kvpData = entry.pCallback((char *)key, "GET", NULL, entry.userData);
+            if (gQueryString[0] != '\0')
+            {
+                kvpData = entry.pCallback((char *)key, "GET", gQueryString, entry.userData);
+            }
+            else
+            {
+                kvpData = entry.pCallback((char *)key, "GET", NULL, entry.userData);
+            }
 
             pkvpInstance = ut_kvp_createInstance();
             // The `kvpData` memory passed gets freed as part of destroy instance
@@ -495,6 +503,11 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                                   "{\"error\": \"Missing key in URI\"}",
                                   "error: Missing key in URI\n");
                 return result;
+            }
+
+            if (lws_hdr_copy(wsi, gQueryString, sizeof(gQueryString), WSI_TOKEN_HTTP_URI_ARGS) > 0)
+            {
+                UT_CONTROL_PLANE_DEBUG("Query String: %s\n", gQueryString);
             }
 
             // Determine response format
