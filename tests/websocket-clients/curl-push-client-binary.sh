@@ -1,2 +1,2 @@
-curl -X POST http://localhost:8080/api/postRequest -H "Content-Type: application/octet-stream" --data-binary "@example.yaml"
-curl -X POST http://localhost:8080/api/postRequest -H "Content-Type: application/octet-stream" --data-binary "@example.json"
+curl -X POST http://localhost:8080/api/postBinaryYaml -H "Content-Type: application/octet-stream" --data-binary "@example.yaml"
+curl -X POST http://localhost:8080/api/postBinaryJson -H "Content-Type: application/octet-stream" --data-binary "@example.json"
