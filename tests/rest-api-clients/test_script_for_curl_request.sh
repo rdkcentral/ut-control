@@ -8,8 +8,8 @@ NC='\033[0m' # No color
 
 # Define test scripts and expected results
 declare -A tests=(
-    ["./curl-get-client-yaml-incorrect.sh"]="error: Internal Server Error"
-    ["./curl-get-client-yaml.sh"]="---
+    ["./GET-request-yaml-incorrect.sh"]="error: Internal Server Error"
+    ["./GET-request-yaml.sh"]="---
 name: John Doe
 age: 30
 email: johndoe@example.com
@@ -23,8 +23,8 @@ hobbies:
 - reading
 - cycling
 - traveling"
-    ["./curl-get-client-json-incorrect.sh"]='{"error": "Internal Server Error"}'
-    ["./curl-get-client-json.sh"]='{
+    ["./GET-request-json-incorrect.sh"]='{"error": "Internal Server Error"}'
+    ["./GET-request-json.sh"]='{
   "name": "John Doe",
   "age": 30,
   "email": "johndoe@example.com",
@@ -45,11 +45,11 @@ hobbies:
     "traveling"
   ]
 }'
-    ["./curl-get-client-no-header.sh"]='{"error": "Missing or Invalid Accept header"}'
-    ["./curl-push-client-binary.sh"]=""
-    ["./curl-push-client-json.sh"]=""
-    ["./curl-push-client-yaml.sh"]=""
-    ["./curl-get-filtered-client-json.sh"]='{
+    ["./GET-request-no-header.sh"]='{"error": "Missing or Invalid Accept header"}'
+    ["./POST-request-binary.sh"]=""
+    ["./POST-request-json.sh"]=""
+    ["./POST-request-yaml.sh"]=""
+    ["./GET-request-filtered-json.sh"]='{
   "name": "John Doe",
   "age": 30,
   "email": "johndoe@example.com",
@@ -71,7 +71,7 @@ hobbies:
   ],
   "pData": "category=X&price_lt=Y"
 }'
-  ["./curl-get-filtered-client-yaml.sh"]='---
+  ["./GET-request-filtered-yaml.sh"]='---
 name: John Doe
 age: 30
 email: johndoe@example.com
