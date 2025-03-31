@@ -94,11 +94,11 @@ fi
 popd > /dev/null
 
 pushd ${MY_DIR}
-if command -v cmake &> /dev/null; then
-    echo "CMake is installed"
-    CMAKE_BIN=$(which cmake)
+if command -v cmake &> /dev/null && [ "$(cmake --version | head -n1 | awk '{print $3}')" \> "3.12" ]; then
+    echo "CMake is installed and version is 3.13 or higher"
+    export CMAKE_BIN=$(which cmake)
 else
-    CMAKE_BIN=${CMAKE_BIN_DIR}/cmake
+    export CMAKE_BIN=${CMAKE_BIN_DIR}/cmake
     if [ -d "${CMAKE_BIN_DIR}" ]; then
         echo "CMake is already built"
     else
