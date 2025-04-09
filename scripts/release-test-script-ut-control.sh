@@ -322,7 +322,7 @@ print_results() {
     popd > /dev/null
 
     #Results for VM_SYNC
-    PLAT_DIR="${REPO_NAME}-VM-SYNC"
+    PLAT_DIR="${REPO_NAME}-VM-SYNC_linux"
     pushd ${PLAT_DIR} > /dev/null
     run_checks "VM-SYNC" "linux" $ut_control_branch_name
     popd > /dev/null
@@ -369,59 +369,49 @@ run_on_ubuntu_linux() {
     popd > /dev/null
 }
 
-run_on_dunfell_linux() {
-    pushd ${MY_DIR} > /dev/null
-    SETUP_ENV="sc docker run rdk-dunfell"
-    run_git_clone "dunfell_linux"
-    /bin/bash -c "$SETUP_ENV; $(declare -f run_make_with_logs); run_make_with_logs 'linux'"
-    run_checks "dunfell_linux" "linux" $ut_control_branch_name
-    popd > /dev/null
-}
+# Function to run the commands in a Docker container
+run_on_platform() {
+    local PLATFORM=$1
+    local TARGET=$2
+    local VARIANT_FLAG=$3
+    local LOG_SUFFIX=$3
 
-run_on_dunfell_arm() {
-    pushd ${MY_DIR} > /dev/null
-    run_git_clone "dunfell_arm"
-    /bin/bash -c "sc docker run rdk-dunfell 'cd /opt/toolchains/rdk-glibc-x86_64-arm-toolchain; \
-     . environment-setup-armv7at2hf-neon-oe-linux-gnueabi; env | grep CC; cd -; \
-     $(declare -f run_make_with_logs); run_make_with_logs 'arm';exit'"
-    run_checks "dunfell_arm" "arm" $ut_control_branch_name
-    popd > /dev/null
-}
+    pushd "${MY_DIR}" > /dev/null
+    run_git_clone "${PLATFORM}_${TARGET}" "${VARIANT_FLAG}"
 
-run_on_vm_sync_linux() {
-    pushd ${MY_DIR} > /dev/null
-    SETUP_ENV="sc docker run vm-sync"
-    run_git_clone "VM-SYNC"
-    /bin/bash -c "$SETUP_ENV '$(declare -f run_make_with_logs); run_make_with_logs 'linux';'"
-    run_checks "VM-SYNC" "linux" $ut_control_branch_name
-    popd > /dev/null
-}
+    echo "Running make for ${PLATFORM}_${TARGET}"
 
-run_on_kirkstone_linux() {
-    pushd ${MY_DIR} > /dev/null
-    SETUP_ENV="sc docker run rdk-kirkstone"
-    run_git_clone "kirkstone_linux"
-    /bin/bash -c "$SETUP_ENV; $(declare -f run_make_with_logs); run_make_with_logs 'linux'"
-    run_checks "kirkstone_linux" "linux" $ut_control_branch_name
-    popd > /dev/null
-}
+    local DOCKER_IMAGE="rdk-${PLATFORM}"
+    [[ "$PLATFORM" == "VM-SYNC" ]] && DOCKER_IMAGE="vm-sync"
 
-run_on_kirkstone_arm() {
-    pushd ${MY_DIR} > /dev/null
-    run_git_clone "kirkstone_arm"
-    /bin/bash -c "sc docker run rdk-kirkstone 'cd /opt/toolchains/rdk-glibc-x86_64-arm-toolchain; \
-     . environment-setup-armv7at2hf-neon-oe-linux-gnueabi; env | grep CC; cd -; \
-     $(declare -f run_make_with_logs); run_make_with_logs 'arm';exit'"
-    run_checks "kirkstone_arm" "arm" $ut_control_branch_name
+    local ENV_SETUP=""
+    if [[ "$TARGET" == "arm" ]]; then
+        if [[ "$PLATFORM" == "dunfell" ]]; then
+            ENV_SETUP='[ -z "$OECORE_TARGET_OS" ] && source /opt/toolchains/rdk-glibc-x86_64-arm-toolchain/environment-setup-armv7at2hf-neon-oe-linux-gnueabi;'
+        else
+            ENV_SETUP='[ -z "$OECORE_TARGET_OS" ] && source /opt/toolchains/rdk-glibc-x86_64-arm-toolchain/environment-setup-armv7vet2hf-neon-oe-linux-gnueabi;'
+        fi
+    fi
+
+    /bin/bash -c "$(cat <<EOF
+sc docker run ${DOCKER_IMAGE} '
+${ENV_SETUP}
+echo \$CC
+make TARGET=${TARGET} > make_log_${LOG_SUFFIX}.txt 2>&1
+make -C tests/ TARGET=${TARGET} > make_test_log_${LOG_SUFFIX}.txt 2>&1
+'
+EOF
+)"
+
+    run_checks "${PLATFORM}_${TARGET}" "${TARGET}" "$ut_control_branch_name"
     popd > /dev/null
 }
 
 # Run tests in different environments
-( run_on_ubuntu_linux ) &
-( run_on_dunfell_linux ) &
-( run_on_kirkstone_linux ) &
-wait
-run_on_vm_sync_linux
-run_on_dunfell_arm
-run_on_kirkstone_arm
+run_on_ubuntu_linux
+run_on_platform "dunfell" "linux"
+run_on_platform "kirkstone" "linux"
+run_on_platform "VM-SYNC" "linux"
+run_on_platform "dunfell" "arm"
+run_on_platform "kirkstone" "arm"
 print_results
