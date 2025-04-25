@@ -1,1 +1,0 @@
-curl -X POST -H "Content-Type: application/json" --data "@example.json" http://localhost:8080/api/postKVP

@@ -34,15 +34,17 @@
 #define UT_CONTROL_PLANE_DEBUG(f_, ...) UT_LOG_DEBUG((f_), ##__VA_ARGS__)
 
 #define MAX_MESSAGES 32
+#define MAX_REQUEST_SIZE 32
 
 #define UT_CP_MAGIC (0xdeadbeef)
 
 typedef struct
 {
-  char key[UT_KVP_MAX_ELEMENT_SIZE];
-  ut_control_callback_t pCallback;
-  void* userData;
-}CallbackEntry_t;
+    char key[UT_KVP_MAX_ELEMENT_SIZE];
+    ut_control_endpoint_callback_t pCallback;
+    void *userData;
+    char requestType[MAX_REQUEST_SIZE];
+} CallbackEntry_t;
 
 typedef enum
 {
@@ -55,6 +57,7 @@ typedef struct
     eMessage_t status;
     char *message;
     uint32_t size;
+    char key[UT_KVP_MAX_ELEMENT_SIZE];
 } cp_message_t;
 
 typedef struct
@@ -86,12 +89,15 @@ static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void
 static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 #define MAX_POST_DATA_SIZE 4096
 
-struct per_session_data__http {
+struct per_session_data_http
+{
     char post_data[MAX_POST_DATA_SIZE];
     int post_data_len;
 };
 #endif
 static ut_cp_instance_internal_t *validateCPInstance(ut_controlPlane_instance_t *pInstance);
+static char gPostKey[UT_KVP_MAX_ELEMENT_SIZE];
+static char gQueryString[UT_KVP_MAX_ELEMENT_SIZE];
 
 /* Local Fucntions*/
 static void enqueue_message(cp_message_t *data, ut_cp_instance_internal_t *pInternal )
@@ -102,6 +108,7 @@ static void enqueue_message(cp_message_t *data, ut_cp_instance_internal_t *pInte
         pInternal->message_queue[pInternal->message_count].size = data->size;
         pInternal->message_queue[pInternal->message_count].status = data->status;
         pInternal->message_queue[pInternal->message_count].message = data->message;
+        strncpy(pInternal->message_queue[pInternal->message_count].key, data->key, UT_KVP_MAX_ELEMENT_SIZE);
         pInternal->message_count++;
         pthread_cond_signal(&pInternal->queue_condition);
     }
@@ -130,6 +137,7 @@ static cp_message_t* dequeue_message(ut_cp_instance_internal_t *pInternal)
     msg->size = pInternal->message_queue[0].size;
     msg->status = pInternal->message_queue[0].status;
     msg->message = pInternal->message_queue[0].message;
+    strncpy(msg->key, pInternal->message_queue[0].key, UT_KVP_MAX_ELEMENT_SIZE);
 
     for (int i = 0; i < pInternal->message_count - 1; i++)
     {
@@ -144,34 +152,32 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
 {
     ut_kvp_instance_t *pkvpInstance = NULL;
     ut_kvp_status_t status;
-    char result_kvp[UT_KVP_MAX_ELEMENT_SIZE] = {0xff};
-
     if (mssg->message == NULL)
     {
         return;
     }
 
-    pkvpInstance = ut_kvp_createInstance();
-
-    /* Note: mssg-message data will be freed by the destoryInstance() function */
-    status = ut_kvp_openMemory(pkvpInstance, mssg->message, mssg->size );
-    if (status != UT_KVP_STATUS_SUCCESS)
-    {
-        UT_CONTROL_PLANE_ERROR("ut_kvp_open() - Read Failure\n");
-        ut_kvp_destroyInstance(pkvpInstance);
-        return;
-    }
     for (uint32_t i = 0; i < pInternal->callback_entry_index; i++)
     {
         CallbackEntry_t entry = pInternal->callbackEntryList[i];
-        if (UT_KVP_STATUS_SUCCESS == ut_kvp_getStringField(pkvpInstance, entry.key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE))
+        if (strcmp(entry.key, mssg->key) == 0)
         {
-            // call callback
-            entry.pCallback(entry.key, pkvpInstance, entry.userData);
+            pkvpInstance = ut_kvp_createInstance();
+
+            /* Note: mssg-message data will be freed by the destoryInstance() function */
+            status = ut_kvp_openMemory(pkvpInstance, mssg->message, mssg->size );
+            if (status != UT_KVP_STATUS_SUCCESS)
+            {
+                UT_CONTROL_PLANE_ERROR("ut_kvp_openMemory() - Read Failure\n");
+                ut_kvp_destroyInstance(pkvpInstance);
+                return;
+            }
+
+            entry.pCallback(entry.key, "POST", pkvpInstance, entry.userData);
+            ut_kvp_destroyInstance(pkvpInstance);
+            return;
         }
     }
-    ut_kvp_destroyInstance(pkvpInstance);
-    return;
 }
 
 static void *service_ws_requests(void *data)
@@ -288,26 +294,263 @@ static int callback_echo(struct lws *wsi, enum lws_callback_reasons reason, void
     return 0;
 }
 #else
+
+// Function to compare strings with handling of leading '/'
+static int compareStrings(const char *str1, const char *str2)
+{
+    // If str2 starts with '/', skip it for comparison
+    if (str2[0] == '/')
+    {
+        str2++; // Move pointer to skip the '/'
+    }
+
+    if (str1[0] == '/')
+    {
+        str1++; // Move pointer to skip the '/'
+    }
+    return strcmp(str1, str2); // Compare adjusted strings
+}
+
+static char* create_response(ut_cp_instance_internal_t *pInternal, const char* key, const char* type)
+{
+    char* response = NULL;
+    char* kvpData = NULL;
+    ut_kvp_instance_t *pkvpInstance = NULL;
+    ut_kvp_status_t status;
+
+    for (uint32_t i = 0; i < pInternal->callback_entry_index; i++)
+    {
+        CallbackEntry_t entry = pInternal->callbackEntryList[i];
+
+        if (compareStrings(entry.key, key) == 0)
+        {
+            if (gQueryString[0] != '\0')
+            {
+                kvpData = entry.pCallback((char *)key, "GET", gQueryString, entry.userData);
+            }
+            else
+            {
+                kvpData = entry.pCallback((char *)key, "GET", NULL, entry.userData);
+            }
+
+            pkvpInstance = ut_kvp_createInstance();
+            // The `kvpData` memory passed gets freed as part of destroy instance
+            status = ut_kvp_openMemory(pkvpInstance, kvpData, strlen(kvpData));
+            if (status != UT_KVP_STATUS_SUCCESS)
+            {
+                UT_CONTROL_PLANE_ERROR("ut_kvp_openMemory() - Read Failure\n");
+                ut_kvp_destroyInstance(pkvpInstance);
+                return NULL;
+            }
+            response = ut_kvp_getDataOfType(pkvpInstance, type);
+            ut_kvp_destroyInstance(pkvpInstance);
+        }
+    }
+
+    return response;
+}
+
+// Helper function to send error response
+static int send_error_response(struct lws *wsi, int status, const char *content_type, const char *body)
+{
+    unsigned char buffer[LWS_PRE + 1024];
+    unsigned char *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer);
+
+    // Add HTTP headers
+    if (lws_add_http_common_headers(wsi, status, content_type, strlen(body), &p, end) < 0)
+    {
+        return -1;
+    }
+
+    // Finalize headers
+    if (lws_finalize_http_header(wsi, &p, end) < 0)
+    {
+        return -1;
+    }
+
+    // Write headers
+    if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+    {
+        return -1;
+    }
+
+    // Write body
+    if (lws_write(wsi, (unsigned char *)body, strlen(body), LWS_WRITE_HTTP_FINAL) < 0)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+// Function to send error response
+static int send_error(void *wsi, int status, const char *accept_header, const char *json_msg, const char *yaml_msg)
+{
+    const char *response_format = "application/json";
+    const char *error_response = json_msg;
+    int result;
+
+    if (strncmp(accept_header, "application/x-yaml", 18) == 0)
+    {
+        response_format = "application/x-yaml";
+        error_response = yaml_msg;
+    }
+
+    result = send_error_response(wsi, status, response_format, error_response) < 0 ? -1 : -1;
+    return result;
+}
+
+// Function to validate Accept header
+static int validate_accept_header(void *wsi, char *accept_header, size_t size)
+{
+    if (lws_hdr_copy(wsi, accept_header, size, WSI_TOKEN_HTTP_ACCEPT) <= 0 ||
+        strncmp(accept_header, "application", 11) != 0)
+    {
+        UT_CONTROL_PLANE_ERROR("Missing or Invalid Accept header\n");
+        return send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                          "{\"error\": \"Missing or Invalid Accept header\"}",
+                          "error: Missing or Invalid Accept header\n");
+    }
+    return 0; // Success
+}
+
+// Function to extract key from URI
+static int extract_key(const char *requested_uri, char *key, size_t size)
+{
+    char *key_start = (char* )requested_uri + 5; // Skip "/api/"
+    if (strlen(key_start) == 0)
+    {
+        UT_CONTROL_PLANE_ERROR("Missing key in the URI\n");
+        return -1;
+    }
+    strncpy(key, key_start, size - 1);
+    UT_CONTROL_PLANE_DEBUG("Extracted Key: %s\n", key);
+    return 0; // Success
+}
+
+// Function to determine response format
+static char *determine_response_format(void *pInternal, const char *key, const char *accept_header)
+{
+    if (strncmp(accept_header, "application/json", 16) == 0)
+    {
+        return create_response(pInternal, key, "json");
+    }
+    else if (strncmp(accept_header, "application/x-yaml", 18) == 0)
+    {
+        return create_response(pInternal, key, "yaml");
+    }
+
+    UT_CONTROL_PLANE_ERROR("Internal Server Error\n");
+    return NULL;
+}
+
 static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len)
 {
     cp_message_t msg;
-    ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t* )lws_context_user(lws_get_context(wsi));
-    struct per_session_data__http *perSessionData = (struct per_session_data__http *)user;
+    int result = 0;
+    ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)lws_context_user(lws_get_context(wsi));
+    struct per_session_data_http *perSessionData = (struct per_session_data_http *)user;
+    char *requested_uri = (char *)in;     // Use the 'in' parameter to get the URI
+    char accept_header[128] = {0};        // Buffer for the Accept header
 
     switch (reason)
     {
-        case LWS_CALLBACK_HTTP: {
+        case LWS_CALLBACK_HTTP:
+        {
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
-            char *requested_uri = (char *)in;
 
-            if (strcmp(requested_uri, "/api/postKVP") == 0)
-            {
+            unsigned char buffer[LWS_PRE + 1024]; // Allocate buffer for headers and body
+
+            UT_CONTROL_PLANE_DEBUG("Requested URI: %s\n", requested_uri);
+
+            // Handle POST request based on Token-Type
+            if (lws_hdr_total_length(wsi, WSI_TOKEN_POST_URI)) {
+                UT_CONTROL_PLANE_DEBUG("Received a POST request\n");
+                if (extract_key(requested_uri, gPostKey, sizeof(gPostKey)) < 0)
+                {
+                    result = send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                                      "{\"error\": \"Missing key in URI\"}",
+                                      "error: Missing key in URI\n");
+                    return -1;
+                }
                 lws_callback_on_writable(wsi);
-                return 0;
+                return 0; // Let the body handling process continue
             }
+
+            // Handle GET request for /api/<REST_API_NAME>
+
+            // Validate Accept header
+            if (validate_accept_header(wsi, accept_header, sizeof(accept_header)) < 0)
+            {
+                return -1;
+            }
+
+            // Validate URI
+            if (strncmp(requested_uri, "/api/", 5) != 0)
+            {
+                UT_CONTROL_PLANE_ERROR("Invalid URI: %s\n", requested_uri);
+                result = send_error(wsi, HTTP_STATUS_NOT_FOUND, accept_header,
+                                  "{\"error\": \"Internal Server Error\"}",
+                                  "error: Internal Server Error\n");
+                return result;
+            }
+
+            // Extract key
+            char key[256] = {0};
+            if (extract_key(requested_uri, key, sizeof(key)) < 0)
+            {
+                result = send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                                  "{\"error\": \"Missing key in URI\"}",
+                                  "error: Missing key in URI\n");
+                return result;
+            }
+
+            if (lws_hdr_copy(wsi, gQueryString, sizeof(gQueryString), WSI_TOKEN_HTTP_URI_ARGS) > 0)
+            {
+                UT_CONTROL_PLANE_DEBUG("Query String: %s\n", gQueryString);
+            }
+
+            // Determine response format
+            char *response = determine_response_format(pInternal, key, accept_header);
+            if (response == NULL)
+            {
+                result = send_error(wsi, HTTP_STATUS_BAD_REQUEST, accept_header,
+                                  "{\"error\": \"Internal Server Error\"}",
+                                  "error: Internal Server Error\n");
+                return result;
+            }
+
+            // Send response
+            unsigned char *p = buffer + LWS_PRE, *end = buffer + sizeof(buffer) - 1;
+            if (lws_add_http_common_headers(wsi, HTTP_STATUS_OK, accept_header, strlen(response), &p, end) < 0)
+            {
+                free(response);
+                return -1;
+            }
+
+            if (lws_finalize_http_header(wsi, &p, end) < 0)
+            {
+                free(response);
+                return -1;
+            }
+
+            if (lws_write(wsi, buffer + LWS_PRE, p - (buffer + LWS_PRE), LWS_WRITE_HTTP_HEADERS) < 0)
+            {
+                free(response);
+                return -1;
+            }
+
+            if (lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP_FINAL) < 0)
+            {
+                free(response);
+                return -1;
+            }
+
+            free(response);
+            return 1; // HTTP request handled successfully
+
             break;
         }
-
         case LWS_CALLBACK_HTTP_BODY:
         {
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP\n");
@@ -322,6 +565,7 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                 else
                 {
                     // POST data too large
+                    UT_CONTROL_PLANE_ERROR("POST data too large\n");
                     return -1;
                 }
             }
@@ -345,18 +589,22 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
                 msg.status = DATA_RECIEVED;
                 strncpy(msg.message, (const char *)perSessionData->post_data, perSessionData->post_data_len);
                 msg.message[perSessionData->post_data_len] = '\0';
+                msg.key[strlen(msg.key)] = '\0';
+                strncpy(msg.key, gPostKey, UT_KVP_MAX_ELEMENT_SIZE);
+
                 // UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
                 enqueue_message(&msg, pInternal);
                 // char response[] = "{\"status\": \"success\"}";
                 // lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP);
                 return 1; // HTTP request handled
             }
+            break;
         }
 
         default:
             break;
-    }
-    return 0;
+        }
+            return 0;
 }
 
 #endif
@@ -379,7 +627,7 @@ static struct lws_protocols protocols[] = {
     {
         "http-only",
         callback_http,
-        sizeof(struct per_session_data__http),
+        sizeof(struct per_session_data_http),
         MAX_POST_DATA_SIZE,
     },
     { NULL, NULL, 0, 0 }
@@ -490,38 +738,49 @@ void UT_ControlPlane_Stop( ut_controlPlane_instance_t *pInstance )
 
 ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance, char *key, ut_control_callback_t callbackFunction, void *userData)
 {
+    return UT_ControlPlane_RegisterEndPointCallback(pInstance, "POST", key, (ut_control_endpoint_callback_t)callbackFunction, userData);
+}
+
+ut_control_plane_status_t UT_ControlPlane_RegisterEndPointCallback(ut_controlPlane_instance_t *pInstance, const char *httpRequestType, char *restAPI, ut_control_endpoint_callback_t callbackFunction, void *userData)
+{
     ut_cp_instance_internal_t *pInternal = (ut_cp_instance_internal_t *)pInstance;
 
-    if ( pInternal == NULL )
+    if (pInternal == NULL)
     {
         UT_CONTROL_PLANE_ERROR("Invalid Handle\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_HANDLE;
     }
 
-    if ( key == NULL )
+    if (restAPI == NULL)
     {
         UT_CONTROL_PLANE_ERROR("Invalid Param\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-    if ( callbackFunction == NULL )
+    if (httpRequestType == NULL)
+    {
+        UT_CONTROL_PLANE_ERROR("Invalid Param\n");
+        return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
+    }
+
+    if (callbackFunction == NULL)
     {
         UT_CONTROL_PLANE_ERROR("NULL callbackFunction\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-     if ( userData == NULL )
+    if (userData == NULL && strcmp(httpRequestType, "POST") == 0)
     {
         UT_CONTROL_PLANE_ERROR("NULL userData\n");
         return UT_CONTROL_PLANE_STATUS_INVALID_PARAM;
     }
 
-
-    if ( pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES )
-    { 
+    if (pInternal->callback_entry_index >= UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES)
+    {
         return UT_CONTROL_PLANE_STATUS_LIST_FULL;
-    } 
-    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, key,UT_KVP_MAX_ELEMENT_SIZE);
+    }
+    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].key, restAPI, UT_KVP_MAX_ELEMENT_SIZE);
+    strncpy(pInternal->callbackEntryList[pInternal->callback_entry_index].requestType, httpRequestType, MAX_REQUEST_SIZE);
     pInternal->callbackEntryList[pInternal->callback_entry_index].pCallback = callbackFunction;
     pInternal->callbackEntryList[pInternal->callback_entry_index].userData = userData;
     pInternal->callback_entry_index++;

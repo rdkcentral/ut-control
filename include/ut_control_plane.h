@@ -47,8 +47,26 @@ typedef struct
 
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
+/**** NOTE: This function will be deprecated in future major release ****/
 /** @brief  Callback function type for handling control plane messages. */
 typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, void *userData );
+
+/**
+ * @brief Callback function for handling HTTP requests to a specific REST API endpoint.
+ *
+ * This callback is invoked by the UT control server when an HTTP request (GET, POST, PUT, DELETE, etc.)
+ * is received and the requested REST API endpoint matches the `restAPI` parameter.
+ *
+ * @param restAPI The name of the REST API endpoint being called.
+ * @param httpRequestType The HTTP method of the request (e.g., "GET", "POST", "PUT", "DELETE").
+ * @param userData User-defined data passed during registration of the callback.  This can be used to
+ *                 pass context or state to the callback function.
+ * @param pData Pointer to the key-value pair (KVP) instance containing the data sent with the request.
+ *
+ * @return A dynamically allocated character string containing the JSON response from the API endpoint.
+ *         The caller is responsible for freeing the returned string using `free()`.  Returns `NULL` on error.
+ */
+typedef char *(*ut_control_endpoint_callback_t)(const char *restAPI, const char *httpRequestType, ut_kvp_instance_t *pData, void *userData);
 
 /**
  * @brief Initializes a control plane instance.
@@ -58,6 +76,7 @@ typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, v
 ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
 
 /**
+ * **** NOTE: This function will be deprecated in future major release ****
  * @brief Registers a callback function for a specific message key.
  * @param pInstance - Handle to the control plane instance.
  * @param key - Null-terminated string representing the message key to trigger the callback.
@@ -73,6 +92,39 @@ ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPl
                                                                     char *key,
                                                                     ut_control_callback_t callbackFunction,
                                                                     void *userData);
+
+/**
+ * @brief Registers a callback for a REST API endpoint (GET) or POST message key.
+ *
+ * Registers a callback function to be invoked when a GET request is made to the
+ * specified `restAPI` endpoint, or when a POST request is received with
+ * `restAPI` as the message key.
+ *
+ * @param[in] pInstance Pointer to the control plane instance.
+ * @param[in] httpRequestType The HTTP request type ("GET" or "POST").
+ * @param[in] restAPI The REST API endpoint for GET requests, or the message key
+ *                   for POST requests. For example, "/users" for a GET
+ *                   request, or "status" for a POST request.
+ * @param[in] callbackFunction Pointer to the callback function. The function
+ *                             type depends on the request type:
+ *                             `ut_control_endpoint_callback_t` for GET requests,
+ *                             or `ut_control_on_message_callback_t` for POST
+ *                             requests.
+ * @param[in] userData Pointer to user-provided data that will be passed to the
+ *                     callback function. This can be used, for example, to
+ *                     pass a pointer to context data.
+ * @returns A status code indicating the result of the operation.
+ * @retval UT_CONTROL_PLANE_STATUS_OK Success.
+ * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE Invalid `pInstance`.
+ * @retval UT_CONTROL_PLANE_STATUS_INVALID_PARAM Invalid `restAPI` or
+ *                                               `callbackFunction`.
+ * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL Callback list is full.
+ */
+ut_control_plane_status_t UT_ControlPlane_RegisterEndPointCallback(
+    ut_controlPlane_instance_t *pInstance,
+    const char *httpRequestType,
+    char *restAPI, ut_control_endpoint_callback_t callbackFunction,
+    void *userData);
 
 /**
  * @brief Starts the control plane listening for incoming messages.

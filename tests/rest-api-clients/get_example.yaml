@@ -1,0 +1,14 @@
+---
+name: John Doe
+age: 30
+email: johndoe@example.com
+isMarried: false
+children:
+- name: Alice
+  age: 5
+- name: Bob
+  age: 3
+hobbies:
+- reading
+- cycling
+- traveling
