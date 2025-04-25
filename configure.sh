@@ -24,6 +24,7 @@ set -e # error out if required
 SCRIPT_EXEC="$(realpath $0)"
 MY_DIR="$(dirname $SCRIPT_EXEC)"
 
+# Decide which build target to use based on the presence of TARGET in input args(linux or arm)
 if [[ "$1" != "linux" && "$1" != "arm" ]]; then
   echo "Error: argument must be 'linux' or 'arm'"
   exit 1
@@ -55,6 +56,7 @@ mkdir -p ${FRAMEWORK_DIR}
 mkdir -p ${BUILD_DIR}
 popd > /dev/null
 
+# Download and set up the 'asprintf' library if not already present
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${ASPRINTF_DIR}" ]; then
     echo "Framework [asprintf] already exists"
@@ -73,6 +75,7 @@ else
 fi
 popd > /dev/null
 
+# Download and set up the 'libfyaml' library if not already present
 pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
@@ -93,9 +96,10 @@ else
 fi
 popd > /dev/null
 
+# Prefer system cmake if version is > 3.12
 pushd ${MY_DIR}
-if command -v cmake &> /dev/null; then
-    echo "CMake is installed"
+if command -v cmake &> /dev/null && [ "$(cmake --version | head -n1 | awk '{print $3}')" \> "3.12" ]; then
+    echo "CMake is installed and version is 3.13 or higher"
     CMAKE_BIN=$(which cmake)
 else
     CMAKE_BIN=${CMAKE_BIN_DIR}/cmake
@@ -115,6 +119,7 @@ else
 fi
 popd > /dev/null
 
+# Set up paths and search criteria based on the target architecture (linux or arm)
 pushd "${FRAMEWORK_DIR}" > /dev/null
 
 if [ "$TARGET" == "arm" ]; then
@@ -202,6 +207,7 @@ popd > /dev/null # ${FRAMEWORK_DIR}
 #                                     entire project, including executables and shared libraries.
 
 
+# Build and configure libwebsockets if not already built
 pushd ${FRAMEWORK_DIR} > /dev/null
 
 build_libwebsockets()
@@ -236,6 +242,7 @@ popd > /dev/null
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 
+# Build and configure OpenSSL if it's not already installed
 build_openssl()
 {
     cd ${OPENSSL_DIR}
@@ -274,6 +281,7 @@ popd > /dev/null # ${FRAMEWORK_DIR}
 
 pushd ${FRAMEWORK_DIR} > /dev/null
 
+# Build and configure curl if it's not already installed
 build_curl()
 {
     cd ${CURL_DIR}
