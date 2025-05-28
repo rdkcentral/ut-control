@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <curl/curl.h>
+#include <dlfcn.h>
 
 /* Application Includes */
 #include <ut_kvp.h>
@@ -61,6 +62,53 @@ static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, v
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
 static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
 static void remove_include_keys(struct fy_node *node);
+
+// Typedefs for curl function pointers
+typedef CURL* (*curl_easy_init_t)(void);
+typedef CURLcode (*curl_easy_setopt_t)(CURL *, CURLoption, ...);
+typedef CURLcode (*curl_easy_perform_t)(CURL *);
+typedef CURLcode (*curl_easy_getinfo_t)(CURL *, CURLINFO, ...);
+typedef void (*curl_easy_cleanup_t)(CURL *);
+typedef const char* (*curl_easy_strerror_t)(CURLcode);
+
+// Function pointers for curl functions
+static curl_easy_init_t kvp_curl_easy_init;
+static curl_easy_setopt_t kvp_curl_easy_setopt;
+static curl_easy_perform_t kvp_curl_easy_perform;
+static curl_easy_getinfo_t kvp_curl_easy_getinfo;
+static curl_easy_cleanup_t kvp_curl_easy_cleanup;
+static curl_easy_strerror_t kvp_curl_easy_strerror;
+static void *curl_lib = NULL;
+
+int init_curl_symbols()
+{
+    UT_LOG_DEBUG("Initializing curl symbols from %s", LIBCURL_PATH);
+    curl_lib = dlopen(LIBCURL_PATH, RTLD_LAZY);
+    if (curl_lib == NULL)
+    {
+        UT_LOG_ERROR("dlopen failed: %s\n", dlerror());
+        return -1;
+    }
+
+    // Load the curl function symbols
+    kvp_curl_easy_init = (curl_easy_init_t)dlsym(curl_lib, "curl_easy_init");
+    kvp_curl_easy_setopt = (curl_easy_setopt_t)dlsym(curl_lib, "curl_easy_setopt");
+    kvp_curl_easy_perform = (curl_easy_perform_t)dlsym(curl_lib, "curl_easy_perform");
+    kvp_curl_easy_getinfo = (curl_easy_getinfo_t)dlsym(curl_lib, "curl_easy_getinfo");
+    kvp_curl_easy_cleanup = (curl_easy_cleanup_t)dlsym(curl_lib, "curl_easy_cleanup");
+    kvp_curl_easy_strerror = (curl_easy_strerror_t)dlsym(curl_lib, "curl_easy_strerror");
+
+    if ((kvp_curl_easy_init == NULL) || (kvp_curl_easy_setopt == NULL) || (kvp_curl_easy_perform == NULL) ||
+        (kvp_curl_easy_getinfo == NULL) || (kvp_curl_easy_cleanup ==NULL) || (kvp_curl_easy_strerror == NULL))
+    {
+        UT_LOG_ERROR("dlsym failed for one or more symbols\n");
+        dlclose(curl_lib);
+        curl_lib = NULL;
+        return -1;
+    }
+
+    return 0;
+}
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
 {
@@ -135,6 +183,13 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 
     node = process_node(fy_document_root(pInternal->fy_handle), 0);
     remove_include_keys(node);
+
+    if (curl_lib)
+    {
+        // Close the curl library if it was opened
+        dlclose(curl_lib);
+        curl_lib = NULL;
+    }
 
     if (node == NULL)
     {
@@ -952,16 +1007,23 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
    if (strncmp(filename, "http:", 5) == 0 || strncmp(filename, "https:", 6) == 0) 
    {
         // URL include
+        if (curl_lib == NULL && init_curl_symbols() != 0)
+        {
+            UT_LOG_ERROR("Error: Could not initialize curl symbols\n");
+            return NULL;
+        }
+
+        // Initialize the memory chunk to store the downloaded data
         mChunk.memory = malloc(1);
         mChunk.size = 0;
 
-        if (!mChunk.memory)
+        if (mChunk.memory == NULL)
         {
             UT_LOG_ERROR( "Error: Not enough memory to store curl response\n");
             return NULL;
         }
 
-        CURL *curl = curl_easy_init();
+        CURL *curl = kvp_curl_easy_init();
         if (!curl)
         {
             UT_LOG_ERROR( "Error: Could not initialize curl\n");
@@ -970,25 +1032,25 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         }
 
         CURLcode res;
-        curl_easy_setopt(curl, CURLOPT_URL, filename);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&mChunk);
-        res = curl_easy_perform(curl);
+        kvp_curl_easy_setopt(curl, CURLOPT_URL, filename);
+        kvp_curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
+        kvp_curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&mChunk);
+        res = kvp_curl_easy_perform(curl);
         if (res != CURLE_OK)
         {
-            UT_LOG_ERROR( "Error: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            UT_LOG_ERROR( "Error: curl_easy_perform() failed: %s\n", kvp_curl_easy_strerror(res));
             free(mChunk.memory);
-            curl_easy_cleanup(curl);
+            kvp_curl_easy_cleanup(curl);
             return NULL;
         }
 
         long response_code;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+        kvp_curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
         if (response_code != 200)
         {
             UT_LOG_ERROR( "Error: HTTP request failed with code %ld\n", response_code);
             free(mChunk.memory);
-            curl_easy_cleanup(curl);
+            kvp_curl_easy_cleanup(curl);
             return NULL;
         }
 
@@ -997,7 +1059,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         {
             UT_LOG_ERROR("Error: Cannot parse included content\n");
             free(mChunk.memory);
-            curl_easy_cleanup(curl);
+            kvp_curl_easy_cleanup(curl);
             return NULL;
         }
 
@@ -1005,7 +1067,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         // UT_LOG_DEBUG("%s memory chunk = \n%s\n", __FUNCTION__, mChunk.memory);
 
         // free(mChunk.memory); // fy_document_build_from_malloc_string():  The string is expected to have been allocated by malloc(3) and when the document is destroyed it will be automatically freed.
-        curl_easy_cleanup(curl);
+        kvp_curl_easy_cleanup(curl);
         return fy_document_root(doc);
     }
     else

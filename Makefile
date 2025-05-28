@@ -68,11 +68,8 @@ XLDFLAGS += $(LIBWEBSOCKETS_DIR)/lib/libwebsockets.a
 CURL_DIR = $(FRAMEWORK_BUILD_DIR)/curl
 ifneq ($(wildcard $(CURL_DIR)),)
 INC_DIRS += $(CURL_DIR)/include
-XLDFLAGS += $(CURL_DIR)/lib/libcurl.a
-else
-# Commands to run if the directory does not exist
-XLDFLAGS += -lcurl
 endif
+XLDFLAGS += -ldl
 
 # UT Control library Requirements
 SRC_DIRS += ${TOP_DIR}/src
@@ -80,6 +77,7 @@ INC_DIRS += ${TOP_DIR}/include
 
 XCFLAGS += -fPIC -Wall -shared   # Flags for compilation
 XCFLAGS += -DNDEBUG
+XCFLAGS += -DLIBCURL_PATH=\"$(LIBCURL_PATH)\"
 # CFLAGS += -DWEBSOCKET_SERVER
 
 MKDIR_P ?= @mkdir -p
@@ -93,12 +91,14 @@ ifeq ($(TARGET),arm)
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
-XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl
+XLDFLAGS += -ldl
+LIBCURL_PATH="/usr/lib/libcurl.so.4"
 else
 #linux case
+LIBCURL_PATH="/usr/lib/x86_64-linux-gnu/libcurl.so.4"
 # Check if the directory exists
 ifneq ($(wildcard $(OPENSSL_LIB_DIR)),)
-XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl
+XLDFLAGS += -ldl
 else
 # Commands to run if the directory does not exist
 XLDFLAGS += -lssl -lcrypto
@@ -150,6 +150,7 @@ list:
 	@$(ECHOE) ${YELLOW}SRC_DIRS:${NC} ${SRC_DIRS}
 	@$(ECHOE) ${YELLOW}CFLAGS:${NC} ${CFLAGS}
 	@$(ECHOE) ${YELLOW}XLDFLAGS:${NC} ${XLDFLAGS}
+	@$(ECHOE) ${YELLOW}XCFLAGS:${NC} ${XCFLAGS}
 	@$(ECHOE) ${YELLOW}TARGET_LIB:${NC} ${TARGET_LIB}
 
 clean:
