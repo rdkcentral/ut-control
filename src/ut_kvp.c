@@ -84,19 +84,26 @@ int init_curl_symbols()
 {
     UT_LOG_DEBUG("Initializing curl symbols from %s", LIBCURL_PATH);
     curl_lib = dlopen(LIBCURL_PATH, RTLD_LAZY);
+    assert(curl_lib != NULL);
     if (curl_lib == NULL)
     {
-        UT_LOG_ERROR("dlopen failed: %s\n", dlerror());
+        UT_LOG_ERROR("dlopen failed for library %s: %s\n", LIBCURL_PATH, dlerror());
         return -1;
     }
 
     // Load the curl function symbols
     kvp_curl_easy_init = (curl_easy_init_t)dlsym(curl_lib, "curl_easy_init");
+    assert(kvp_curl_easy_init != NULL);
     kvp_curl_easy_setopt = (curl_easy_setopt_t)dlsym(curl_lib, "curl_easy_setopt");
+    assert(kvp_curl_easy_setopt != NULL);
     kvp_curl_easy_perform = (curl_easy_perform_t)dlsym(curl_lib, "curl_easy_perform");
+    assert(kvp_curl_easy_perform != NULL);
     kvp_curl_easy_getinfo = (curl_easy_getinfo_t)dlsym(curl_lib, "curl_easy_getinfo");
+    assert(kvp_curl_easy_getinfo != NULL);
     kvp_curl_easy_cleanup = (curl_easy_cleanup_t)dlsym(curl_lib, "curl_easy_cleanup");
+    assert(kvp_curl_easy_cleanup != NULL);
     kvp_curl_easy_strerror = (curl_easy_strerror_t)dlsym(curl_lib, "curl_easy_strerror");
+    assert(kvp_curl_easy_strerror != NULL);
 
     if ((kvp_curl_easy_init == NULL) || (kvp_curl_easy_setopt == NULL) || (kvp_curl_easy_perform == NULL) ||
         (kvp_curl_easy_getinfo == NULL) || (kvp_curl_easy_cleanup ==NULL) || (kvp_curl_easy_strerror == NULL))
@@ -1006,7 +1013,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
 
    if (strncmp(filename, "http:", 5) == 0 || strncmp(filename, "https:", 6) == 0) 
    {
-        // URL include
+        // init curl symbols if not already initialized
         if (curl_lib == NULL && init_curl_symbols() != 0)
         {
             UT_LOG_ERROR("Error: Could not initialize curl symbols\n");
