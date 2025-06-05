@@ -95,7 +95,7 @@ XLDFLAGS += -ldl
 LIBCURL_PATH="/usr/lib/libcurl.so.4"
 else
 #linux case
-LIBCURL_PATH="/usr/lib/x86_64-linux-gnu/libcurl.so.4"
+LIBCURL_PATH := $(shell find /usr/ -type l -iname "libcurl.so*" 2>/dev/null | head -n1)
 # Check if the directory exists
 ifneq ($(wildcard $(OPENSSL_LIB_DIR)),)
 XLDFLAGS += -ldl
