@@ -77,7 +77,6 @@ INC_DIRS += ${TOP_DIR}/include
 
 XCFLAGS += -fPIC -Wall -shared   # Flags for compilation
 XCFLAGS += -DNDEBUG
-XCFLAGS += -DLIBCURL_PATH=\"$(LIBCURL_PATH)\"
 # CFLAGS += -DWEBSOCKET_SERVER
 
 MKDIR_P ?= @mkdir -p
@@ -92,10 +91,8 @@ ifeq ($(TARGET),arm)
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
 XLDFLAGS += -ldl
-LIBCURL_PATH="/usr/lib/libcurl.so.4"
 else
 #linux case
-LIBCURL_PATH := $(shell find /usr/ -type l -iname "libcurl.so*" 2>/dev/null | head -n1)
 # Check if the directory exists
 ifneq ($(wildcard $(OPENSSL_LIB_DIR)),)
 XLDFLAGS += -ldl

@@ -82,12 +82,12 @@ static void *curl_lib = NULL;
 
 int init_curl_symbols()
 {
-    UT_LOG_DEBUG("Initializing curl symbols from %s", LIBCURL_PATH);
-    curl_lib = dlopen(LIBCURL_PATH, RTLD_LAZY);
+    UT_LOG_DEBUG("Initializing curl symbols from %s", "libcurl.so.4");
+    curl_lib = dlopen("libcurl.so.4", RTLD_LAZY);
     assert(curl_lib != NULL);
     if (curl_lib == NULL)
     {
-        UT_LOG_ERROR("dlopen failed for library %s: %s\n", LIBCURL_PATH, dlerror());
+        UT_LOG_ERROR("dlopen failed for curl library %s: %s with major version 4\n", "libcurl.so.4", dlerror());
         return -1;
     }
 
