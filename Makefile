@@ -90,10 +90,6 @@ ifeq ($(TARGET),arm)
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
-else
-#linux case
-# Commands to run if the directory does not exist
-XLDFLAGS += -lssl -lcrypto
 endif
 
 # Defaults for target linux
