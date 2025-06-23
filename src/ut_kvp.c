@@ -36,7 +36,6 @@ ut_kvp_instance_t *gKVP_Instance = NULL;
 
 #define UT_KVP_MAGIC (0xdeadbeef)
 #define UT_KVP_MAX_INCLUDE_DEPTH 5
-#define UT_KVP_MAX_INCLUDE_FILES 20
 
 typedef struct
 {
@@ -1043,12 +1042,22 @@ static void remove_include_keys(struct fy_node *node)
     const char *key_str;
     struct fy_node_pair *pair;
     void *iter = NULL;
-    struct fy_node *keys_to_remove[UT_KVP_MAX_INCLUDE_FILES] = {0}; // Assuming no more than 20 keys to remove
-    int remove_count = 0;
+
+    size_t capacity = 2; // Starting with a small capacity
+    size_t remove_count = 0;
+    struct fy_node **keys_to_remove = malloc(capacity * sizeof(*keys_to_remove));
+    memset(keys_to_remove, 0, capacity * sizeof(*keys_to_remove));
+
+    if (!keys_to_remove)
+    {
+        UT_LOG_ERROR("Memory allocation failed\n");
+        return;
+    }
 
     if (node == NULL)
     {
-        UT_LOG_ERROR( "Error: Invalid node.\n");
+        UT_LOG_ERROR("Error: Invalid node.\n");
+        free(keys_to_remove);
         return;
     }
 
@@ -1057,19 +1066,31 @@ static void remove_include_keys(struct fy_node *node)
         // UT_LOG_DEBUG("Node pairs = %d\n", fy_node_mapping_item_count(node));
         while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL)
         {
+            key = fy_node_pair_key(pair);
+            value = fy_node_pair_value(pair);
+            key_str = fy_node_get_scalar(key, NULL);
+
+            if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
             {
-                key = fy_node_pair_key(pair);
-                value = fy_node_pair_value(pair);
-                key_str = fy_node_get_scalar(key, NULL);
-                if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
+                // Expand capacity if needed
+                if (remove_count >= capacity)
                 {
-                    keys_to_remove[remove_count++] = key;
+                    capacity *= 2;
+                    struct fy_node **new_keys = realloc(keys_to_remove, capacity * sizeof(*new_keys));
+                    if (!new_keys)
+                    {
+                        UT_LOG_ERROR("Reallocation failed\n");
+                        free(keys_to_remove);
+                        return;
+                    }
+                    keys_to_remove = new_keys;
                 }
+                keys_to_remove[remove_count++] = key;
             }
         }
 
         // Remove collected keys
-        for (int i = 0; i < remove_count; i++)
+        for (size_t i = 0; i < remove_count; i++)
         {
             fy_node_mapping_remove_by_key(node, keys_to_remove[i]);
         }
@@ -1078,4 +1099,6 @@ static void remove_include_keys(struct fy_node *node)
     {
         UT_LOG_DEBUG("includes inside a sequence is currently not supported");
     }
+
+    free(keys_to_remove);
 }
