@@ -1043,7 +1043,7 @@ static void remove_include_keys(struct fy_node *node)
     struct fy_node_pair *pair;
     void *iter = NULL;
 
-    size_t capacity = 2; // Starting with a small capacity
+    size_t capacity = 10; // Starting with a small capacity
     size_t remove_count = 0;
     struct fy_node **keys_to_remove = malloc(capacity * sizeof(*keys_to_remove));
     memset(keys_to_remove, 0, capacity * sizeof(*keys_to_remove));
@@ -1075,7 +1075,8 @@ static void remove_include_keys(struct fy_node *node)
                 // Expand capacity if needed
                 if (remove_count >= capacity)
                 {
-                    capacity *= 2;
+                    capacity += 10; // Increase capacity by 10
+                    // Reallocate memory for keys_to_remove
                     struct fy_node **new_keys = realloc(keys_to_remove, capacity * sizeof(*new_keys));
                     if (!new_keys)
                     {
