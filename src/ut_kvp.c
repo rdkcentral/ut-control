@@ -36,6 +36,7 @@ ut_kvp_instance_t *gKVP_Instance = NULL;
 
 #define UT_KVP_MAGIC (0xdeadbeef)
 #define UT_KVP_MAX_INCLUDE_DEPTH 5
+#define UT_KVP_MAX_INCLUDE_FILES 20
 
 typedef struct
 {
@@ -1042,7 +1043,7 @@ static void remove_include_keys(struct fy_node *node)
     const char *key_str;
     struct fy_node_pair *pair;
     void *iter = NULL;
-    struct fy_node *keys_to_remove[10]; // Assuming no more than 10 keys to remove
+    struct fy_node *keys_to_remove[UT_KVP_MAX_INCLUDE_FILES] = {0}; // Assuming no more than 20 keys to remove
     int remove_count = 0;
 
     if (node == NULL)
