@@ -1047,8 +1047,7 @@ static void remove_include_keys(struct fy_node *node)
     size_t num_keys_to_remove = 0; // Keeps count of keys flagged for removal from the mapping node
 
     // Allocate memory to hold keys that match the "include" condition and eventually remove them
-    struct fy_node **keys_to_remove = malloc(capacity * sizeof(*keys_to_remove));
-    memset(keys_to_remove, 0, capacity * sizeof(*keys_to_remove));
+    struct fy_node **keys_to_remove = calloc(capacity, sizeof(*keys_to_remove));
 
     if (!keys_to_remove)
     {
