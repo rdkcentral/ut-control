@@ -1044,7 +1044,7 @@ static void remove_include_keys(struct fy_node *node)
     void *iter = NULL;
 
     size_t capacity = 10; // Initial capacity for the list of keys to remove
-    size_t remove_count = 0;
+    size_t num_keys_to_remove = 0; // Keeps count of keys flagged for removal from the mapping node
 
     // Allocate memory to hold keys that match the "include" condition and eventually remove them
     struct fy_node **keys_to_remove = malloc(capacity * sizeof(*keys_to_remove));
@@ -1076,7 +1076,7 @@ static void remove_include_keys(struct fy_node *node)
             if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
             {
                 // Expand capacity if needed
-                if (remove_count >= capacity)
+                if (num_keys_to_remove >= capacity)
                 {
                     capacity += 10; // Increase capacity incrementally by 10
                     // Reallocate memory for keys_to_remove
@@ -1090,12 +1090,12 @@ static void remove_include_keys(struct fy_node *node)
                     keys_to_remove = new_keys;
                 }
                 // Store the key to be removed later
-                keys_to_remove[remove_count++] = key;
+                keys_to_remove[num_keys_to_remove++] = key;
             }
         }
 
         // Remove collected keys
-        for (size_t i = 0; i < remove_count; i++)
+        for (size_t i = 0; i < num_keys_to_remove; i++)
         {
             fy_node_mapping_remove_by_key(node, keys_to_remove[i]);
         }
