@@ -38,6 +38,7 @@
 #define KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML "assets/include/single-include-url.yaml"
 #define KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML "assets/include/depth_check.yaml"
 #define KVP_VALID_TEST_YAML_CONFIG_FILE "assets/config-test.yaml"
+#define KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML "assets/include/sequence-include.yaml"
 
 static ut_kvp_instance_t *gpMainTestInstance = NULL;
 static UT_test_suite_t *gpKVPSuite = NULL;
@@ -51,6 +52,7 @@ static UT_test_suite_t *gpKVPSuite8 = NULL;
 static UT_test_suite_t *gpKVPSuite9 = NULL;
 static UT_test_suite_t *gpKVPSuite10 = NULL;
 static UT_test_suite_t *gpKVPSuite11 = NULL;
+static UT_test_suite_t *gpKVPSuite12 = NULL;
 
 static int test_ut_kvp_createGlobalYAMLInstance(void);
 static int test_ut_kvp_createGlobalJSONInstance(void);
@@ -1091,6 +1093,35 @@ static int test_ut_kvp_createGlobalYAMLInstanceForIncludeFileViaYaml( void)
 
 }
 
+static int test_ut_kvp_createGlobalYAMLInstanceForSequenceIncludeFileViaYaml( void)
+{
+    /*Creating global instance for include yaml support, so that the values
+    **in integrated yaml can be tested
+    */
+
+    ut_kvp_status_t status;
+
+    gpMainTestInstance = ut_kvp_createInstance();
+    if ( gpMainTestInstance == NULL )
+    {
+        assert( gpMainTestInstance != NULL );
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        return -1;
+    }
+
+    status = ut_kvp_open( gpMainTestInstance, KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML);
+    assert( status == UT_KVP_STATUS_SUCCESS );
+
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        return -1;
+    }
+
+    return 0;
+
+}
+
 static int test_ut_kvp_createGlobalYAMLInstanceForMultipleProfileInputs( void)
 {
     /*Creating global instance for multiple profile support, so that the values
@@ -1232,4 +1263,10 @@ void register_kvp_functions( void )
 
     UT_add_test(gpKVPSuite11, "kvp multiple profile", test_ut_kvp_add_multiple_profile);
     UT_add_test(gpKVPSuite11, "kvp multiple profile using open memory", test_ut_kvp_add_multiple_profile_using_open_memory);
+
+    gpKVPSuite12 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml sequence include support", test_ut_kvp_createGlobalYAMLInstanceForSequenceIncludeFileViaYaml, test_ut_kvp_freeGlobalInstance);
+    assert(gpKVPSuite12 != NULL);
+
+    UT_add_test(gpKVPSuite12, "kvp bool from main yaml", test_ut_kvp_bool_on_main_yaml);
+    UT_add_test(gpKVPSuite12, "kvp node presence from main yaml", test_ut_kvp_fieldPresent_on_main_yaml);
 }

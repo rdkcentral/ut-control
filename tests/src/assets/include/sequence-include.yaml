@@ -1,0 +1,8 @@
+---
+"1":
+  value: true
+plugin:
+  - include: assets/include/2s.yaml
+  - include: assets/include/3s.yaml
+include_0: assets/include/4s.yaml
+include_1: assets/include/5d.yaml
