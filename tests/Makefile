@@ -75,6 +75,12 @@ build:
 	$(ROOT_DIR)/build.sh
 	make -C ./ut-core test
 	@cp $(LIB_DIR)/lib* ${BIN_DIR}
+	@if [ -d $(LIB_DIR)/../curl ]; then \
+		cp $(LIB_DIR)/../curl/lib/lib*.so* ${BIN_DIR}; \
+	fi
+	@if [ -d $(LIB_DIR)/../openssl ]; then \
+		cp $(LIB_DIR)/../openssl/lib/lib*.so* ${BIN_DIR}; \
+	fi
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
 	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
 	@$(ECHOE) ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}

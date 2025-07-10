@@ -288,13 +288,13 @@ build_curl()
     mkdir -p ${CURL_BUILD_DIR}
     if [ "$TARGET" = "arm" ]; then
         # For arm
-        ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --host=arm --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
+        ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --host=arm-none-linux-gnu --with-ssl=${OPENSSL_BUILD_DIR} --enable-shared --enable-static --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
     else
         # For linux
         if [ "$OPENSSL_IS_SYSTEM_INSTALLED" -eq 1 ]; then
-            ./configure --prefix=${CURL_BUILD_DIR} --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+            ./configure --prefix=${CURL_BUILD_DIR} --with-ssl --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl  --enable-shared --enable-static
         else
-            ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl
+            ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-zlib --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --enable-shared --enable-static
         fi
     fi
     make $@; make $@ install

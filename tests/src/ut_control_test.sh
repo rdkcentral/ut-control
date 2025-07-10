@@ -25,6 +25,6 @@ MY_DIR="$(dirname $SCRIPT_EXEC)"
 
 cd "$(dirname "$0")"
 
-export LD_LIBRARY_PATH=/usr/lib:/lib:/home/root:${MY_DIR}
+export LD_LIBRARY_PATH=/usr/lib:/lib:/home/root:${MY_DIR}:${MY_DIR}/lib
 
 ./ut_control_test $@
