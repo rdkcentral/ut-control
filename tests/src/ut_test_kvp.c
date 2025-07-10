@@ -1118,6 +1118,17 @@ static int test_ut_kvp_createGlobalYAMLInstanceForSequenceIncludeFileViaYaml( vo
         return -1;
     }
 
+    char* kvpData = ut_kvp_getData(gpMainTestInstance);
+
+    if(kvpData != NULL)
+    {
+        // Print the emitted KVP string
+        printf("%s\n", kvpData);
+
+        // Free the emitted KVP string
+        free(kvpData);
+    }
+
     return 0;
 
 }
