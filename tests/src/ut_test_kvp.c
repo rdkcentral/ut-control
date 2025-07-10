@@ -38,6 +38,7 @@
 #define KVP_VALID_TEST_SINGLE_INCLUDE_URL_YAML "assets/include/single-include-url.yaml"
 #define KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML "assets/include/depth_check.yaml"
 #define KVP_VALID_TEST_YAML_CONFIG_FILE "assets/config-test.yaml"
+#define KVP_VALID_TEST_RESOLVE_ALIASES_ANCHORS_MERGEKEYS_YAML "assets/anchor_aliases_mergekey.yaml"
 #define KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML "assets/include/sequence-include.yaml"
 
 static ut_kvp_instance_t *gpMainTestInstance = NULL;
@@ -876,6 +877,13 @@ void test_ut_kvp_IncludeDepthCheckWithBuildFromFile(void)
     create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
 }
 
+/* these tests, resolve aliases, anchors and merge keys in given file */
+void test_ut_kvp_ResolveAliasesAnchorsMergeKeysWithBuildFromFile(void)
+{
+
+    create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_RESOLVE_ALIASES_ANCHORS_MERGEKEYS_YAML);
+}
+
 static void create_delete_kvp_memory_instance_for_given_file(const char* filename)
 {
     test_ut_memory_t kvpMemory;
@@ -944,6 +952,13 @@ void test_ut_kvp_IncludeDepthCheckWithBuildFromMallocedData(void)
 {
 
     create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
+}
+
+/* these tests, resolve aliases, anchors and merge keys in malloc'd data */
+void test_ut_kvp_ResolveAliasesAnchorsMergeKeysWithBuildFromMallocedData(void)
+{
+
+    create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_RESOLVE_ALIASES_ANCHORS_MERGEKEYS_YAML);
 }
 
 static int test_ut_kvp_createGlobalYAMLInstance( void )
@@ -1255,6 +1270,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite8, "kvp single include file", test_ut_kvp_open_singleIncludeFileWithBuildFromFile);
     UT_add_test(gpKVPSuite8, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromFile);
     UT_add_test(gpKVPSuite8, "kvp include depth check", test_ut_kvp_IncludeDepthCheckWithBuildFromFile);
+    UT_add_test(gpKVPSuite8, "kvp resolve aliases, anchors, mergekeys", test_ut_kvp_ResolveAliasesAnchorsMergeKeysWithBuildFromFile);
 
     gpKVPSuite9 = UT_add_suite("ut-kvp - test main functions YAML Decoder for single include files using build from Malloced data", NULL, NULL);
     assert(gpKVPSuite9 != NULL);
@@ -1262,6 +1278,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite9, "kvp single include file", test_ut_kvp_singleIncludeFileWithBuildFromMallocedData);
     UT_add_test(gpKVPSuite9, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromMallocedData);
     UT_add_test(gpKVPSuite9, "kvp include depth check", test_ut_kvp_IncludeDepthCheckWithBuildFromMallocedData);
+    UT_add_test(gpKVPSuite9, "kvp resolve aliases, anchors, mergekeys", test_ut_kvp_ResolveAliasesAnchorsMergeKeysWithBuildFromMallocedData);
 
     gpKVPSuite10 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml include support", test_ut_kvp_createGlobalYAMLInstanceForIncludeFileViaYaml, test_ut_kvp_freeGlobalInstance);
     assert(gpKVPSuite10 != NULL);
