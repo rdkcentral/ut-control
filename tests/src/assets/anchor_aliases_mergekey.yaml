@@ -1,0 +1,9 @@
+# Define a base configuration with an anchor
+base: &base
+  host: localhost
+  port: 80
+
+# Use merge key to include base
+server:
+  <<: *base
+  protocol: http

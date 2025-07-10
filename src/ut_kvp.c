@@ -133,6 +133,13 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
+    if(fy_document_resolve(pInternal->fy_handle) != 0)
+    {
+        UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+        ut_kvp_close(pInstance);
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
     node = process_node(fy_document_root(pInternal->fy_handle), 0);
     remove_include_keys(node);
 
@@ -175,6 +182,13 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
     {
         UT_LOG_ERROR("Unable to parse file/memory");
         ut_kvp_close( pInstance );
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    if(fy_document_resolve(pInternal->fy_handle) != 0)
+    {
+        UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+        ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
