@@ -133,6 +133,13 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
+    if(fy_document_resolve(pInternal->fy_handle) != 0)
+    {
+        UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+        ut_kvp_close(pInstance);
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
     node = process_node(fy_document_root(pInternal->fy_handle), 0);
     remove_include_keys(node);
 
@@ -175,6 +182,13 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
     {
         UT_LOG_ERROR("Unable to parse file/memory");
         ut_kvp_close( pInstance );
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    if(fy_document_resolve(pInternal->fy_handle) != 0)
+    {
+        UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+        ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
@@ -1042,33 +1056,59 @@ static void remove_include_keys(struct fy_node *node)
     const char *key_str;
     struct fy_node_pair *pair;
     void *iter = NULL;
-    struct fy_node *keys_to_remove[10]; // Assuming no more than 10 keys to remove
-    int remove_count = 0;
 
-    if (node == NULL)
+    size_t capacity = 10; // Initial capacity for the list of keys to remove
+    size_t num_keys_to_remove = 0; // Keeps count of keys flagged for removal from the mapping node
+
+    // Allocate memory to hold keys that match the "include" condition and eventually remove them
+    struct fy_node **keys_to_remove = calloc(capacity, sizeof(*keys_to_remove));
+
+    if (!keys_to_remove)
     {
-        UT_LOG_ERROR( "Error: Invalid node.\n");
+        UT_LOG_ERROR("Memory allocation failed\n");
         return;
     }
 
+    if (node == NULL)
+    {
+        UT_LOG_ERROR("Error: Invalid node.\n");
+        free(keys_to_remove);
+        return;
+    }
+
+    // Process only if the node is a mapping (i.e., key-value pairs)
     if (fy_node_is_mapping(node))
     {
         // UT_LOG_DEBUG("Node pairs = %d\n", fy_node_mapping_item_count(node));
         while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL)
         {
+            key = fy_node_pair_key(pair);
+            value = fy_node_pair_value(pair);
+            key_str = fy_node_get_scalar(key, NULL);
+
+            if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
             {
-                key = fy_node_pair_key(pair);
-                value = fy_node_pair_value(pair);
-                key_str = fy_node_get_scalar(key, NULL);
-                if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
+                // Expand capacity if needed
+                if (num_keys_to_remove >= capacity)
                 {
-                    keys_to_remove[remove_count++] = key;
+                    capacity += 10; // Increase capacity incrementally by 10
+                    // Reallocate memory for keys_to_remove
+                    struct fy_node **new_keys = realloc(keys_to_remove, capacity * sizeof(*new_keys));
+                    if (!new_keys)
+                    {
+                        UT_LOG_ERROR("Reallocation failed\n");
+                        free(keys_to_remove);
+                        return;
+                    }
+                    keys_to_remove = new_keys;
                 }
+                // Store the key to be removed later
+                keys_to_remove[num_keys_to_remove++] = key;
             }
         }
 
         // Remove collected keys
-        for (int i = 0; i < remove_count; i++)
+        for (size_t i = 0; i < num_keys_to_remove; i++)
         {
             fy_node_mapping_remove_by_key(node, keys_to_remove[i]);
         }
@@ -1077,4 +1117,6 @@ static void remove_include_keys(struct fy_node *node)
     {
         UT_LOG_DEBUG("includes inside a sequence is currently not supported");
     }
+
+    free(keys_to_remove);
 }
