@@ -884,25 +884,31 @@ static struct fy_node* process_node(struct fy_node *node, int depth)
     // First pass: handle includes
     while ((pair = fy_node_mapping_iterate(node, &iter)))
     {
-        if (!pair)
+        if (pair == NULL)
+        {
             continue;
+        }
 
         struct fy_node *key_node = fy_node_pair_key(pair);
         struct fy_node *val_node = fy_node_pair_value(pair);
 
-        if (!key_node || !val_node)
+        if (key_node == NULL || val_node == NULL)
+        {
             continue;
+        }
 
         size_t key_len;
         const char *key_str = fy_node_get_scalar(key_node, &key_len);
-        if (!key_str)
+        if (key_str == NULL)
+        {
             continue;
+        }
 
         if (strstr(key_str, "include") && fy_node_is_scalar(val_node))
         {
             size_t val_len;
             const char *filepath = fy_node_get_scalar(val_node, &val_len);
-            if (!filepath)
+            if (filepath == NULL)
             {
                 continue;
             }
@@ -921,16 +927,20 @@ static struct fy_node* process_node(struct fy_node *node, int depth)
             for (int i = 0; i < count; i++)
             {
                 struct fy_node *entry = fy_node_sequence_get_by_index(val_node, i);
-                if (!entry || !fy_node_is_mapping(entry))
+                if (entry == NULL || fy_node_is_mapping(entry) == false)
+                {
                     continue;
+                }
 
                 struct fy_node *include_node = fy_node_mapping_lookup_by_string(entry, "include", 7);
                 if (include_node && fy_node_is_scalar(include_node))
                 {
                     size_t include_len;
                     const char *filepath = fy_node_get_scalar(include_node, &include_len);
-                    if (!filepath)
+                    if (filepath == NULL)
+                    {
                         continue;
+                    }
 
                     struct fy_node *includeNode = process_include(filepath, depth, includeDoc);
                     if (includeNode)
@@ -1101,7 +1111,7 @@ static void remove_include_keys(struct fy_node *node)
         return;
     }
 
-    if (fy_node_is_mapping(node)) // Check if the node is a mapping
+    if (fy_node_is_mapping(node)) // Check if the node is a mapping (i.e., key-value pairs)
     {
         while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL)
         {
@@ -1111,11 +1121,11 @@ static void remove_include_keys(struct fy_node *node)
 
             if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
             {
-                if (num_keys_to_remove >= capacity)
+                if (num_keys_to_remove >= capacity) // Expand capacity if needed
                 {
                     capacity += 10; // Increase capacity by 10
-                    struct fy_node **new_keys = realloc(keys_to_remove, capacity * sizeof(*new_keys));
-                    if (!new_keys)
+                    struct fy_node **new_keys = realloc(keys_to_remove, capacity * sizeof(*new_keys)); // Reallocate memory for keys_to_remove
+                    if (new_keys == NULL)
                     {
                         UT_LOG_ERROR("Reallocation failed\n");
                         free(keys_to_remove);
@@ -1136,11 +1146,11 @@ static void remove_include_keys(struct fy_node *node)
                         struct fy_node *include_node = fy_node_mapping_lookup_by_string(entry, "include", 7);
                         if (include_node)
                         {
-                            if (num_keys_to_remove >= capacity)
+                            if (num_keys_to_remove >= capacity) // Expand capacity if needed
                             {
                                 capacity += 10; // Increase capacity by 10
-                                struct fy_node **new_keys = realloc(keys_to_remove, capacity * sizeof(*new_keys));
-                                if (!new_keys)
+                                struct fy_node **new_keys = realloc(keys_to_remove, capacity * sizeof(*new_keys)); // Reallocate memory for keys_to_remove
+                                if (new_keys == NULL)
                                 {
                                     UT_LOG_ERROR("Reallocation failed\n");
                                     free(keys_to_remove);

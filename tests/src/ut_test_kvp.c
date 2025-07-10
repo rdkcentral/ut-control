@@ -925,6 +925,12 @@ static void create_delete_kvp_memory_instance_for_given_file(const char* filenam
      ut_kvp_destroyInstance( pInstance );
 }
 
+void test_ut_kvp_ResolveAliasesAnchorsMergeKeysFromMallocedData(void)
+{
+
+    create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML);
+}
+
 /*These tests, test for availability of include file in the malloc'd buffer
  **The malloc'd buffer, only contains files to be included
  */
@@ -1297,4 +1303,5 @@ void register_kvp_functions( void )
 
     UT_add_test(gpKVPSuite12, "kvp bool from main yaml", test_ut_kvp_bool_on_main_yaml);
     UT_add_test(gpKVPSuite12, "kvp node presence from main yaml", test_ut_kvp_fieldPresent_on_main_yaml);
+    UT_add_test(gpKVPSuite12, "kvp ssequence include support on malloc data", test_ut_kvp_ResolveAliasesAnchorsMergeKeysFromMallocedData);
 }
