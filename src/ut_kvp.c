@@ -777,6 +777,49 @@ unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *psz
     return output_bytes;
 }
 
+char* ut_kvp_getDataOfType( ut_kvp_instance_t *pInstance, const char *pszType )
+{
+     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+     char *kvp_yaml_output = NULL;
+
+     if (pInternal == NULL)
+    {
+        return NULL;
+    }
+
+    if ( pInternal->fy_handle == NULL)
+    {
+        return NULL;
+    }
+
+    if (pszType == NULL)
+    {
+        UT_LOG_ERROR("Invalid Param - type");
+        return NULL;
+    }
+
+    if (strncmp(pszType, "json", 4) == 0)
+    {
+        kvp_yaml_output = fy_emit_document_to_string(pInternal->fy_handle, FYECF_MODE_JSON);
+    }
+    else if (strncmp(pszType, "yaml", 4) == 0)
+    {
+        kvp_yaml_output = fy_emit_document_to_string(pInternal->fy_handle, FYECF_DEFAULT);
+    }
+    else
+    {
+        UT_LOG_ERROR("Invalid type");
+        return NULL;
+    }
+
+    if (kvp_yaml_output == NULL)
+    {
+        UT_LOG_ERROR("Failed to emit YAML document\n");
+        return NULL;
+    }
+    return kvp_yaml_output;
+}
+
 /** Static Functions */
 static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance)
 {

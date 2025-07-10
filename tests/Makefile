@@ -76,7 +76,7 @@ build:
 	make -C ./ut-core test
 	@cp $(LIB_DIR)/lib* ${BIN_DIR}
 	@cp ${ROOT_DIR}/src/*.sh ${BIN_DIR}
-	@cp ${ROOT_DIR}/websocket-clients/* ${BIN_DIR}
+	@cp ${ROOT_DIR}/rest-api-clients/* ${BIN_DIR}
 	@$(ECHOE) ${GREEN}Copy Assets to [${BIN_DIR}/assets] ${NC}
 	@mkdir -p ${BIN_DIR}/assets
 	@cp -r ${ROOT_DIR}/src/assets/* ${BIN_DIR}/assets

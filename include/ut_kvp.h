@@ -254,6 +254,16 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey);
  */
 unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, int *size);
 
+/**
+ * @brief Get the data block from the instance based on the type requested by user.
+ *  User to free the instance where the data is invalid, no output will be provided
+ * Also caller needs to ensure, that they free the pointer to the data block
+ *
+ * @param pInstance - pointer to the KVP instance
+ * @param pszType - type of data to be retrieved. Currently supported types are "json" and "yaml"
+ */
+char* ut_kvp_getDataOfType( ut_kvp_instance_t *pInstance, const char *pszType );
+
 /* TODO:
  * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`,
  *`ut_kvp_getInt64Field`

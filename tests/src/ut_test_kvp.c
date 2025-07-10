@@ -923,6 +923,33 @@ static void create_delete_kvp_memory_instance_for_given_file(const char* filenam
      ut_kvp_destroyInstance( pInstance );
 }
 
+void test_ut_kvp_getDataOfTypeJson()
+{
+    char* jsonData = ut_kvp_getDataOfType(gpMainTestInstance, "json");
+    if(jsonData != NULL)
+    {
+        // Print the emitted KVP string
+        printf("%s\n", jsonData);
+
+        // Free the emitted KVP string
+           free(jsonData);
+    }
+}
+
+void test_ut_kvp_getDataOfTypeYaml()
+{
+    char* yamlData = ut_kvp_getDataOfType(gpMainTestInstance, "yaml");
+    if(yamlData != NULL)
+    {
+        // Print the emitted KVP string
+        printf("%s\n", yamlData);
+
+        // Free the emitted KVP string
+           free(yamlData);
+    }
+}
+
+
 /*These tests, test for availability of include file in the malloc'd buffer
  **The malloc'd buffer, only contains files to be included
  */
@@ -1165,6 +1192,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite2, "kvp double", test_ut_kvp_getDoubleField);
     UT_add_test(gpKVPSuite2, "kvp node presence", test_ut_kvp_fieldPresent);
     UT_add_test(gpKVPSuite2, "kvp dataByte", test_ut_kvp_dataByte);
+    UT_add_test(gpKVPSuite2, "kvp get JSON data", test_ut_kvp_getDataOfTypeJson);
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite3 = UT_add_suite("ut-kvp - test main functions JSON Decoder ", test_ut_kvp_createGlobalJSONInstance, test_ut_kvp_freeGlobalInstance);
@@ -1181,6 +1209,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite3, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite3, "kvp double", test_ut_kvp_getDoubleField);
     UT_add_test(gpKVPSuite3, "kvp node presence", test_ut_kvp_fieldPresent);
+    UT_add_test(gpKVPSuite3, "kvp get Yaml data", test_ut_kvp_getDataOfTypeYaml);
 
 
     gpKVPSuite4 = UT_add_suite("ut-kvp - test main functions Test without Open ", NULL, NULL);
