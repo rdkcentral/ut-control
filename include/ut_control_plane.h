@@ -20,6 +20,9 @@
 
 #include <ut_kvp.h>
 
+#ifndef UT_CONTROL_PLANE_H
+#define UT_CONTROL_PLANE_H
+
 #ifdef __cplusplus
 extern "C"
 {
