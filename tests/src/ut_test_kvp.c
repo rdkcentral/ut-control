@@ -898,13 +898,12 @@ static void create_delete_kvp_instance_for_given_file(const char* filename)
 
     kvpData = ut_kvp_getData(pInstance);
 
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("\n%s\n", kvpData);
+    print_input_output(kvpData, filename); // Print the emitted KVP string and input data from file
 
-        // Free the emitted KVP string
-           free(kvpData);
+    if(kvpData)
+    {
+        free(kvpData); // Free the emitted KVP string
+        kvpData = NULL;
     }
 
      ut_kvp_destroyInstance( pInstance );
@@ -989,13 +988,12 @@ static void create_delete_kvp_memory_instance_for_given_file(const char* filenam
 
     kvpData = ut_kvp_getData(pInstance);
 
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("\n%s\n", kvpData);
+    print_input_output(kvpData, filename); // Print the emitted KVP string and input data from file
 
-        // Free the emitted KVP string
-           free(kvpData);
+    if(kvpData)
+    {
+        free(kvpData); // Free the emitted KVP string
+        kvpData = NULL;
     }
 
      ut_kvp_destroyInstance( pInstance );
@@ -1242,13 +1240,12 @@ static int test_ut_kvp_createGlobalYAMLInstanceForSequenceIncludeFileViaYaml( vo
 
     char* kvpData = ut_kvp_getData(gpMainTestInstance);
 
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("\n%s\n", kvpData);
+    print_input_output(kvpData, KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML); // Print the emitted KVP string and input data from file
 
-        // Free the emitted KVP string
-        free(kvpData);
+    if(kvpData)
+    {
+        free(kvpData); // Free the emitted KVP string
+        kvpData = NULL;
     }
 
     return 0;
