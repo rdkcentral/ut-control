@@ -1,4 +1,5 @@
 /*
+ *
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
@@ -17,11 +18,10 @@
  * limitations under the License.
  */
 
-
-#include <ut_kvp.h>
-
 #ifndef UT_CONTROL_PLANE_H
 #define UT_CONTROL_PLANE_H
+
+#include <ut_kvp.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -125,3 +125,5 @@ char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* UT_CONTROL_PLANE_H */
