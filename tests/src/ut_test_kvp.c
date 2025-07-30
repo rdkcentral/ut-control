@@ -39,6 +39,9 @@
 #define KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML "assets/include/depth_check.yaml"
 #define KVP_VALID_TEST_YAML_CONFIG_FILE "assets/config-test.yaml"
 #define KVP_VALID_TEST_RESOLVE_ALIASES_ANCHORS_MERGEKEYS_YAML "assets/anchor_aliases_mergekey.yaml"
+#define KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML "assets/include/sequence-include.yaml"
+#define KVP_VALID_TEST_RESOLVE_YAML_TAGS_YAML "assets/yaml_tags.yaml"
+#define KVP_VALID_TEST_RESOLVE_YAML_TAGS_IN_SEQUENCE_YAML "assets/yaml_tags_in_sequence.yaml"
 
 static ut_kvp_instance_t *gpMainTestInstance = NULL;
 static UT_test_suite_t *gpKVPSuite = NULL;
@@ -52,6 +55,7 @@ static UT_test_suite_t *gpKVPSuite8 = NULL;
 static UT_test_suite_t *gpKVPSuite9 = NULL;
 static UT_test_suite_t *gpKVPSuite10 = NULL;
 static UT_test_suite_t *gpKVPSuite11 = NULL;
+static UT_test_suite_t *gpKVPSuite12 = NULL;
 
 static int test_ut_kvp_createGlobalYAMLInstance(void);
 static int test_ut_kvp_createGlobalJSONInstance(void);
@@ -744,6 +748,66 @@ void test_ut_kvp_fieldPresent_on_main_yaml(void)
 
 }
 
+/*These tests test the integrated yaml for there key-value pair*/
+void test_ut_kvp_bool_on_main_yaml_for_sequence_includes(void)
+{
+     bool result;
+
+    /* Negative Tests */
+    result = ut_kvp_getBoolField( gpMainTestInstance, "6/value" );
+    UT_ASSERT( result == false );
+
+    /* Positive Tests */
+    result = ut_kvp_getBoolField( gpMainTestInstance, "1/value" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_getBoolField( gpMainTestInstance, "plugin/0/2.value" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_getBoolField( gpMainTestInstance, "plugin/1/3/value" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_getBoolField( gpMainTestInstance, "4.value" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_getBoolField( gpMainTestInstance, "5/value" );
+    UT_ASSERT( result == true );
+
+}
+
+ /*These tests test the integrated yaml for the availbility of field*/
+void test_ut_kvp_fieldPresent_on_main_yaml_for_sequence_includes(void)
+{
+    bool result;
+
+    /* Negative Tests */
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "6/value" );
+    UT_ASSERT( result == false );
+
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "6" );
+    UT_ASSERT( result == false );
+
+    /* Positive Tests */
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "1/value" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "plugin/0/2" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "plugin/1/3/value" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "4.value" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "5.value" );
+    UT_ASSERT( result == true );
+
+    result = ut_kvp_fieldPresent( gpMainTestInstance, "5" );
+    UT_ASSERT( result == true );
+
+}
+
 void test_ut_kvp_add_multiple_profile(void)
 {
     ut_kvp_status_t status;
@@ -765,7 +829,7 @@ void test_ut_kvp_add_multiple_profile(void)
     if (kvpData != NULL)
     {
         // Print the emitted KVP string
-        printf("%s\n", kvpData);
+        printf("\n%s\n", kvpData);
 
         // Free the emitted KVP string
         free(kvpData);
@@ -802,7 +866,7 @@ void test_ut_kvp_add_multiple_profile_using_open_memory(void)
     if(kvpData != NULL)
     {
         // Print the emitted KVP string
-        printf("%s\n", kvpData);
+        printf("\n%s\n", kvpData);
 
         // Free the emitted KVP string
         free(kvpData);
@@ -834,13 +898,12 @@ static void create_delete_kvp_instance_for_given_file(const char* filename)
 
     kvpData = ut_kvp_getData(pInstance);
 
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("%s\n", kvpData);
+    print_input_output(kvpData, filename); // Print the emitted KVP string and input data from file
 
-        // Free the emitted KVP string
-           free(kvpData);
+    if(kvpData)
+    {
+        free(kvpData); // Free the emitted KVP string
+        kvpData = NULL;
     }
 
      ut_kvp_destroyInstance( pInstance );
@@ -882,6 +945,20 @@ void test_ut_kvp_ResolveAliasesAnchorsMergeKeysWithBuildFromFile(void)
     create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_RESOLVE_ALIASES_ANCHORS_MERGEKEYS_YAML);
 }
 
+/* these tests, resolve yaml tags in given file */
+void test_ut_kvp_ResolveYamlTagsWithBuildFromFile(void)
+{
+
+    create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_RESOLVE_YAML_TAGS_YAML);
+}
+
+/* these tests, resolve yaml tags in sequence in given file */
+void test_ut_kvp_ResolveYamlTagsInSequenceWithBuildFromFile(void)
+{
+
+    create_delete_kvp_instance_for_given_file(KVP_VALID_TEST_RESOLVE_YAML_TAGS_IN_SEQUENCE_YAML);
+}
+
 static void create_delete_kvp_memory_instance_for_given_file(const char* filename)
 {
     test_ut_memory_t kvpMemory;
@@ -911,16 +988,21 @@ static void create_delete_kvp_memory_instance_for_given_file(const char* filenam
 
     kvpData = ut_kvp_getData(pInstance);
 
-    if(kvpData != NULL)
-    {
-        // Print the emitted KVP string
-        printf("%s\n", kvpData);
+    print_input_output(kvpData, filename); // Print the emitted KVP string and input data from file
 
-        // Free the emitted KVP string
-           free(kvpData);
+    if(kvpData)
+    {
+        free(kvpData); // Free the emitted KVP string
+        kvpData = NULL;
     }
 
      ut_kvp_destroyInstance( pInstance );
+}
+
+void test_ut_kvp_ResolveAliasesAnchorsMergeKeysFromMallocedData(void)
+{
+
+    create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML);
 }
 
 /*These tests, test for availability of include file in the malloc'd buffer
@@ -957,6 +1039,20 @@ void test_ut_kvp_ResolveAliasesAnchorsMergeKeysWithBuildFromMallocedData(void)
 {
 
     create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_RESOLVE_ALIASES_ANCHORS_MERGEKEYS_YAML);
+}
+
+/* these tests, resolve yaml tags in malloc'd data */
+void test_ut_kvp_ResolveYamlTagsWithBuildFromMallocedData(void)
+{
+
+    create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_RESOLVE_YAML_TAGS_YAML);
+}
+
+/* these tests, resolve yaml tags in sequence in malloc'd data */
+void test_ut_kvp_ResolveYamlTagsInSequenceWithBuildFromMallocedData(void)
+{
+
+    create_delete_kvp_memory_instance_for_given_file(KVP_VALID_TEST_RESOLVE_YAML_TAGS_IN_SEQUENCE_YAML);
 }
 
 static int test_ut_kvp_createGlobalYAMLInstance( void )
@@ -1102,6 +1198,56 @@ static int test_ut_kvp_createGlobalYAMLInstanceForIncludeFileViaYaml( void)
         return -1;
     }
 
+    char* kvpData = ut_kvp_getData(gpMainTestInstance);
+
+    if(kvpData != NULL)
+    {
+        // Print the emitted KVP string
+        printf("\n%s\n", kvpData);
+
+        // Free the emitted KVP string
+        free(kvpData);
+    }
+
+    return 0;
+
+}
+
+static int test_ut_kvp_createGlobalYAMLInstanceForSequenceIncludeFileViaYaml( void)
+{
+    /*Creating global instance for include yaml support, so that the values
+    **in integrated yaml can be tested
+    */
+
+    ut_kvp_status_t status;
+
+    gpMainTestInstance = ut_kvp_createInstance();
+    if ( gpMainTestInstance == NULL )
+    {
+        assert( gpMainTestInstance != NULL );
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        return -1;
+    }
+
+    status = ut_kvp_open( gpMainTestInstance, KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML);
+    assert( status == UT_KVP_STATUS_SUCCESS );
+
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        return -1;
+    }
+
+    char* kvpData = ut_kvp_getData(gpMainTestInstance);
+
+    print_input_output(kvpData, KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML); // Print the emitted KVP string and input data from file
+
+    if(kvpData)
+    {
+        free(kvpData); // Free the emitted KVP string
+        kvpData = NULL;
+    }
+
     return 0;
 
 }
@@ -1229,6 +1375,8 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite8, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromFile);
     UT_add_test(gpKVPSuite8, "kvp include depth check", test_ut_kvp_IncludeDepthCheckWithBuildFromFile);
     UT_add_test(gpKVPSuite8, "kvp resolve aliases, anchors, mergekeys", test_ut_kvp_ResolveAliasesAnchorsMergeKeysWithBuildFromFile);
+    UT_add_test(gpKVPSuite8, "kvp resolve yaml tags", test_ut_kvp_ResolveYamlTagsWithBuildFromFile);
+    UT_add_test(gpKVPSuite8, "kvp resolve yaml tags in sequence", test_ut_kvp_ResolveYamlTagsInSequenceWithBuildFromFile);
 
     gpKVPSuite9 = UT_add_suite("ut-kvp - test main functions YAML Decoder for single include files using build from Malloced data", NULL, NULL);
     assert(gpKVPSuite9 != NULL);
@@ -1237,6 +1385,8 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite9, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromMallocedData);
     UT_add_test(gpKVPSuite9, "kvp include depth check", test_ut_kvp_IncludeDepthCheckWithBuildFromMallocedData);
     UT_add_test(gpKVPSuite9, "kvp resolve aliases, anchors, mergekeys", test_ut_kvp_ResolveAliasesAnchorsMergeKeysWithBuildFromMallocedData);
+    UT_add_test(gpKVPSuite9, "kvp resolve yaml tags", test_ut_kvp_ResolveYamlTagsWithBuildFromMallocedData);
+    UT_add_test(gpKVPSuite9, "kvp resolve yaml tags in sequence", test_ut_kvp_ResolveYamlTagsInSequenceWithBuildFromMallocedData);
 
     gpKVPSuite10 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml include support", test_ut_kvp_createGlobalYAMLInstanceForIncludeFileViaYaml, test_ut_kvp_freeGlobalInstance);
     assert(gpKVPSuite10 != NULL);
@@ -1249,4 +1399,11 @@ void register_kvp_functions( void )
 
     UT_add_test(gpKVPSuite11, "kvp multiple profile", test_ut_kvp_add_multiple_profile);
     UT_add_test(gpKVPSuite11, "kvp multiple profile using open memory", test_ut_kvp_add_multiple_profile_using_open_memory);
+
+    gpKVPSuite12 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml sequence include support", test_ut_kvp_createGlobalYAMLInstanceForSequenceIncludeFileViaYaml, test_ut_kvp_freeGlobalInstance);
+    assert(gpKVPSuite12 != NULL);
+
+    UT_add_test(gpKVPSuite12, "kvp bool from main yaml", test_ut_kvp_bool_on_main_yaml_for_sequence_includes);
+    UT_add_test(gpKVPSuite12, "kvp node presence from main yaml", test_ut_kvp_fieldPresent_on_main_yaml_for_sequence_includes);
+    UT_add_test(gpKVPSuite12, "kvp ssequence include support on malloc data", test_ut_kvp_ResolveAliasesAnchorsMergeKeysFromMallocedData);
 }
