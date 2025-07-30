@@ -56,11 +56,11 @@ static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *psz
 static bool str_to_bool(const char *string);
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pszResult);
 static void convert_dot_to_slash(const char *key, char *output);
-static struct fy_node* process_node(struct fy_node *node, int depth);
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
 static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
-static void remove_include_keys(struct fy_node *node);
+static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth);
+static const void *find_pattern_from_buffer(const void *buffer, size_t bufferLength, const void *pattern, size_t patternLength);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
 {
@@ -123,7 +123,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     }
     else
     {
-        pInternal->fy_handle = fy_document_build_from_file(NULL, fileName);
+        pInternal->fy_handle = fy_document_create(NULL);
     }
 
     if (NULL == pInternal->fy_handle)
@@ -133,15 +133,16 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    if(fy_document_resolve(pInternal->fy_handle) != 0)
+    struct fy_document *srcDoc = fy_document_build_from_file(NULL, fileName);
+
+    if(fy_document_resolve(srcDoc) != 0)
     {
         UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    node = process_node(fy_document_root(pInternal->fy_handle), 0);
-    remove_include_keys(node);
+    node = process_node_copy(fy_document_root(srcDoc), pInternal->fy_handle, 0);
 
     if (node == NULL)
     {
@@ -149,6 +150,9 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
+
+    fy_document_set_root(pInternal->fy_handle, node);
+    fy_document_destroy(srcDoc);
 
     return UT_KVP_STATUS_SUCCESS;
 }
@@ -175,7 +179,7 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
     }
     else
     {
-        pInternal->fy_handle = fy_document_build_from_malloc_string(NULL, pData, length);
+        pInternal->fy_handle = fy_document_create(NULL);
     }
 
     if (NULL == pInternal->fy_handle)
@@ -185,15 +189,16 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    if(fy_document_resolve(pInternal->fy_handle) != 0)
+    struct fy_document *srcDoc = fy_document_build_from_malloc_string(NULL, pData, length);
+
+    if(fy_document_resolve(srcDoc) != 0)
     {
         UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    node = process_node(fy_document_root(pInternal->fy_handle), 0);
-    remove_include_keys(node);
+    node = process_node_copy(fy_document_root(srcDoc), pInternal->fy_handle, 0);
 
     if (node == NULL)
     {
@@ -201,6 +206,9 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
+
+    fy_document_set_root(pInternal->fy_handle, node);
+    fy_document_destroy(srcDoc);
 
     return UT_KVP_STATUS_SUCCESS;
 }
@@ -857,64 +865,145 @@ static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, v
     return realsize;
 }
 
-static struct fy_node* process_node(struct fy_node *node, int depth)
+static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth)
 {
-     struct fy_document *includeDoc = NULL;
-
-    if (node == NULL)
+    if (srcNode == NULL || dstDoc == NULL)
     {
-        UT_LOG_ERROR( "Error: Invalid node.\n");
+        UT_LOG_ERROR("Error : Invalid input, src_node or dst_doc is NULL.\n");
         return NULL;
     }
 
     if (depth >= UT_KVP_MAX_INCLUDE_DEPTH)
     {
-        UT_LOG_ERROR( "Error: Maximum include depth exceeded.\n");
+        UT_LOG_ERROR("Error : Maximum include depth exceeded.\n");
         return NULL;
     }
 
-    if (fy_node_is_scalar(node))
+    // Handle !include tag on scalar
+    size_t tag_len = 0;
+    const char *tag = fy_node_get_tag(srcNode, &tag_len);
+    if (tag && strncmp(tag, "!include", tag_len) == 0 && fy_node_is_scalar(srcNode))
     {
-        return node; // Nothing to do for scalar nodes
+        const char *filepath = fy_node_get_scalar(srcNode, NULL);
+        if (filepath)
+        {
+            struct fy_node *included = process_include(filepath, depth, dstDoc);
+            if (included)
+            {
+                return process_node_copy(included, dstDoc, depth + 1);
+            }
+        }
+        return NULL;
     }
 
-    if (fy_node_is_sequence(node))
+    // Handle scalar node
+    if (fy_node_is_scalar(srcNode))
     {
-        UT_LOG_DEBUG("includes inside a sequence is currently not supported");
+        return fy_node_copy(dstDoc, srcNode);
     }
 
-    if (fy_node_is_mapping(node))
+    // Handle sequence node
+    if (fy_node_is_sequence(srcNode))
     {
-        struct fy_node_pair *pair;
-        struct fy_node *includeNode = NULL;
-        const char *includeFilename = NULL;
+        struct fy_node *new_seq = fy_node_create_sequence(dstDoc);
+        if (new_seq == NULL)
+        {
+            return NULL;
+        }
 
         void *iter = NULL;
-        while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL)
+        struct fy_node *entry;
+        while ((entry = fy_node_sequence_iterate(srcNode, &iter)) != NULL)
         {
-            struct fy_node *key = fy_node_pair_key(pair);
-            struct fy_node *value = fy_node_pair_value(pair);
-            const char *key_str = fy_node_get_scalar(key, NULL);
-            // UT_LOG_DEBUG("KEY_STR = %s", key_str);
+            struct fy_node *copied_entry = NULL;
 
-            if (key_str && strstr(key_str, "include"))
+            // If entry is a mapping with "include": ...
+            if (fy_node_is_mapping(entry))
             {
-                includeFilename = fy_node_get_scalar(value, NULL);
-                if (includeFilename)
+                struct fy_node *incl = fy_node_mapping_lookup_by_string(entry, "include", 7);
+                if (incl && fy_node_is_scalar(incl))
                 {
-                    includeNode = process_include(includeFilename, depth, includeDoc);
-                    if (includeNode)
+                    const char *filepath = fy_node_get_scalar(incl, NULL);
+                    if (filepath)
                     {
-                        merge_nodes(node, includeNode);
-                        fy_document_destroy(includeDoc);
-                        includeDoc = NULL;
+                        struct fy_node *included = process_include(filepath, depth, dstDoc);
+                        if (included)
+                            copied_entry = process_node_copy(included, dstDoc, depth + 1);
                     }
                 }
             }
+
+            if (copied_entry == NULL)
+            {
+                copied_entry = process_node_copy(entry, dstDoc, depth);
+            }
+
+            if (copied_entry)
+            {
+                if (fy_node_sequence_append(new_seq, copied_entry) != 0)
+                {
+                    UT_LOG_ERROR("Error appending node to sequence");
+                }
+            }
         }
+        return new_seq;
     }
 
-    return node;
+    // Handle mapping node
+    if (fy_node_is_mapping(srcNode))
+    {
+        //struct fy_document *includeDoc = NULL;
+        struct fy_node *new_map = fy_node_create_mapping(dstDoc);
+        if (new_map == NULL)
+        {
+            return NULL;
+        }
+
+        void *iter = NULL;
+        struct fy_node_pair *pair;
+
+        while ((pair = fy_node_mapping_iterate(srcNode, &iter)) != NULL)
+        {
+            struct fy_node *key_node = fy_node_pair_key(pair);
+            struct fy_node *val_node = fy_node_pair_value(pair);
+            if (!key_node || !val_node)
+                continue;
+
+            size_t key_len;
+            const char *key_str = fy_node_get_scalar(key_node, &key_len);
+
+            // Handle include keys like "include_0", "include", etc.
+            if (key_str && fy_node_get_scalar(val_node, NULL) && find_pattern_from_buffer(key_str, key_len, "include", strlen("include")))
+            {
+                const char *filepath = fy_node_get_scalar(val_node, NULL);
+                if (filepath)
+                {
+                    struct fy_node *included = process_include(filepath, depth, dstDoc);
+                    if (included)
+                    {
+                        // If the included node is a mapping, merge it into the new_map
+                        merge_nodes(new_map, included);
+                        continue;
+                    }
+                }
+            }
+
+            // Regular case: recursive copy
+            struct fy_node *copied_key = fy_node_copy(dstDoc, key_node);
+            struct fy_node *copied_val = process_node_copy(val_node, dstDoc, depth);
+
+            if (copied_key && copied_val)
+            {
+                if (fy_node_mapping_append(new_map, copied_key, copied_val) != 0)
+                {
+                    UT_LOG_ERROR("Error appending node to mapping");
+                }
+            }
+        }
+        return new_map;
+    }
+
+    return NULL;
 }
 
 static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
@@ -935,10 +1024,6 @@ static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
     if (fy_node_is_scalar(mainNode))
     {
         fy_node_create_scalar_copy(fy_node_document(mainNode), fy_node_get_scalar(includeNode, NULL), fy_node_get_scalar_length(includeNode));
-    }
-    else if (fy_node_is_sequence(mainNode) && fy_node_is_sequence(includeNode))
-    {
-        UT_LOG_DEBUG("includes inside a sequence is currently not supported");
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
     {
@@ -1006,8 +1091,8 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             return NULL;
         }
 
-        doc = fy_document_build_from_malloc_string(NULL, mChunk.memory, mChunk.size);
-        if (doc == NULL)
+        struct fy_document *srcDoc = fy_document_build_from_malloc_string(NULL, mChunk.memory, mChunk.size);
+        if (srcDoc == NULL)
         {
             UT_LOG_ERROR("Error: Cannot parse included content\n");
             free(mChunk.memory);
@@ -1015,12 +1100,14 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             return NULL;
         }
 
-        process_node(fy_document_root(doc), depth + 1);
+        struct fy_node *root = process_node_copy(fy_document_root(srcDoc), doc, depth + 1);
+
         // UT_LOG_DEBUG("%s memory chunk = \n%s\n", __FUNCTION__, mChunk.memory);
 
         // free(mChunk.memory); // fy_document_build_from_malloc_string():  The string is expected to have been allocated by malloc(3) and when the document is destroyed it will be automatically freed.
         curl_easy_cleanup(curl);
-        return fy_document_root(doc);
+        fy_document_destroy(srcDoc);
+        return root;
     }
     else
     {
@@ -1033,8 +1120,8 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         }
 
         // struct fy_document *doc;
-        doc = fy_document_build_from_file(NULL, filename);
-        if (doc == NULL)
+        struct fy_document *srcDoc = fy_document_build_from_file(NULL, filename);
+        if (srcDoc == NULL)
         {
             UT_LOG_ERROR("Error: Cannot parse include file '%s'.\n", filename);
             fclose(file);
@@ -1042,81 +1129,33 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         }
 
         struct fy_node *root;
-        root = fy_document_root(doc);
-        root = process_node(root, depth + 1);
+        root = process_node_copy(fy_document_root(srcDoc), doc, depth + 1);
         fclose(file);
-        return fy_document_root(doc);
+        fy_document_destroy(srcDoc);
+        return root;
     }
 }
 
-// Function to recursively remove nodes with keys containing "include"
-static void remove_include_keys(struct fy_node *node)
+// This function is useful for searching for specific byte sequences in binary data or text files.
+static const void *find_pattern_from_buffer(const void *buffer, size_t bufferLength,
+                                            const void *pattern, size_t patternLength)
 {
-    struct fy_node *key, *value;
-    const char *key_str;
-    struct fy_node_pair *pair;
-    void *iter = NULL;
+    const unsigned char *bufferPtr = buffer;
+    const unsigned char *patternPtr = pattern;
 
-    size_t capacity = 10; // Initial capacity for the list of keys to remove
-    size_t num_keys_to_remove = 0; // Keeps count of keys flagged for removal from the mapping node
-
-    // Allocate memory to hold keys that match the "include" condition and eventually remove them
-    struct fy_node **keys_to_remove = calloc(capacity, sizeof(*keys_to_remove));
-
-    if (!keys_to_remove)
+    if (bufferLength == 0 || patternLength == 0 || bufferLength < patternLength)
     {
-        UT_LOG_ERROR("Memory allocation failed\n");
-        return;
+        return NULL; // No match possible
     }
 
-    if (node == NULL)
+    for (size_t i = 0; i + patternLength <= bufferLength; i++)
     {
-        UT_LOG_ERROR("Error: Invalid node.\n");
-        free(keys_to_remove);
-        return;
-    }
-
-    // Process only if the node is a mapping (i.e., key-value pairs)
-    if (fy_node_is_mapping(node))
-    {
-        // UT_LOG_DEBUG("Node pairs = %d\n", fy_node_mapping_item_count(node));
-        while ((pair = fy_node_mapping_iterate(node, &iter)) != NULL)
+        if (memcmp(bufferPtr + i, patternPtr, patternLength) == 0)
         {
-            key = fy_node_pair_key(pair);
-            value = fy_node_pair_value(pair);
-            key_str = fy_node_get_scalar(key, NULL);
-
-            if (key_str && fy_node_get_scalar(value, NULL) && strstr(key_str, "include"))
-            {
-                // Expand capacity if needed
-                if (num_keys_to_remove >= capacity)
-                {
-                    capacity += 10; // Increase capacity incrementally by 10
-                    // Reallocate memory for keys_to_remove
-                    struct fy_node **new_keys = realloc(keys_to_remove, capacity * sizeof(*new_keys));
-                    if (!new_keys)
-                    {
-                        UT_LOG_ERROR("Reallocation failed\n");
-                        free(keys_to_remove);
-                        return;
-                    }
-                    keys_to_remove = new_keys;
-                }
-                // Store the key to be removed later
-                keys_to_remove[num_keys_to_remove++] = key;
-            }
-        }
-
-        // Remove collected keys
-        for (size_t i = 0; i < num_keys_to_remove; i++)
-        {
-            fy_node_mapping_remove_by_key(node, keys_to_remove[i]);
+            // Found a match
+            return bufferPtr + i;
         }
     }
-    else if (fy_node_is_sequence(node))
-    {
-        UT_LOG_DEBUG("includes inside a sequence is currently not supported");
-    }
 
-    free(keys_to_remove);
+    return NULL;
 }
