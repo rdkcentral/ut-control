@@ -50,6 +50,32 @@ typedef struct
  */
 int read_file_into_memory(const char* filename, test_ut_memory_t* pInstance);
 
+/**
+* @brief Prints the emitted KVP string and input data from a file.
+*
+* This function is a utility for displaying test input and output data.
+* If a valid `filename` is provided, it reads the file content into memory
+* and prints it to standard output. If `kvpData` is provided, it prints
+* the emitted Key-Value Pair (KVP) string. Both can be printed in the
+* same call if both parameters are non-NULL.
+*
+* @param[in] kvpData   Pointer to a null-terminated string containing the
+*                      emitted KVP data to be printed. Can be NULL if only
+*                      the file content should be printed.
+*
+* @param[in] filename  Pointer to a null-terminated string specifying the
+*                      name of the file whose content should be printed.
+*                      Can be NULL if only KVP data should be printed.
+*
+* @note
+* - Uses `read_file_into_memory()` internally to load file content.
+* - Frees the allocated buffer for file content after printing.
+* - If both parameters are NULL, no output is produced.
+*
+* @return void This function does not return a value.
+*/
+void print_input_output(char* kvpData, const char* filename);
+
 #ifdef __cplusplus
 }
 #endif
