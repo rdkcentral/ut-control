@@ -151,13 +151,13 @@ static void test_ut_control_l1_regsiterCallback()
     userData = (void* )strdup("testJSONCallbackString");
     for (int i = 0; i< UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES - 1; i++ )
     {
-        status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback, userData);
+        status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test1", &testYAMLCallback, userData);
         UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_OK);
     }
     free(userData); //freeing the userData after registration
 
     userData = (void* )strdup("testJSONCallbackString");
-    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test/yamlData", &testYAMLCallback, userData);
+    status = UT_ControlPlane_RegisterCallbackOnMessage(pInstance, "test2", &testYAMLCallback, userData);
     UT_ASSERT_EQUAL(status, UT_CONTROL_PLANE_STATUS_LIST_FULL);
     free(userData); //freeing the userData after registration
 
@@ -244,7 +244,7 @@ static void test_ut_control_performStart()
             printf("Original Yaml file\n%s", (char*)gUserDataYaml.buffer);
         }
         UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testYAMLCallback - Positive\n");
-        UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test/yamlData", &testYAMLCallback, (void *)gUserDataYaml.buffer);
+        UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2", &testYAMLCallback, (void *)gUserDataYaml.buffer);
     }
 
     gMessageRecievedYAML = false;
@@ -260,7 +260,7 @@ static void test_ut_control_performStart()
         }
 
         UT_LOG("UT_ControlPlane_RegisterCallbackOnMessage() client testJSONCallback - Positive \n");
-        UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test2/jsonData1", &testJSONCallback, (void *)gUserDataJson.buffer);
+        UT_ControlPlane_RegisterCallbackOnMessage(gInstance, "test4/jsonData1", &testJSONCallback, (void *)gUserDataJson.buffer);
     }
 
     gMessageRecievedJSON = false;
