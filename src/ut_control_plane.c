@@ -144,8 +144,6 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
 {
     ut_kvp_instance_t *pkvpInstance = NULL;
     ut_kvp_status_t status;
-    char result_kvp[UT_KVP_MAX_ELEMENT_SIZE] = {0xff};
-
     if (mssg->message == NULL)
     {
         return;
@@ -164,7 +162,7 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
     for (uint32_t i = 0; i < pInternal->callback_entry_index; i++)
     {
         CallbackEntry_t entry = pInternal->callbackEntryList[i];
-        if (UT_KVP_STATUS_SUCCESS == ut_kvp_getStringField(pkvpInstance, entry.key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE))
+        if (ut_kvp_fieldPresent(pkvpInstance, entry.key))
         {
             // call callback
             entry.pCallback(entry.key, pkvpInstance, entry.userData);
