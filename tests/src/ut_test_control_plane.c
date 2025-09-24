@@ -190,6 +190,7 @@ void testYAMLCallback(char *key, ut_kvp_instance_t *instance, void* userData)
 
     //UT_ASSERT_STRING_EQUAL(kvpData, data);
     gMessageRecievedYAML = true;
+    ut_kvp_destroyInstance(instance); // free the instance here as it is created in the control plane
 }
 
 void testJSONCallback(char *key, ut_kvp_instance_t *instance, void* userData)
@@ -215,6 +216,7 @@ void testJSONCallback(char *key, ut_kvp_instance_t *instance, void* userData)
 
     //UT_ASSERT_STRING_EQUAL(kvpData, data);
     gMessageRecievedJSON = true;
+    ut_kvp_destroyInstance(instance); // free the instance here as it is created in the control plane
 }
 
 static void UT_ControlPlane_Sigint_Handler(int sig)

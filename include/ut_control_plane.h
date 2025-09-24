@@ -51,6 +51,7 @@ typedef struct
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
 /** @brief  Callback function type for handling control plane messages. */
+/*Responsibility: The callback/client is responsible for freeing the instance */
 typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, void *userData );
 
 /**
