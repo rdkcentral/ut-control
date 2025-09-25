@@ -84,3 +84,26 @@ int read_file_into_memory(const char* filename, test_ut_memory_t* pInstance)
     fclose(file);
     return 0;
 }
+
+void print_input_output(char* kvpData, const char* filename)
+{
+    test_ut_memory_t kvpMemory;
+
+    if (filename != NULL && read_file_into_memory(filename, &kvpMemory) == 0)
+    {
+        printf("\n===================================================================\n");
+        printf("Original file content from file:%s\n", filename);
+        printf("===================================================================\n");
+        printf("\n%s\n", kvpMemory.buffer);
+        free(kvpMemory.buffer);
+    }
+
+    if(kvpData != NULL)
+    {
+        printf("\n===================================================================\n");
+        printf("Output KVP data:\n");
+        printf("===================================================================\n");
+        // Print the emitted KVP string
+        printf("\n%s\n", kvpData);
+    }
+}

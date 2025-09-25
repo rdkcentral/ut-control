@@ -1,0 +1,9 @@
+# A single scalar value included from an external source
+configItem:
+  value: !include assets/include/2s.yaml
+
+# A list of values, each included from a separate external source
+listConfig:
+  valueList:
+    - !include assets/include/3s.yaml
+    - !include assets/include/4s.yaml

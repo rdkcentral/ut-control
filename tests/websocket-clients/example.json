@@ -1,10 +1,10 @@
 {
-  "test": {
+  "test3": {
     "jsonData": "somevalue",
     "x": 1,
     "on": true
   },
-  "test2": {
+  "test4": {
     "jsonData1": "somevalue1",
     "y": 2,
     "off": false
