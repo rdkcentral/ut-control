@@ -167,8 +167,8 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
             // call callback
             entry.pCallback(entry.key, pkvpInstance, entry.userData);
         }
-        ut_kvp_destroyInstance(pkvpInstance);
     }
+    ut_kvp_destroyInstance(pkvpInstance);
     return;
 }
 
