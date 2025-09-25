@@ -50,8 +50,30 @@ typedef struct
 
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
-/** @brief  Callback function type for handling control plane messages. */
-/*Responsibility: The callback/client is responsible for freeing the instance */
+/**
+ * @typedef ut_control_callback_t
+ * @brief Function pointer type for control plane message callbacks.
+ *
+ * The callback is invoked synchronously when a registered message key is
+ * received. Its primary purpose is to notify the caller that the key has been
+ * triggered. The accompanying data is provided for informational use and
+ * transient decision-making within the callback.
+ *
+ * The data associated with the `instance` parameter is only valid for the
+ * duration of the callback execution. In most cases, it is not expected to be
+ * copied, as it is intended for on-the-spot processing. However, if the caller
+ * requires the data for further use outside the callback, they may copy it
+ * into their own storage before returning.
+ *
+ * Memory management of the `instance` is handled internally. The caller must
+ * not free it, and must not use it after the callback has returned.
+ *
+ * @param key - Null-terminated string representing the message key that
+ *              triggered the callback.
+ * @param instance - Pointer to a key-value pair (`ut_kvp_instance_t`) instance
+ *                   containing the message data. Valid only during the callback.
+ * @param userData - User-provided pointer passed during callback registration.
+ */
 typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, void *userData );
 
 /**
@@ -62,17 +84,29 @@ typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, v
 ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
 
 /**
- * @brief Registers a callback function for a specific message key.
- * @param pInstance - Handle to the control plane instance.
- * @param key - Null-terminated string representing the message key to trigger the callback.
- * @param callbackFunction - Callback function to be invoked when the key is received.
- * @param userData - Handle to the caller instance.
- * @returns Status of the registration operation (`ut_control_plane_status_t`).
- * @retval UT_CONTROL_PLANE_STATUS_OK - Success
- * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE  - Invalid control plane instance handle.
- * @retval UT_CONTROL_PLANE_STATUS_INVALID_PARAM - Invalid parameter passed
- * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL  - Callback list is full
- */
+* @brief Registers a synchronous callback function for a specific message key.
+*
+* The callback is invoked immediately when the specified key is received.
+* The data provided to the callback is only valid for the duration of the
+* callback execution. If the user wishes to retain or process the data
+* after the callback returns, they must copy it to their own storage.
+*
+* The memory associated with the callback data is automatically released
+* once the callback returns. It is NOT the responsibility of the caller
+* to free this memory. However, it is the responsibility of the caller
+* to ensure they do not access or use the callback data after the
+* callback has returned.
+*
+* @param pInstance - Handle to the control plane instance.
+* @param key - Null-terminated string representing the message key to trigger the callback.
+* @param callbackFunction - Callback function to be invoked synchronously when the key is received.
+* @param userData - User-provided handle passed back to the callback.
+* @returns Status of the registration operation (`ut_control_plane_status_t`).
+* @retval UT_CONTROL_PLANE_STATUS_OK - Success.
+* @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE - Invalid control plane instance handle.
+* @retval UT_CONTROL_PLANE_STATUS_INVALID_PARAM - Invalid parameter passed.
+* @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL - Callback list is full.
+*/
 ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance,
                                                                     char *key,
                                                                     ut_control_callback_t callbackFunction,

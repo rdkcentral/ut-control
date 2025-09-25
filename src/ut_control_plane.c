@@ -166,9 +166,8 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
         {
             // call callback
             entry.pCallback(entry.key, pkvpInstance, entry.userData);
-            // pKvpInstance should not be used after this point as it is destroyed in the callback
-            // responsibility of the callback/client to destroy the instance
         }
+        ut_kvp_destroyInstance(pkvpInstance);
     }
     return;
 }
