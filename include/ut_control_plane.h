@@ -65,6 +65,9 @@ typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance
  * requires the data for further use outside the callback, they may copy it
  * into their own storage before returning.
  *
+ * ut_kvp.h provides functions to extract data block from the `instance`.
+ * Ex: ut_kvp_getData()
+ *
  * Memory management of the `instance` is handled internally. The caller must
  * not free it, and must not use it after the callback has returned.
  *
