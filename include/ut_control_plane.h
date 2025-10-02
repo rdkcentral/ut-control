@@ -52,32 +52,31 @@ typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance
 
 /**
  * @typedef ut_control_callback_t
- * @brief Function pointer type for control plane message callbacks.
+ * @brief Synchronous control-plane message callback.
  *
- * The callback is invoked synchronously when a registered message key is
- * received. Its primary purpose is to notify the caller that the key has been
- * triggered. The accompanying data is provided for informational use and
- * transient decision-making within the callback.
+ * This callback is invoked when a registered message key is received.
+ * The call is synchronous; return promptly.
  *
- * The data associated with the `instance` parameter is only valid for the
- * duration of the callback execution. In most cases, it is not expected to be
- * copied, as it is intended for on-the-spot processing. However, if the caller
- * requires the data for further use outside the callback, they may copy it
- * into their own storage before returning.
+ * ## Lifetime & ownership
+ * - `instance` is a framework-owned handle valid **only for the duration of
+ *   this callback**. Do not store it or any pointers into its internals.
+ * - To retain payload beyond the callback, extract a serialized copy with
+ *   `ut_kvp_getData()`, copy that data into your own storage/IPC buffer, and
+ *   then `free()` the buffer returned by `ut_kvp_getData()` **before returning**.
+ * - Parsing (e.g., `ut_kvp_openMemory()`) should be done later, outside the
+ *   callback, using the copy you made.
  *
- * ut_kvp.h provides functions to extract data block from the `instance`.
- * Ex: ut_kvp_getData()
+ * ## Typical workflow
+ * - In-callback: fast decisions via typed getters; or stage the message by
+ *   copying the serialized blob to a queue/shared memory for deferred work.
+ * - Out-of-callback: reconstruct a KVP instance from the staged bytes with
+ *   `ut_kvp_openMemory()`.
  *
- * Memory management of the `instance` is handled internally. The caller must
- * not free it, and must not use it after the callback has returned.
- *
- * @param key - Null-terminated string representing the message key that
- *              triggered the callback.
- * @param instance - Pointer to a key-value pair (`ut_kvp_instance_t`) instance
- *                   containing the message data. Valid only during the callback.
- * @param userData - User-provided pointer passed during callback registration.
+ * @param key       Null-terminated message key that triggered the callback.
+ * @param instance  Transient KVP handle containing message data.
+ * @param userData  User pointer provided at registration.
  */
-typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, void *userData );
+typedef void (*ut_control_callback_t)(char *key, ut_kvp_instance_t *instance, void *userData);
 
 /**
  * @brief Initializes a control plane instance.
@@ -90,15 +89,18 @@ ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
 * @brief Registers a synchronous callback function for a specific message key.
 *
 * The callback is invoked immediately when the specified key is received.
-* The data provided to the callback is only valid for the duration of the
-* callback execution. If the user wishes to retain or process the data
-* after the callback returns, they must copy it to their own storage.
 *
-* The memory associated with the callback data is automatically released
-* once the callback returns. It is NOT the responsibility of the caller
-* to free this memory. However, it is the responsibility of the caller
-* to ensure they do not access or use the callback data after the
-* callback has returned.
+* ## Data lifetime of callback parameters
+* - The `instance` parameter provided to the callback is framework-owned and
+*   valid only for the duration of the callback execution.
+* - Do not attempt to free or retain `instance` directly. It is released
+*   automatically after the callback returns.
+* - If the application needs to retain message contents beyond the callback,
+*   it must make a copy. The common pattern is:
+*   - Use `ut_kvp_getData(instance)` to obtain a serialized payload (caller-owned).
+*   - Copy that payload into application-owned memory (e.g. queue, IPC buffer).
+*   - Free the buffer returned by `ut_kvp_getData()` before returning.
+*   - Later, reconstruct a KVP instance with `ut_kvp_openMemory()`.
 *
 * @param pInstance - Handle to the control plane instance.
 * @param key - Null-terminated string representing the message key to trigger the callback.

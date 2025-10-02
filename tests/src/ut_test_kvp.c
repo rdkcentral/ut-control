@@ -174,6 +174,7 @@ void test_ut_kvp_open_memory( void )
     {
         status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, -1);
         UT_ASSERT(status == UT_KVP_STATUS_PARSING_ERROR);
+        free(gKVPData.buffer);
     }
 
     /* Zero length file, that the library should reject because it can't parse it at all */
@@ -182,6 +183,8 @@ void test_ut_kvp_open_memory( void )
     {
         status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
         UT_ASSERT(status == UT_KVP_STATUS_PARSING_ERROR);
+        free(gKVPData.buffer);
+        gKVPData.length = 0;
     }
 
     /* Positive Tests */
@@ -190,6 +193,8 @@ void test_ut_kvp_open_memory( void )
     {
         status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+        free(gKVPData.buffer);
+        gKVPData.length = 0;
     }
 
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
@@ -197,6 +202,8 @@ void test_ut_kvp_open_memory( void )
     {
         status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+        free(gKVPData.buffer);
+        gKVPData.length = 0;
     }
 
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_JSON_FILE);
@@ -204,6 +211,8 @@ void test_ut_kvp_open_memory( void )
     {
         status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+        free(gKVPData.buffer);
+        gKVPData.length = 0;
     }
 }
 
@@ -845,6 +854,8 @@ void test_ut_kvp_add_multiple_profile_using_open_memory(void)
     {
         status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+        free(gKVPData.buffer);
+        gKVPData.length = 0;
     }
 
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
@@ -852,6 +863,8 @@ void test_ut_kvp_add_multiple_profile_using_open_memory(void)
     {
         status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+        free(gKVPData.buffer);
+        gKVPData.length = 0;
     }
 
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
@@ -859,6 +872,8 @@ void test_ut_kvp_add_multiple_profile_using_open_memory(void)
     {
         status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+        free(gKVPData.buffer);
+        gKVPData.length = 0;
     }
 
     char* kvpData = ut_kvp_getData(gpMainTestInstance);
@@ -978,6 +993,8 @@ static void create_delete_kvp_memory_instance_for_given_file(const char* filenam
     {
         status = ut_kvp_openMemory(pInstance, kvpMemory.buffer, kvpMemory.length);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
+        free(kvpMemory.buffer);
+        kvpMemory.length = 0;
     }
 
     if ( status != UT_KVP_STATUS_SUCCESS )
@@ -1120,6 +1137,8 @@ static int test_ut_kvp_createGlobalYAMLInstanceForMallocedData( void )
     {
         status = ut_kvp_openMemory(gpMainTestInstance, kvpMemory.buffer, kvpMemory.length);
         assert(status == UT_KVP_STATUS_SUCCESS);
+        free(kvpMemory.buffer);
+        kvpMemory.length = 0;
     }
 
     if ( status != UT_KVP_STATUS_SUCCESS )
@@ -1148,6 +1167,8 @@ static int test_ut_kvp_createGlobalJSONInstanceForMallocedData( void )
     {
         status = ut_kvp_openMemory(gpMainTestInstance, kvpMemory.buffer, kvpMemory.length);
         assert(status == UT_KVP_STATUS_SUCCESS);
+        free(kvpMemory.buffer);
+        kvpMemory.length = 0;
     }
 
     if ( status != UT_KVP_STATUS_SUCCESS )
