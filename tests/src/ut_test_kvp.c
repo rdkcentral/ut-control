@@ -129,7 +129,7 @@ void test_ut_kvp_open( void )
     UT_LOG_STEP("ut_kvp_open( pInstance, %s ) - Postive", KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
-
+    
     UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URL_FILE ) - Positive");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_URL_FILE);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
