@@ -95,55 +95,79 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
     pInternal = NULL;
 }
 
-ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
+static bool is_url(const char *input) 
 {
-    struct fy_node *node;
-    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
-
-    if (pInstance == NULL)
-    {
-        return UT_KVP_STATUS_INVALID_INSTANCE;
+    if (input == NULL) {
+        return false;
     }
+    return (strncmp(input, "http://", 7) == 0 || strncmp(input, "https://", 8) == 0);
+}
 
-    if (fileName == NULL)
+static struct fy_document* build_yaml_from_source(const char *fileNameOrUrl, bool isUrl)
+{
+    if (isUrl)
     {
-        UT_LOG_ERROR( "Invalid Param [fileName]" );
+        char yaml[512];
+        snprintf(yaml, sizeof(yaml), "include: %s\n", fileNameOrUrl);
+        return fy_document_build_from_string(NULL, (const char *)yaml, sizeof(yaml));
+    }
+    else
+    {
+        if (access(fileNameOrUrl, F_OK) != 0)
+        {
+            UT_LOG_ERROR("[%s] cannot be accessed", fileNameOrUrl);
+            return NULL;
+        }
+        return fy_document_build_from_file(NULL, fileNameOrUrl);
+    }
+}
+
+ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileNameOrUrl)
+{
+    if (pInstance == NULL)
+        return UT_KVP_STATUS_INVALID_INSTANCE;
+
+    if (fileNameOrUrl == NULL)
+    {
+        UT_LOG_ERROR("Invalid Param [fileNameOrUrl]");
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
-    if (access(fileName, F_OK) != 0)
-    {
-        UT_LOG_ERROR("[%s] cannot be accesed", fileName);
-        return UT_KVP_STATUS_FILE_OPEN_ERROR;
-    }
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+    bool url = is_url(fileNameOrUrl);
 
-    if(pInternal->fy_handle)
+    if (pInternal->fy_handle)
     {
-        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(fy_document_build_from_file(NULL, fileName)));
+        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(build_yaml_from_source(fileNameOrUrl, url)));
     }
     else
     {
         pInternal->fy_handle = fy_document_create(NULL);
+        if (pInternal->fy_handle == NULL)
+        {
+            UT_LOG_ERROR("Unable to create YAML handle");
+            ut_kvp_close(pInstance);
+            return UT_KVP_STATUS_PARSING_ERROR;
+        }
     }
 
-    if (NULL == pInternal->fy_handle)
+    // Step 2: Build the actual srcDoc for processing
+    struct fy_document *srcDoc = build_yaml_from_source(fileNameOrUrl, url);
+    if (srcDoc == NULL)
     {
-        UT_LOG_ERROR("Unable to parse file/memory");
-        ut_kvp_close( pInstance );
+        UT_LOG_ERROR("Failed to build srcDoc for processing");
+        ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    struct fy_document *srcDoc = fy_document_build_from_file(NULL, fileName);
-
-    if(fy_document_resolve(srcDoc) != 0)
+    if (fy_document_resolve(srcDoc) != 0)
     {
         UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
-
-    node = process_node_copy(fy_document_root(srcDoc), pInternal->fy_handle, 0);
-
+    
+    struct fy_node *node = process_node_copy(fy_document_root(srcDoc), pInternal->fy_handle, 0);
     if (node == NULL)
     {
         UT_LOG_ERROR("Unable to process node");

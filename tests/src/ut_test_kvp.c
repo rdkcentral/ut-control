@@ -42,6 +42,7 @@
 #define KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML "assets/include/sequence-include.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_YAML "assets/yaml_tags.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_IN_SEQUENCE_YAML "assets/yaml_tags_in_sequence.yaml"
+#define KVP_VALID_TEST_URL_FILE "https://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/2s.yaml"
 
 static ut_kvp_instance_t *gpMainTestInstance = NULL;
 static UT_test_suite_t *gpKVPSuite = NULL;
@@ -127,6 +128,10 @@ void test_ut_kvp_open( void )
 
     UT_LOG_STEP("ut_kvp_open( pInstance, %s ) - Postive", KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URL_FILE ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URL_FILE);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
 
     /* Test Destroy causes close this should work fine */
