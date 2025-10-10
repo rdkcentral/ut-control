@@ -131,7 +131,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileNameOrUrl)
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
     bool url = is_url(fileNameOrUrl);
 
-    if ((access(fileNameOrUrl, F_OK) != 0) && url == 0)
+    if (url == 0 && (access(fileNameOrUrl, F_OK) != 0))
     {
         UT_LOG_ERROR("[%s] cannot be accessed", fileNameOrUrl);
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
