@@ -80,7 +80,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
  * @retval UT_KVP_STATUS_PARSING_ERROR - An error occurred while parsing the file contents.
  * @retval UT_KVP_STATUS_INVALID_INSTANCE - The provided `pInstance` is not a valid KVP instance.
  */
-ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName);
+ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl);
 
 /**!
  * @brief Opens and parses a memory block read from a Key-Value Pair (KVP) file into a KVP instance.

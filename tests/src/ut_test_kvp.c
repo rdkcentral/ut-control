@@ -42,7 +42,9 @@
 #define KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML "assets/include/sequence-include.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_YAML "assets/yaml_tags.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_IN_SEQUENCE_YAML "assets/yaml_tags_in_sequence.yaml"
-#define KVP_VALID_TEST_URL "https://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/2s.yaml"
+#define KVP_VALID_TEST_URL_HTTPS "https://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/2s.yaml"
+#define KVP_VALID_TEST_URI_HTTP "http://localhost:8000/assets/yaml_tags.yaml"
+#define KVP_VALID_TEST_URI_FILE "file://assets/yaml_tags.yaml"
 
 static ut_kvp_instance_t *gpMainTestInstance = NULL;
 static UT_test_suite_t *gpKVPSuite = NULL;
@@ -126,12 +128,23 @@ void test_ut_kvp_open( void )
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_YAML_FILE);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
 
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URL_HTTPS ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URL_HTTPS);
+    printf("\nKVP Status = %d", status);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URI_HTTP ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URI_HTTP);
+    printf("\nKVP Status = %d", status);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URI_FILE ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URI_FILE);
+    printf("\nKVP Status = %d", status);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
     UT_LOG_STEP("ut_kvp_open( pInstance, %s ) - Postive", KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
-    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
-    
-    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URL ) - Positive");
-    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URL);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
 
     /* Test Destroy causes close this should work fine */

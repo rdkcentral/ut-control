@@ -27,4 +27,20 @@ cd "$(dirname "$0")"
 
 export LD_LIBRARY_PATH=/usr/lib:/lib:/home/root:${MY_DIR}
 
-./ut_control_test $@
+# Start HTTP server in background
+python3 -m http.server 8000 &
+HTTP_PID=$!
+
+# Register cleanup trap to stop HTTP server on exit
+trap '
+    kill $HTTP_PID 2>/dev/null || true
+    wait $HTTP_PID 2>/dev/null || true
+' EXIT
+
+# Run test
+./ut_control_test "$@"
+UT_STATUS=$?
+
+# Exit with same status as UT test
+exit $UT_STATUS
+
