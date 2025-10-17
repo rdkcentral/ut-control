@@ -424,7 +424,6 @@ void test_ut_kvp_dataByte( void )
 {
     int bytes_count = 0;
     unsigned char *output_bytes;
-    test_ut_memory_t kvpdata;
 
     /* Check for NULL_PARAM */
     UT_LOG_STEP("ut_kvp_getDataBytes() - Check for NULL_PARAM - First Argument");
@@ -449,10 +448,6 @@ void test_ut_kvp_dataByte( void )
     UT_ASSERT(bytes_count == 0);
 
     /* Positive tests */
-     if (read_file_into_memory(KVP_VALID_TEST_YAML_FILE, &kvpdata) == 0)
-    {
-        printf("\nYAML file is = \n%s\n", kvpdata.buffer);
-    }
     UT_LOG_STEP("ut_kvp_getDataBytes() - checkBytesSpace for valid output_bytes and bytes_count");
     output_bytes = ut_kvp_getDataBytes(gpMainTestInstance, "decodeTest/checkBytesSpace", &bytes_count);
     UT_ASSERT(output_bytes != NULL);
@@ -978,7 +973,7 @@ static void create_delete_kvp_memory_instance_for_given_file(const char* filenam
 {
     test_ut_memory_t kvpMemory;
     ut_kvp_instance_t *pInstance = NULL;
-    ut_kvp_status_t status;
+    ut_kvp_status_t status = UT_KVP_STATUS_MAX;
     char* kvpData;
 
     pInstance = ut_kvp_createInstance();
@@ -1122,7 +1117,7 @@ static int test_ut_kvp_createGlobalJSONInstance( void )
 
 static int test_ut_kvp_createGlobalYAMLInstanceForMallocedData( void )
 {
-    ut_kvp_status_t status;
+    ut_kvp_status_t status = UT_KVP_STATUS_MAX;
     test_ut_memory_t kvpMemory;
 
     gpMainTestInstance = ut_kvp_createInstance();
@@ -1152,7 +1147,7 @@ static int test_ut_kvp_createGlobalYAMLInstanceForMallocedData( void )
 
 static int test_ut_kvp_createGlobalJSONInstanceForMallocedData( void )
 {
-    ut_kvp_status_t status;
+    ut_kvp_status_t status = UT_KVP_STATUS_MAX;
     test_ut_memory_t kvpMemory;
 
     gpMainTestInstance = ut_kvp_createInstance();

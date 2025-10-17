@@ -98,13 +98,12 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
 ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 {
     struct fy_node *node;
-    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
-
     if (pInstance == NULL)
     {
         return UT_KVP_STATUS_INVALID_INSTANCE;
     }
 
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
     if (fileName == NULL)
     {
         UT_LOG_ERROR( "Invalid Param [fileName]" );
@@ -1027,6 +1026,7 @@ static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
     if (fy_node_is_scalar(mainNode))
     {
         fy_node_create_scalar_copy(fy_node_document(mainNode), fy_node_get_scalar(includeNode, NULL), fy_node_get_scalar_length(includeNode));
+        free((void *)fy_node_get_scalar(includeNode, NULL));
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
     {
