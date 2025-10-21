@@ -82,21 +82,21 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
  */
 ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName);
 
-/**!
- * @brief Opens and parses a memory block read from a Key-Value Pair (KVP) file into a KVP instance.
+/**
+ * @brief Parses a KVP payload from a caller-owned memory block into an instance.
  *
- * This function opens the specified memory block, reads its contents, and parses the key-value
- * pairs into the given KVP instance.The memory passed gets freed as part of destroy instance
+ * `pData` must point to a buffer owned by the caller (e.g., allocated with malloc).
+ * This function does not take ownership of `pData`. The caller is always
+ * responsible for freeing `pData`, regardless of success or failure.
  *
- * @param[in] pInstance - Handle to the KVP instance where the parsed data will be stored.
- * @param[in] pData - points to malloc'd memory containing KVP Data.
- * @param[in] length - size of the KVP data
+ * @param[in] pInstance  Destination KVP instance (created with `ut_kvp_createInstance()`).
+ * @param[in] pData      Caller-owned buffer containing the serialized KVP payload (text).
+ * @param[in] length     Size of `pData` in bytes (use `strlen(pData)+1` for text).
  *
- * @returns Status of the operation (`ut_kvp_status_t`):
- * @retval UT_KVP_STATUS_SUCCESS - The file was opened and parsed successfully.
- * @retval UT_KVP_STATUS_INVALID_PARAM - One or more parameters are invalid (e.g., null pointer).
- * @retval UT_KVP_STATUS_PARSING_ERROR - An error occurred while parsing the file contents.
- * @retval UT_KVP_STATUS_INVALID_INSTANCE - The provided `pInstance` is not a valid KVP instance.
+ * @retval UT_KVP_STATUS_SUCCESS            Parsed successfully.
+ * @retval UT_KVP_STATUS_INVALID_PARAM      Invalid pointer/length.
+ * @retval UT_KVP_STATUS_PARSING_ERROR      Malformed payload.
+ * @retval UT_KVP_STATUS_INVALID_INSTANCE   Invalid destination instance.
  */
 ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length);
 
@@ -212,13 +212,19 @@ double ut_kvp_getDoubleField( ut_kvp_instance_t *pInstance, const char *pszKey);
 bool ut_kvp_fieldPresent( ut_kvp_instance_t *pInstance, const char *pszKey);
 
 /**
- * @brief Get the data block from the instance, user to free the instance
+ * @brief Returns a heap-allocated textual serialization of a KVP instance.
  *
- * Where the data is invalid, no output will occur
- * Also caller needs to ensure, that they
- * free the pointer to the data block
+ * The buffer is a NUL-terminated string representing the complete payload
+ * of `pInstance`. The caller owns the buffer and must `free()` it when done.
  *
- * @param pInstance - pointer to the KVP instance
+ * If used in callbacks: obtain the blob, copy it into your own
+ * queue/IPC storage, then `free()` the original blob before returning.
+ *
+ * The returned data can later be parsed with `ut_kvp_openMemory()`.
+ * Returns NULL on error or if no data is available.
+ *
+ * @param[in]  pInstance  KVP instance handle to serialize.
+ * @return char*          Malloc'd NUL-terminated string, or NULL on error.
  */
 char* ut_kvp_getData( ut_kvp_instance_t *pInstance );
 

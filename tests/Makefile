@@ -40,6 +40,9 @@ BUILD_DIR = $(ROOT_DIR)/build/$(TARGET)/obj
 ifeq ($(TARGET),)
 $(info TARGET FORCED TO Linux)
 TARGET=linux
+CFLAGS   += -g -O1 -fno-omit-frame-pointer -fsanitize=address -fsanitize=leak
+CXXFLAGS += $CFLAGS
+YLDFLAGS  += -fsanitize=address -fsanitize=leak
 endif
 
 $(info TARGET [$(TARGET)])
