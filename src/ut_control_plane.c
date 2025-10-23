@@ -387,7 +387,14 @@ static struct lws_protocols protocols[] = {
 ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
 {
     ut_cp_instance_internal_t *pInstance;
-  
+
+    if ( monitorPort == 0 )
+    {
+        //assert( pInstance != NULL );
+        UT_CONTROL_PLANE_ERROR("port cannot be 0\n");
+        return NULL;
+    }
+
     pInstance = malloc(sizeof(ut_cp_instance_internal_t));
     memset(pInstance, 0, sizeof(ut_cp_instance_internal_t));
 
@@ -395,13 +402,6 @@ ut_controlPlane_instance_t *UT_ControlPlane_Init( uint32_t monitorPort )
     {
         //assert( pInstance != NULL );
         UT_CONTROL_PLANE_ERROR("Malloc was not able to provide memory\n");
-        return NULL;
-    }
-
-    if ( monitorPort == 0 )
-    {
-        //assert( pInstance != NULL );
-        UT_CONTROL_PLANE_ERROR("port cannot be 0\n");
         return NULL;
     }
 

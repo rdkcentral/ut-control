@@ -50,8 +50,33 @@ typedef struct
 
 typedef void ut_controlPlane_instance_t; /*!< Handle to a control plane instance */
 
-/** @brief  Callback function type for handling control plane messages. */
-typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, void *userData );
+/**
+ * @typedef ut_control_callback_t
+ * @brief Synchronous control-plane message callback.
+ *
+ * This callback is invoked when a registered message key is received.
+ * The call is synchronous; return promptly.
+ *
+ * ## Lifetime & ownership
+ * - `instance` is a framework-owned handle valid **only for the duration of
+ *   this callback**. Do not store it or any pointers into its internals.
+ * - To retain payload beyond the callback, extract a serialized copy with
+ *   `ut_kvp_getData()`, copy that data into your own storage/IPC buffer, and
+ *   then `free()` the buffer returned by `ut_kvp_getData()` **before returning**.
+ * - Parsing (e.g., `ut_kvp_openMemory()`) should be done later, outside the
+ *   callback, using the copy you made.
+ *
+ * ## Typical workflow
+ * - In-callback: fast decisions via typed getters; or stage the message by
+ *   copying the serialized blob to a queue/shared memory for deferred work.
+ * - Out-of-callback: reconstruct a KVP instance from the staged bytes with
+ *   `ut_kvp_openMemory()`.
+ *
+ * @param key       Null-terminated message key that triggered the callback.
+ * @param instance  Transient KVP handle containing message data.
+ * @param userData  User pointer provided at registration.
+ */
+typedef void (*ut_control_callback_t)(char *key, ut_kvp_instance_t *instance, void *userData);
 
 /**
  * @brief Initializes a control plane instance.
@@ -61,17 +86,32 @@ typedef void (*ut_control_callback_t)( char *key, ut_kvp_instance_t *instance, v
 ut_controlPlane_instance_t* UT_ControlPlane_Init( uint32_t monitorPort );
 
 /**
- * @brief Registers a callback function for a specific message key.
- * @param pInstance - Handle to the control plane instance.
- * @param key - Null-terminated string representing the message key to trigger the callback.
- * @param callbackFunction - Callback function to be invoked when the key is received.
- * @param userData - Handle to the caller instance.
- * @returns Status of the registration operation (`ut_control_plane_status_t`).
- * @retval UT_CONTROL_PLANE_STATUS_OK - Success
- * @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE  - Invalid control plane instance handle.
- * @retval UT_CONTROL_PLANE_STATUS_INVALID_PARAM - Invalid parameter passed
- * @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL  - Callback list is full
- */
+* @brief Registers a synchronous callback function for a specific message key.
+*
+* The callback is invoked immediately when the specified key is received.
+*
+* ## Data lifetime of callback parameters
+* - The `instance` parameter provided to the callback is framework-owned and
+*   valid only for the duration of the callback execution.
+* - Do not attempt to free or retain `instance` directly. It is released
+*   automatically after the callback returns.
+* - If the application needs to retain message contents beyond the callback,
+*   it must make a copy. The common pattern is:
+*   - Use `ut_kvp_getData(instance)` to obtain a serialized payload (caller-owned).
+*   - Copy that payload into application-owned memory (e.g. queue, IPC buffer).
+*   - Free the buffer returned by `ut_kvp_getData()` before returning.
+*   - Later, reconstruct a KVP instance with `ut_kvp_openMemory()`.
+*
+* @param pInstance - Handle to the control plane instance.
+* @param key - Null-terminated string representing the message key to trigger the callback.
+* @param callbackFunction - Callback function to be invoked synchronously when the key is received.
+* @param userData - User-provided handle passed back to the callback.
+* @returns Status of the registration operation (`ut_control_plane_status_t`).
+* @retval UT_CONTROL_PLANE_STATUS_OK - Success.
+* @retval UT_CONTROL_PLANE_STATUS_INVALID_HANDLE - Invalid control plane instance handle.
+* @retval UT_CONTROL_PLANE_STATUS_INVALID_PARAM - Invalid parameter passed.
+* @retval UT_CONTROL_PLANE_STATUS_CALLBACK_LIST_FULL - Callback list is full.
+*/
 ut_control_plane_status_t UT_ControlPlane_RegisterCallbackOnMessage(ut_controlPlane_instance_t *pInstance,
                                                                     char *key,
                                                                     ut_control_callback_t callbackFunction,

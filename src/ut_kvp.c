@@ -209,6 +209,7 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 {
     struct fy_node *node;
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+    char *cData = NULL;
 
     if (pInstance == NULL)
     {
@@ -221,9 +222,11 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
+    cData = strdup((const char*)pData);
+
     if (pInternal->fy_handle)
     {
-        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(fy_document_build_from_malloc_string(NULL, pData, length)));
+        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(fy_document_build_from_malloc_string(NULL, cData, length)));
     }
     else
     {
@@ -237,7 +240,7 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    struct fy_document *srcDoc = fy_document_build_from_malloc_string(NULL, pData, length);
+    struct fy_document *srcDoc = fy_document_build_from_malloc_string(NULL, cData, length);
 
     if(fy_document_resolve(srcDoc) != 0)
     {
@@ -1072,6 +1075,7 @@ static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
     if (fy_node_is_scalar(mainNode))
     {
         fy_node_create_scalar_copy(fy_node_document(mainNode), fy_node_get_scalar(includeNode, NULL), fy_node_get_scalar_length(includeNode));
+        free((void *)fy_node_get_scalar(includeNode, NULL));
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
     {
