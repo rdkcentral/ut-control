@@ -143,7 +143,9 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
         }
         
         // Pass the dynamically allocated YAML string to openMemory() for parsing
-        return ut_kvp_openMemory(pInstance, yaml, strlen(yaml));
+        ut_kvp_status_t status = ut_kvp_openMemory(pInstance, yaml, strlen(yaml));
+        free(yaml);
+        return status;
     }
 
     // ---------------------- Handle file-based input ----------------------
