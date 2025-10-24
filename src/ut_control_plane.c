@@ -205,6 +205,10 @@ static void *service_state_machine(void *data)
     while (!pInternal->exit_request)
     {
         msg = dequeue_message( pInternal );
+        if (msg == NULL)
+        {
+            continue;
+        }
 
         switch (msg->status)
         {
@@ -212,6 +216,11 @@ static void *service_state_machine(void *data)
             {
                 UT_CONTROL_PLANE_DEBUG("EXIT REQUESTED in thread1. Thread1 going to exit\n");
                 pInternal->exit_request = true;
+                if(msg)
+                {
+                    free(msg);
+                    msg = NULL;
+                }
             }
             break;
 
@@ -219,13 +228,22 @@ static void *service_state_machine(void *data)
             {
                 UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
                 call_callback_on_match(msg, pInternal);
+
+                free(msg->message);
+                msg->message = NULL;
                 free(msg);
+                msg = NULL;
             }
             break;
 
             default:
             {
-
+                UT_CONTROL_PLANE_ERROR("Unknown message type received: %d\n", msg->status);
+                if( msg)
+                {
+                    free(msg);
+                    msg = NULL;
+                }
             }
             break;
         }
@@ -329,26 +347,26 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
         case LWS_CALLBACK_HTTP_BODY_COMPLETION:
         {
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION\n");
-            if (perSessionData != NULL)
+            if (!perSessionData)
+                break;
+
+            msg.size = (int)perSessionData->post_data_len;
+            msg.status = DATA_RECIEVED;
+            msg.message = malloc(msg.size + 1);
+            if (!msg.message)
             {
-                UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION, perSessionData not NULL\n");
-                msg.message = malloc((int)perSessionData->post_data_len + 1);
-                assert(msg.message != NULL);
-                if (msg.message == NULL)
-                {
-                    UT_CONTROL_PLANE_ERROR("Malloc failed\n");
-                    break;
-                }
-                msg.size = (int)perSessionData->post_data_len;
-                msg.status = DATA_RECIEVED;
-                strncpy(msg.message, (const char *)perSessionData->post_data, perSessionData->post_data_len);
-                msg.message[perSessionData->post_data_len] = '\0';
-                // UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
-                enqueue_message(&msg, pInternal);
-                // char response[] = "{\"status\": \"success\"}";
-                // lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP);
-                return 1; // HTTP request handled
+                UT_CONTROL_PLANE_ERROR("Malloc failed\n");
+                break;
             }
+
+            memcpy(msg.message, perSessionData->post_data, msg.size);
+            msg.message[msg.size] = '\0';
+
+            enqueue_message(&msg, pInternal);
+            /* Ownership of msg.message is now transferred to the queue; service_state_machine() frees it. */
+
+            perSessionData->post_data_len = 0; // reset buffer
+            return 1;                          // handled
         }
 
         default:
