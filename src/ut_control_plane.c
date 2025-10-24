@@ -151,7 +151,7 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
 
     pkvpInstance = ut_kvp_createInstance();
 
-    /* Note: mssg-message data will be freed by the destoryInstance() function */
+    /* Note: mssg->message will get freed after this callback */
     status = ut_kvp_openMemory(pkvpInstance, mssg->message, mssg->size );
     if (status != UT_KVP_STATUS_SUCCESS)
     {
