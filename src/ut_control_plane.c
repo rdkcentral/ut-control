@@ -193,7 +193,7 @@ static void *service_ws_requests(void *data)
 static void *service_state_machine(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
-    cp_message_t *msg;
+    cp_message_t *msg = NULL;
 
     if (pInternal == NULL)
     {
@@ -204,11 +204,13 @@ static void *service_state_machine(void *data)
 
     while (!pInternal->exit_request)
     {
-        msg = dequeue_message( pInternal );
+        msg = dequeue_message(pInternal);
         if (msg == NULL)
         {
             continue;
         }
+
+        bool free_message_payload = false;  // track if msg->message must be freed
 
         switch (msg->status)
         {
@@ -216,11 +218,6 @@ static void *service_state_machine(void *data)
             {
                 UT_CONTROL_PLANE_DEBUG("EXIT REQUESTED in thread1. Thread1 going to exit\n");
                 pInternal->exit_request = true;
-                if(msg)
-                {
-                    free(msg);
-                    msg = NULL;
-                }
             }
             break;
 
@@ -228,34 +225,37 @@ static void *service_state_machine(void *data)
             {
                 UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
                 call_callback_on_match(msg, pInternal);
-
-                free(msg->message);
-                msg->message = NULL;
-                free(msg);
-                msg = NULL;
+                free_message_payload = true;
             }
             break;
 
             default:
             {
                 UT_CONTROL_PLANE_ERROR("Unknown message type received: %d\n", msg->status);
-                if( msg)
-                {
-                    free(msg);
-                    msg = NULL;
-                }
+                break;
             }
-            break;
+        }
+
+        if (free_message_payload && msg->message != NULL)
+        {
+            free(msg->message);
+            msg->message = NULL;
+        }
+
+        if (msg != NULL)
+        {
+            free(msg);
+            msg = NULL;
         }
     }
 
     if (pthread_join(pInternal->ws_thread_handle, NULL) != 0)
     {
         UT_CONTROL_PLANE_ERROR("ws_thread_handle Failed to join from instance : %p \n", pInternal);
-        /*TODO: need to confirm if this return is required*/
         return NULL;
     }
-    UT_CONTROL_PLANE_DEBUG("Thread2 exitted\n");
+
+    UT_CONTROL_PLANE_DEBUG("Thread2 exited\n");
     return NULL;
 }
 
