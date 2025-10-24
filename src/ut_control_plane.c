@@ -562,7 +562,7 @@ uint32_t UT_Control_GetMapValue(const ut_control_keyStringMapping_t *conversionM
     return defaultValue;
 }
 
-char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key)
+const char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key)
 {
     if (conversionMap == NULL)
     {

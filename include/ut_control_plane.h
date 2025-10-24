@@ -44,7 +44,7 @@ typedef enum
 
 typedef struct
 {
-    char *string;
+    const char *string;
     int32_t value;
 } ut_control_keyStringMapping_t;
 
@@ -160,7 +160,7 @@ uint32_t UT_Control_GetMapValue(const ut_control_keyStringMapping_t *conversionM
  * @param key The integer key for which the mapped string is being searched.
  * @return Pointer to the string associated with `key` if found, otherwise `NULL`.
  */
-char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key);
+const char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key);
 
 #ifdef __cplusplus
 }
