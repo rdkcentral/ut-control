@@ -210,8 +210,6 @@ static void *service_state_machine(void *data)
             continue;
         }
 
-        bool free_message_payload = false;  // track if msg->message must be freed
-
         switch (msg->status)
         {
             case EXIT_REQUESTED:
@@ -225,7 +223,6 @@ static void *service_state_machine(void *data)
             {
                 UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
                 call_callback_on_match(msg, pInternal);
-                free_message_payload = true;
             }
             break;
 
@@ -236,16 +233,13 @@ static void *service_state_machine(void *data)
             }
         }
 
-        if (free_message_payload && msg->message != NULL)
-        {
-            free(msg->message);
-            msg->message = NULL;
-        }
-
         if (msg != NULL)
         {
+            if (msg->message != NULL)
+            {
+                free(msg->message);
+            }
             free(msg);
-            msg = NULL;
         }
     }
 
