@@ -151,7 +151,7 @@ static void call_callback_on_match(cp_message_t *mssg, ut_cp_instance_internal_t
 
     pkvpInstance = ut_kvp_createInstance();
 
-    /* Note: mssg-message data will be freed by the destoryInstance() function */
+    /* Note: mssg->message will get freed after this callback */
     status = ut_kvp_openMemory(pkvpInstance, mssg->message, mssg->size );
     if (status != UT_KVP_STATUS_SUCCESS)
     {
@@ -193,7 +193,7 @@ static void *service_ws_requests(void *data)
 static void *service_state_machine(void *data)
 {
     ut_cp_instance_internal_t *pInternal = validateCPInstance((ut_controlPlane_instance_t*)data);
-    cp_message_t *msg;
+    cp_message_t *msg = NULL;
 
     if (pInternal == NULL)
     {
@@ -204,7 +204,11 @@ static void *service_state_machine(void *data)
 
     while (!pInternal->exit_request)
     {
-        msg = dequeue_message( pInternal );
+        msg = dequeue_message(pInternal);
+        if (msg == NULL)
+        {
+            continue;
+        }
 
         switch (msg->status)
         {
@@ -219,25 +223,33 @@ static void *service_state_machine(void *data)
             {
                 UT_CONTROL_PLANE_DEBUG("DATA RECEIVED\n");
                 call_callback_on_match(msg, pInternal);
-                free(msg);
             }
             break;
 
             default:
             {
-
+                UT_CONTROL_PLANE_ERROR("Unknown message type received: %d\n", msg->status);
+                break;
             }
-            break;
+        }
+
+        if (msg != NULL)
+        {
+            if (msg->message != NULL)
+            {
+                free(msg->message);
+            }
+            free(msg);
         }
     }
 
     if (pthread_join(pInternal->ws_thread_handle, NULL) != 0)
     {
         UT_CONTROL_PLANE_ERROR("ws_thread_handle Failed to join from instance : %p \n", pInternal);
-        /*TODO: need to confirm if this return is required*/
         return NULL;
     }
-    UT_CONTROL_PLANE_DEBUG("Thread2 exitted\n");
+
+    UT_CONTROL_PLANE_DEBUG("Thread2 exited\n");
     return NULL;
 }
 
@@ -329,26 +341,26 @@ static int callback_http(struct lws *wsi, enum lws_callback_reasons reason, void
         case LWS_CALLBACK_HTTP_BODY_COMPLETION:
         {
             UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION\n");
-            if (perSessionData != NULL)
+            if (!perSessionData)
+                break;
+
+            msg.size = (int)perSessionData->post_data_len;
+            msg.status = DATA_RECIEVED;
+            msg.message = malloc(msg.size + 1);
+            if (!msg.message)
             {
-                UT_CONTROL_PLANE_DEBUG("LWS_CALLBACK_HTTP_BODY_COMPLETION, perSessionData not NULL\n");
-                msg.message = malloc((int)perSessionData->post_data_len + 1);
-                assert(msg.message != NULL);
-                if (msg.message == NULL)
-                {
-                    UT_CONTROL_PLANE_ERROR("Malloc failed\n");
-                    break;
-                }
-                msg.size = (int)perSessionData->post_data_len;
-                msg.status = DATA_RECIEVED;
-                strncpy(msg.message, (const char *)perSessionData->post_data, perSessionData->post_data_len);
-                msg.message[perSessionData->post_data_len] = '\0';
-                // UT_CONTROL_PLANE_DEBUG("Received message:\n %s\n", msg.message);
-                enqueue_message(&msg, pInternal);
-                // char response[] = "{\"status\": \"success\"}";
-                // lws_write(wsi, (unsigned char *)response, strlen(response), LWS_WRITE_HTTP);
-                return 1; // HTTP request handled
+                UT_CONTROL_PLANE_ERROR("Malloc failed\n");
+                break;
             }
+
+            memcpy(msg.message, perSessionData->post_data, msg.size);
+            msg.message[msg.size] = '\0';
+
+            enqueue_message(&msg, pInternal);
+            /* Ownership of msg.message is now transferred to the queue; service_state_machine() frees it. */
+
+            perSessionData->post_data_len = 0; // reset buffer
+            return 1;                          // handled
         }
 
         default:
@@ -544,7 +556,7 @@ uint32_t UT_Control_GetMapValue(const ut_control_keyStringMapping_t *conversionM
     return defaultValue;
 }
 
-char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key)
+const char *UT_Control_GetMapString(const ut_control_keyStringMapping_t *conversionMap, int32_t key)
 {
     if (conversionMap == NULL)
     {
