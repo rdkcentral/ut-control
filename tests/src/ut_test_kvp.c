@@ -168,6 +168,7 @@ void test_ut_kvp_open( void )
     ut_kvp_close(pInstance);
     UT_LOG_STEP("ut_kvp_close(4) - Positive");
     ut_kvp_close(pInstance);
+    ut_kvp_destroyInstance( pInstance );
 }
 
 void test_ut_kvp_open_memory( void )

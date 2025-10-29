@@ -198,6 +198,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
     {
         UT_LOG_ERROR("Unable to process node");
         ut_kvp_close(pInstance);
+        fy_document_destroy(srcDoc);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
@@ -226,19 +227,9 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 
     cData = strdup((const char*)pData);
 
-    if (pInternal->fy_handle)
+    if (cData == NULL)
     {
-        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(fy_document_build_from_malloc_string(NULL, cData, length)));
-    }
-    else
-    {
-        pInternal->fy_handle = fy_document_create(NULL);
-    }
-
-    if (NULL == pInternal->fy_handle)
-    {
-        UT_LOG_ERROR("Unable to parse file/memory");
-        ut_kvp_close( pInstance );
+        UT_LOG_ERROR("Memory allocation failure");
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
@@ -251,12 +242,29 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
+    if (pInternal->fy_handle)
+    {
+        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(srcDoc));
+    }
+    else
+    {
+        pInternal->fy_handle = fy_document_create(NULL);
+        if (NULL == pInternal->fy_handle)
+        {
+            UT_LOG_ERROR("Unable to parse file/memory");
+            ut_kvp_close(pInstance);
+            fy_document_destroy(srcDoc);
+            return UT_KVP_STATUS_PARSING_ERROR;
+        }
+    }
+
     node = process_node_copy(fy_document_root(srcDoc), pInternal->fy_handle, 0);
 
     if (node == NULL)
     {
         UT_LOG_ERROR("Unable to process node");
         ut_kvp_close(pInstance);
+        fy_document_destroy(srcDoc);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
@@ -1061,7 +1069,6 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
 
 static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
 {
-
     if (mainNode == NULL)
     {
         UT_LOG_ERROR("Main node is invalid");
@@ -1076,8 +1083,24 @@ static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
 
     if (fy_node_is_scalar(mainNode))
     {
-        fy_node_create_scalar_copy(fy_node_document(mainNode), fy_node_get_scalar(includeNode, NULL), fy_node_get_scalar_length(includeNode));
-        free((void *)fy_node_get_scalar(includeNode, NULL));
+        const char *scalar = fy_node_get_scalar(includeNode, NULL);
+        size_t scalar_len = fy_node_get_scalar_length(includeNode);
+
+        if (scalar)
+        {
+            struct fy_node *new_scalar = fy_node_create_scalar_copy(fy_node_document(mainNode), scalar, scalar_len);
+            if (!new_scalar)
+            {
+                UT_LOG_ERROR("Failed to create scalar copy");
+                return;
+            }
+
+            mainNode = new_scalar;
+        }
+        else
+        {
+            UT_LOG_ERROR("Included scalar is NULL");
+        }
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
     {
