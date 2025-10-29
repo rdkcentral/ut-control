@@ -1137,7 +1137,15 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             return NULL;
         }
 
-        fwrite(mChunk.memory, 1, mChunk.size, tmp);
+        size_t written = fwrite(mChunk.memory, 1, mChunk.size, tmp);
+        if (written != mChunk.size)
+        {
+            UT_LOG_ERROR("Failed to write all data to temporary file");
+            fclose(tmp);
+            free(mChunk.memory);
+            curl_easy_cleanup(curl);
+            return NULL;
+        }
         fflush(tmp);
         rewind(tmp);
 
