@@ -111,7 +111,7 @@ void test_ut_kvp_open( void )
     /* Negative Read Test, NULL PARAM */
     UT_LOG_STEP("ut_kvp_open( pInstance, NULL ) - Negative");
     status = ut_kvp_open( pInstance, NULL);
-    UT_ASSERT( status == UT_KVP_STATUS_INVALID_PARAM );
+    UT_ASSERT( status == UT_KVP_STATUS_NULL_PARAM );
 
     /* Filename doesn't exist */
     UT_LOG_STEP("ut_kvp_open( pInstance, %s - filename doesn't exist ) - Negative", KVP_VALID_TEST_NO_FILE);

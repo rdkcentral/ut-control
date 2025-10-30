@@ -37,6 +37,15 @@ ut_kvp_instance_t *gKVP_Instance = NULL;
 #define UT_KVP_MAGIC (0xdeadbeef)
 #define UT_KVP_MAX_INCLUDE_DEPTH 5
 
+#define UT_KVP_HTTPS_PREFIX "https://" 
+#define UT_KVP_HTTP_PREFIX "http://"
+#define UT_KVP_FILE_PREFIX "file://"
+
+// Automatically calculate lengths by subtracting the '\0' null terminator
+#define UT_KVP_HTTPS_PREFIX_LEN (sizeof(UT_KVP_HTTPS_PREFIX) - 1)
+#define UT_KVP_HTTP_PREFIX_LEN (sizeof(UT_KVP_HTTP_PREFIX) - 1) 
+#define UT_KVP_FILE_PREFIX_LEN (sizeof(UT_KVP_FILE_PREFIX) - 1) 
+
 typedef struct
 {
     uint32_t magic;
@@ -101,7 +110,21 @@ static bool is_url(const char *input)
     {
         return false;
     }
-    return (strncmp(input, "http://", 7) == 0 || strncmp(input, "https://", 8) == 0);
+
+    // Check for http://
+    if (strncmp(input, UT_KVP_HTTP_PREFIX, UT_KVP_HTTP_PREFIX_LEN) == 0)
+    {
+        return true;
+    }
+    
+    // Check for https://
+    if (strncmp(input, UT_KVP_HTTPS_PREFIX, UT_KVP_HTTPS_PREFIX_LEN) == 0)
+    {
+        return true;
+    }
+
+    // No matches found
+    return false;
 }
 
 ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl)
@@ -117,8 +140,8 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
     // Validate fileNameOrUrl parameter
     if (fileNameOrUrl == NULL)
     {
-        UT_LOG_ERROR("Invalid Param [fileNameOrUrl]");
-        return UT_KVP_STATUS_INVALID_PARAM;
+        UT_LOG_ERROR("NULL PARAM [fileNameOrUrl]");
+        return UT_KVP_STATUS_NULL_PARAM;
     }
 
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
@@ -129,30 +152,29 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
     // -------------------- Handle URL-based input -----------------------
     if(bFilenameIsAUrl == true)
     {
-        char yamlLocal[UT_KVP_MAX_ELEMENT_SIZE];
-        snprintf(yamlLocal, sizeof(yamlLocal), "include: %s\n", fileNameOrUrl);
-        
-        // Dynamically allocate, since fy_document_build_from_malloc_string() 
-        // will take ownership and free it internally.
-        char *yaml = strdup(yamlLocal);
-        
-        if (!yaml)
+        char *pYaml = NULL;
+
+        pYaml = malloc(UT_KVP_MAX_ELEMENT_SIZE);
+
+        snprintf(pYaml, UT_KVP_MAX_ELEMENT_SIZE, "include: %s\n", fileNameOrUrl);
+
+        if ( pYaml == NULL )
         {
-            UT_LOG_ERROR("Memory allocation failed for yaml");
-            return UT_KVP_STATUS_PARSING_ERROR;
+            UT_LOG_ERROR("Malloc was not able to provide memory\n");
+            return UT_KVP_STATUS_NULL_PARAM;
         }
-        
+
         // Pass the dynamically allocated YAML string to openMemory() for parsing
-        ut_kvp_status_t status = ut_kvp_openMemory(pInstance, yaml, strlen(yaml));
-        free(yaml);
+        ut_kvp_status_t status = ut_kvp_openMemory(pInstance, pYaml, strlen(pYaml));
+        free(pYaml);
         return status;
     }
 
-    // ---------------------- Handle file-based input ----------------------
-    if (strncmp(fileNameOrUrl, "file://", 7) == 0)
+    // Handle file-based input
+    if (strncmp(fileNameOrUrl, UT_KVP_FILE_PREFIX, UT_KVP_FILE_PREFIX_LEN) == 0)
     {
         // Skip "file://"
-        fileNameOrUrl = fileNameOrUrl + 7;  
+        fileNameOrUrl = fileNameOrUrl + UT_KVP_FILE_PREFIX_LEN;  
     }
 
     // Verify that the file is accessible
@@ -188,6 +210,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
     {
         UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
         ut_kvp_close(pInstance);
+        fy_document_destroy(srcDoc);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
