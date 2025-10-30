@@ -131,8 +131,10 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
 {
     struct fy_node *node;
 
+     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
     // Validate KVP instance handle
-    if (pInstance == NULL)
+    if (pInternal == NULL)
     {
         return UT_KVP_STATUS_INVALID_INSTANCE;
     }
@@ -144,25 +146,23 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
         return UT_KVP_STATUS_NULL_PARAM;
     }
 
-    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
-
     // Determine if input is a URL(e.g., http:// or https://)
     bool bFilenameIsAUrl = is_url(fileNameOrUrl);
 
-    // -------------------- Handle URL-based input -----------------------
+    // Handle URL-based input
     if(bFilenameIsAUrl == true)
     {
         char *pYaml = NULL;
 
         pYaml = malloc(UT_KVP_MAX_ELEMENT_SIZE);
 
-        snprintf(pYaml, UT_KVP_MAX_ELEMENT_SIZE, "include: %s\n", fileNameOrUrl);
-
         if ( pYaml == NULL )
         {
             UT_LOG_ERROR("Malloc was not able to provide memory\n");
             return UT_KVP_STATUS_NULL_PARAM;
         }
+
+        snprintf(pYaml, UT_KVP_MAX_ELEMENT_SIZE, "include: %s\n", fileNameOrUrl);
 
         // Pass the dynamically allocated YAML string to openMemory() for parsing
         ut_kvp_status_t status = ut_kvp_openMemory(pInstance, pYaml, strlen(pYaml));
