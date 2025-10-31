@@ -130,17 +130,14 @@ void test_ut_kvp_open( void )
 
     UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URL_HTTPS ) - Positive");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_URL_HTTPS);
-    printf("\nKVP Status = %d", status);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
 
     UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URI_HTTP ) - Positive");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_URI_HTTP);
-    printf("\nKVP Status = %d", status);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
 
     UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URI_FILE ) - Positive");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_URI_FILE);
-    printf("\nKVP Status = %d", status);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
 
     UT_LOG_STEP("ut_kvp_open( pInstance, %s ) - Postive", KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);

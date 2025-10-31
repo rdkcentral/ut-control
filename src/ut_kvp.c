@@ -159,7 +159,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
         if ( pYaml == NULL )
         {
             UT_LOG_ERROR("Malloc was not able to provide memory\n");
-            return UT_KVP_STATUS_NULL_PARAM;
+            return UT_KVP_STATUS_PARSING_ERROR;
         }
 
         snprintf(pYaml, UT_KVP_MAX_ELEMENT_SIZE, "include: %s\n", fileNameOrUrl);
