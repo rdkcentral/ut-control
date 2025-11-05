@@ -27,4 +27,4 @@ cd "$(dirname "$0")"
 
 export LD_LIBRARY_PATH=/usr/lib:/lib:/home/root:${MY_DIR}
 
-./ut_control_test $@
+LSAN_OPTIONS="suppressions=../../lsan.supp print_suppressions=1" ./ut_control_test $@

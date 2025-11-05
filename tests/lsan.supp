@@ -1,0 +1,10 @@
+# Suppress all leaks originating from libfyaml
+leak:libfyaml
+leak:fyaml
+leak:../framework/linux/libfyaml-master/libfyaml-master
+leak:libfyaml-master/src
+
+# Suppress all leaks originating from asprintf
+leak:asprintf
+leak:../framework/linux/asprintf
+leak:asprintf.c-master

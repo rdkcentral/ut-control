@@ -206,7 +206,8 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         }
     }
 
-    node = process_node_copy(fy_document_root(srcDoc), pInternal->fy_handle, 0);
+    struct fy_node *srcNode = fy_document_root(srcDoc);
+    node = process_node_copy(srcNode, pInternal->fy_handle, 0);
 
     if (node == NULL)
     {
@@ -856,6 +857,13 @@ static void convert_dot_to_slash(const char *key, char *output)
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp)
 {
     size_t realsize = size * nmemb;
+
+    if(userp == NULL || contents == NULL)
+    {
+        UT_LOG_ERROR("User pointer or contents are NULL in write_memory_callback");
+        return 0;
+    }
+
     ut_kvp_download_memory_internal_t *downloadMemory = (ut_kvp_download_memory_internal_t *)userp;
 
     char *ptr = realloc(downloadMemory->memory, downloadMemory->size + realsize + 1);
@@ -863,13 +871,16 @@ static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, v
     {
         // Out of memory
         UT_LOG_ERROR("Not enough memory (realloc returned NULL)\n");
+        free(downloadMemory->memory);
+        downloadMemory->memory = NULL;
+        downloadMemory->size = 0;
         return 0;
     }
 
     downloadMemory->memory = ptr;
     memcpy(&(downloadMemory->memory[downloadMemory->size]), contents, realsize);
     downloadMemory->size += realsize;
-    downloadMemory->memory[downloadMemory->size] = 0;
+    downloadMemory->memory[downloadMemory->size] = '\0';
 
     return realsize;
 }
@@ -1116,7 +1127,30 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             return NULL;
         }
 
-        struct fy_document *srcDoc = fy_document_build_from_malloc_string(NULL, mChunk.memory, mChunk.size);
+        // Write mChunk.memory to a temporary file
+        FILE *tmp = tmpfile();
+        if (!tmp)
+        {
+            UT_LOG_ERROR("Failed to create temporary file");
+            free(mChunk.memory);
+            curl_easy_cleanup(curl);
+            return NULL;
+        }
+
+        size_t written = fwrite(mChunk.memory, 1, mChunk.size, tmp);
+        if (written != mChunk.size)
+        {
+            UT_LOG_ERROR("Failed to write all data to temporary file");
+            fclose(tmp);
+            free(mChunk.memory);
+            curl_easy_cleanup(curl);
+            return NULL;
+        }
+        fflush(tmp);
+        rewind(tmp);
+
+        struct fy_document *srcDoc = fy_document_build_from_fp(NULL, tmp);
+        //using this instead of fy_document_build_from_malloc_string(), as the malloced string was not getting freed at fy_document_destroy()
         if (srcDoc == NULL)
         {
             UT_LOG_ERROR("Error: Cannot parse included content\n");
@@ -1125,13 +1159,13 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             return NULL;
         }
 
-        struct fy_node *root = process_node_copy(fy_document_root(srcDoc), doc, depth + 1);
+        struct fy_node *srcNode = fy_document_root(srcDoc);
+        struct fy_node *root = process_node_copy(srcNode, doc, depth + 1);
 
-        // UT_LOG_DEBUG("%s memory chunk = \n%s\n", __FUNCTION__, mChunk.memory);
-
-        // free(mChunk.memory); // fy_document_build_from_malloc_string():  The string is expected to have been allocated by malloc(3) and when the document is destroyed it will be automatically freed.
-        curl_easy_cleanup(curl);
         fy_document_destroy(srcDoc);
+        fclose(tmp);
+        free(mChunk.memory);
+        curl_easy_cleanup(curl);
         return root;
     }
     else
@@ -1154,7 +1188,8 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         }
 
         struct fy_node *root;
-        root = process_node_copy(fy_document_root(srcDoc), doc, depth + 1);
+        struct fy_node *srcNode = fy_document_root(srcDoc);
+        root = process_node_copy(srcNode, doc, depth + 1);
         fclose(file);
         fy_document_destroy(srcDoc);
         return root;
