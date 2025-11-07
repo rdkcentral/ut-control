@@ -43,4 +43,3 @@ UT_STATUS=$?
 
 # Exit with same status as UT test
 exit $UT_STATUS
-
