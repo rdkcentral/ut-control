@@ -76,7 +76,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
  * @returns Status of the operation (`ut_kvp_status_t`):
  * @retval UT_KVP_STATUS_SUCCESS - The file was opened and parsed successfully.
  * @retval UT_KVP_STATUS_FILE_OPEN_ERROR - The file could not be opened.
- * @retval UT_KVP_STATUS_INVALID_PARAM - One or more parameters are invalid (e.g., null pointer).
+ * @retval UT_KVP_STATUS_NULL_PARAM - One or more parameters are NULL (e.g., null pointer).
  * @retval UT_KVP_STATUS_PARSING_ERROR - An error occurred while parsing the file contents.
  * @retval UT_KVP_STATUS_INVALID_INSTANCE - The provided `pInstance` is not a valid KVP instance.
  */
