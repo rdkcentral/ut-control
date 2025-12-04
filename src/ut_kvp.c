@@ -124,6 +124,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
             UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
             fy_document_destroy(newDoc);
         }
+        ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
@@ -133,6 +134,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     {
         UT_LOG_ERROR("Unable to get root node from document");
         fy_document_destroy(newDoc);
+        ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
@@ -145,6 +147,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         {
             UT_LOG_ERROR("Unable to create doc");
             fy_document_destroy(newDoc);
+            ut_kvp_close(pInstance);
             return UT_KVP_STATUS_PARSING_ERROR;
         }
     }
@@ -155,6 +158,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     {
         UT_LOG_ERROR("Unable to process node");
         fy_document_destroy(newDoc);
+        ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
