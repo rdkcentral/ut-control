@@ -105,11 +105,13 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
     if (fileName == NULL)
     {
+        UT_LOG_ERROR("Invalid Param [fileName]");
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
     if (access(fileName, F_OK) != 0)
     {
+        UT_LOG_ERROR("[%s] cannot be accesed", fileName);
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
 
@@ -119,6 +121,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     {
         if (newDoc)
         {
+            UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
             fy_document_destroy(newDoc);
         }
         return UT_KVP_STATUS_PARSING_ERROR;
@@ -128,6 +131,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     struct fy_node *newRoot = fy_document_root(newDoc);
     if (newRoot == NULL)
     {
+        UT_LOG_ERROR("Unable to get root node from document");
         fy_document_destroy(newDoc);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -139,6 +143,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         pInternal->fy_handle = fy_document_create(NULL);
         if (pInternal->fy_handle == NULL)
         {
+            UT_LOG_ERROR("Unable to create doc");
             fy_document_destroy(newDoc);
             return UT_KVP_STATUS_PARSING_ERROR;
         }
@@ -148,6 +153,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     struct fy_node *copiedRoot = process_node_copy(newRoot, pInternal->fy_handle, 0);
     if (copiedRoot == NULL)
     {
+        UT_LOG_ERROR("Unable to process node");
         fy_document_destroy(newDoc);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -156,6 +162,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     struct fy_node *mainRoot = fy_document_root(pInternal->fy_handle);
     if (mainRoot == NULL)
     {
+        // Note : no root node when empty document is created
         // First file: set as root
         fy_document_set_root(pInternal->fy_handle, copiedRoot);
     }
