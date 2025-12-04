@@ -97,7 +97,6 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
 
 ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
 {
-    struct fy_node *node;
     if (pInstance == NULL)
     {
         return UT_KVP_STATUS_INVALID_INSTANCE;
@@ -106,7 +105,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
     if (fileName == NULL)
     {
-        UT_LOG_ERROR( "Invalid Param [fileName]" );
+        UT_LOG_ERROR("Invalid Param [fileName]");
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
@@ -116,42 +115,68 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
 
-    struct fy_document *srcDoc = fy_document_build_from_file(NULL, fileName);
-
-    if(fy_document_resolve(srcDoc) != 0)
+    // Load the new document
+    struct fy_document *newDoc = fy_document_build_from_file(NULL, fileName);
+    if (newDoc == NULL || fy_document_resolve(newDoc) != 0)
     {
-        UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+        if (newDoc)
+        {
+            UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+            fy_document_destroy(newDoc);
+        }
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    if(pInternal->fy_handle)
+    // Get the root node of the new document
+    struct fy_node *newRoot = fy_document_root(newDoc);
+    if (newRoot == NULL)
     {
-        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(srcDoc));
+        UT_LOG_ERROR("Unable to get root node from document");
+        fy_document_destroy(newDoc);
+        ut_kvp_close(pInstance);
+        return UT_KVP_STATUS_PARSING_ERROR;
     }
-    else
+
+    // If no main document yet, create one
+    if (pInternal->fy_handle == NULL)
     {
+        // First load: initialize the main instance document
         pInternal->fy_handle = fy_document_create(NULL);
-        if (NULL == pInternal->fy_handle)
+        if (pInternal->fy_handle == NULL)
         {
-            UT_LOG_ERROR("Unable to parse file/memory");
+            UT_LOG_ERROR("Unable to create doc");
+            fy_document_destroy(newDoc);
             ut_kvp_close(pInstance);
             return UT_KVP_STATUS_PARSING_ERROR;
         }
     }
 
-    node = process_node_copy(fy_document_root(srcDoc), pInternal->fy_handle, 0);
-
-    if (node == NULL)
+    // Always process includes via process_node_copy
+    struct fy_node *copiedRoot = process_node_copy(newRoot, pInternal->fy_handle, 0);
+    if (copiedRoot == NULL)
     {
         UT_LOG_ERROR("Unable to process node");
+        fy_document_destroy(newDoc);
         ut_kvp_close(pInstance);
-        fy_document_destroy(srcDoc);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    fy_document_set_root(pInternal->fy_handle, node);
-    fy_document_destroy(srcDoc);
+    // Merge the copied root into the main document
+    struct fy_node *mainRoot = fy_document_root(pInternal->fy_handle);
+    if (mainRoot == NULL)
+    {
+        // Note : no root node when empty document is created
+        // First file: set as root
+        fy_document_set_root(pInternal->fy_handle, copiedRoot);
+    }
+    else
+    {
+        // Subsequent files: merge into existing root
+        merge_nodes(mainRoot, copiedRoot);
+    }
+
+    fy_document_destroy(newDoc);
 
     return UT_KVP_STATUS_SUCCESS;
 }
