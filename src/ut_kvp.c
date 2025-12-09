@@ -129,8 +129,6 @@ static bool is_url(const char *input)
 
 ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl)
 {
-    struct fy_node *node;
-
      ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
     // Validate KVP instance handle
@@ -184,49 +182,68 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
 
-    // If there’s already a handle, merge the new document into existing YAML
-    if(pInternal->fy_handle)
+    // Load the new document
+    struct fy_document *newDoc = fy_document_build_from_file(NULL, fileNameOrUrl);
+    if (newDoc == NULL || fy_document_resolve(newDoc) != 0)
     {
-        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(fy_document_build_from_file(NULL, fileNameOrUrl)));
+        if (newDoc)
+        {
+            UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+            fy_document_destroy(newDoc);
+        }
+        ut_kvp_close(pInstance);
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    // Get the root node of the new document
+    struct fy_node *newRoot = fy_document_root(newDoc);
+    if (newRoot == NULL)
+    {
+        UT_LOG_ERROR("Unable to get root node from document");
+        fy_document_destroy(newDoc);
+        ut_kvp_close(pInstance);
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    // If no main document yet, create one
+    if (pInternal->fy_handle == NULL)
+    {
+        // First load: initialize the main instance document
+        pInternal->fy_handle = fy_document_create(NULL);
+        if (pInternal->fy_handle == NULL)
+        {
+            UT_LOG_ERROR("Unable to create doc");
+            fy_document_destroy(newDoc);
+            ut_kvp_close(pInstance);
+            return UT_KVP_STATUS_PARSING_ERROR;
+        }
+    }
+
+    // Always process includes via process_node_copy
+    struct fy_node *copiedRoot = process_node_copy(newRoot, pInternal->fy_handle, 0);
+    if (copiedRoot == NULL)
+    {
+        UT_LOG_ERROR("Unable to process node");
+        fy_document_destroy(newDoc);
+        ut_kvp_close(pInstance);
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+
+    // Merge the copied root into the main document
+    struct fy_node *mainRoot = fy_document_root(pInternal->fy_handle);
+    if (mainRoot == NULL)
+    {
+        // Note : no root node when empty document is created
+        // First file: set as root
+        fy_document_set_root(pInternal->fy_handle, copiedRoot);
     }
     else
     {
-        // Otherwise, create a new YAML document handle
-        pInternal->fy_handle = fy_document_create(NULL);
+        // Subsequent files: merge into existing root
+        merge_nodes(mainRoot, copiedRoot);
     }
 
-    // Ensure the handle is valid
-    if (NULL == pInternal->fy_handle)
-    {
-        UT_LOG_ERROR("Unable to parse file/memory");
-        ut_kvp_close( pInstance );
-        return UT_KVP_STATUS_PARSING_ERROR;
-    }
-
-    // Build a source YAML document from the file
-    struct fy_document *srcDoc = fy_document_build_from_file(NULL, fileNameOrUrl);
-
-    if(fy_document_resolve(srcDoc) != 0)
-    {
-        UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
-        ut_kvp_close(pInstance);
-        fy_document_destroy(srcDoc);
-        return UT_KVP_STATUS_PARSING_ERROR;
-    }
-
-    // Process and copy nodes from source document into internal handle
-    node = process_node_copy(fy_document_root(srcDoc), pInternal->fy_handle, 0);
-
-    if (node == NULL)
-    {
-        UT_LOG_ERROR("Unable to process node");
-        ut_kvp_close(pInstance);
-        fy_document_destroy(srcDoc);
-        return UT_KVP_STATUS_PARSING_ERROR;
-    }
-
-    fy_document_set_root(pInternal->fy_handle, node);
-    fy_document_destroy(srcDoc);
+    fy_document_destroy(newDoc);
 
     return UT_KVP_STATUS_SUCCESS;
 }
@@ -1159,7 +1176,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         return NULL;
     }
 
-   if (strncmp(filename, "http:", 5) == 0 || strncmp(filename, "https:", 6) == 0) 
+   if (strncmp(filename, UT_KVP_HTTP_PREFIX, UT_KVP_HTTP_PREFIX_LEN) == 0 || strncmp(filename, UT_KVP_HTTPS_PREFIX, UT_KVP_HTTPS_PREFIX_LEN) == 0) 
    {
         // URL include
         mChunk.memory = malloc(1);
