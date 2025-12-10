@@ -27,19 +27,26 @@ cd "$(dirname "$0")"
 
 export LD_LIBRARY_PATH=/usr/lib:/lib:/home/root:${MY_DIR}
 
-# Start HTTP server in background
-python3 -m http.server 8000 &
-HTTP_PID=$!
+HTTP_PORT=8000
+HTTP_PID=""
 
-# Register cleanup trap to stop HTTP server on exit
-trap '
-    kill $HTTP_PID 2>/dev/null || true
-    wait $HTTP_PID 2>/dev/null || true
-' EXIT
+# Check if HTTP server is already running
+if ! lsof -iTCP:${HTTP_PORT} -sTCP:LISTEN >/dev/null 2>&1; then
+    python3 -m http.server ${HTTP_PORT} &
+    HTTP_PID=$!
+fi
+
+# Cleanup only if this script started the server
+cleanup() {
+    if [[ -n "$HTTP_PID" ]]; then
+        kill "$HTTP_PID" 2>/dev/null || true
+        wait "$HTTP_PID" 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
 
 # Run test
-./ut_control_test "$@"
+LSAN_OPTIONS="suppressions=../../lsan.supp print_suppressions=1" ./ut_control_test "$@"
 UT_STATUS=$?
 
-# Exit with same status as UT test
 exit $UT_STATUS
