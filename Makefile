@@ -57,16 +57,22 @@ INC_DIRS = $(LIBFYAML_DIR)/include
 INC_DIRS += $(LIBFYAML_DIR)/src/generic
 INC_DIRS += $(ASPRINTF_DIR)
 
+XLDFLAGS += $(LDFLAGS)
+
 # LIBFYAML Requirements
 XLDFLAGS += -pthread
 
 # LIBWEBSOCKETS Requirements
-LIBWEBSOCKETS_DIR = $(FRAMEWORK_BUILD_DIR)/libwebsockets
+LIBWEBSOCKETS_DIR ?= $(FRAMEWORK_BUILD_DIR)/libwebsockets
+ifneq ($(wildcard $(LIBWEBSOCKETS_DIR)),)
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
 XLDFLAGS += $(LIBWEBSOCKETS_DIR)/lib/libwebsockets.a
+else
+XLDFLAGS += -lwebsockets
+endif
 
 # CURL Requirements
-CURL_DIR = $(FRAMEWORK_BUILD_DIR)/curl
+CURL_DIR ?= $(FRAMEWORK_BUILD_DIR)/curl
 ifneq ($(wildcard $(CURL_DIR)),)
 INC_DIRS += $(CURL_DIR)/include
 XLDFLAGS += $(CURL_DIR)/lib/libcurl.a
@@ -108,7 +114,7 @@ endif
 
 # Defaults for target linux
 ifeq ($(TARGET),linux)
-CC := gcc -ggdb -o0 -Wall
+CC ?= gcc -ggdb -o0 -Wall
 endif
 
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
