@@ -24,6 +24,8 @@
 #include <unistd.h>
 #include <assert.h>
 #include <curl/curl.h>
+#include <libgen.h>
+#include <stdlib.h>
 
 /* Application Includes */
 #include <ut_kvp.h>
@@ -57,9 +59,9 @@ static bool str_to_bool(const char *string);
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pszResult);
 static void convert_dot_to_slash(const char *key, char *output);
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
-static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
+static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc, const char *parent_dir);
 static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
-static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth);
+static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth, const char *parent_dir);
 static const void *find_pattern_from_buffer(const void *buffer, size_t bufferLength, const void *pattern, size_t patternLength);
 
 ut_kvp_instance_t *ut_kvp_createInstance(void)
@@ -115,8 +117,25 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
 
+    // Resolve to absolute path
+    char resolved_path[PATH_MAX];
+    if (realpath(fileName, resolved_path) == NULL)
+    {
+        UT_LOG_ERROR("Failed to resolve path [%s]", fileName);
+        return UT_KVP_STATUS_FILE_OPEN_ERROR;
+    }
+
+    // Extract parent directory from the resolved path
+    char *resolved_copy = strdup(resolved_path);
+    if (resolved_copy == NULL)
+    {
+        UT_LOG_ERROR("Memory allocation failure");
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+    char *parent_dir = dirname(resolved_copy);
+
     // Load the new document
-    struct fy_document *newDoc = fy_document_build_from_file(NULL, fileName);
+    struct fy_document *newDoc = fy_document_build_from_file(NULL, resolved_path);
     if (newDoc == NULL || fy_document_resolve(newDoc) != 0)
     {
         if (newDoc)
@@ -124,6 +143,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
             UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
             fy_document_destroy(newDoc);
         }
+        free(resolved_copy);
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -134,6 +154,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     {
         UT_LOG_ERROR("Unable to get root node from document");
         fy_document_destroy(newDoc);
+        free(resolved_copy);
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -147,17 +168,19 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
         {
             UT_LOG_ERROR("Unable to create doc");
             fy_document_destroy(newDoc);
+            free(resolved_copy);
             ut_kvp_close(pInstance);
             return UT_KVP_STATUS_PARSING_ERROR;
         }
     }
 
     // Always process includes via process_node_copy
-    struct fy_node *copiedRoot = process_node_copy(newRoot, pInternal->fy_handle, 0);
+    struct fy_node *copiedRoot = process_node_copy(newRoot, pInternal->fy_handle, 0, parent_dir);
     if (copiedRoot == NULL)
     {
         UT_LOG_ERROR("Unable to process node");
         fy_document_destroy(newDoc);
+        free(resolved_copy);
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -177,6 +200,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     }
 
     fy_document_destroy(newDoc);
+    free(resolved_copy);
 
     return UT_KVP_STATUS_SUCCESS;
 }
@@ -232,7 +256,7 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
     }
 
     struct fy_node *srcNode = fy_document_root(srcDoc);
-    node = process_node_copy(srcNode, pInternal->fy_handle, 0);
+    node = process_node_copy(srcNode, pInternal->fy_handle, 0, NULL);
 
     if (node == NULL)
     {
@@ -910,7 +934,7 @@ static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, v
     return realsize;
 }
 
-static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth)
+static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth, const char *parent_dir)
 {
     if (srcNode == NULL || dstDoc == NULL)
     {
@@ -932,10 +956,10 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
         const char *filepath = fy_node_get_scalar(srcNode, NULL);
         if (filepath)
         {
-            struct fy_node *included = process_include(filepath, depth, dstDoc);
+            struct fy_node *included = process_include(filepath, depth, dstDoc, parent_dir);
             if (included)
             {
-                return process_node_copy(included, dstDoc, depth + 1);
+                return process_node_copy(included, dstDoc, depth + 1, parent_dir);
             }
         }
         return NULL;
@@ -971,16 +995,16 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
                     const char *filepath = fy_node_get_scalar(incl, NULL);
                     if (filepath)
                     {
-                        struct fy_node *included = process_include(filepath, depth, dstDoc);
+                        struct fy_node *included = process_include(filepath, depth, dstDoc, parent_dir);
                         if (included)
-                            copied_entry = process_node_copy(included, dstDoc, depth + 1);
+                            copied_entry = process_node_copy(included, dstDoc, depth + 1, parent_dir);
                     }
                 }
             }
 
             if (copied_entry == NULL)
             {
-                copied_entry = process_node_copy(entry, dstDoc, depth);
+                copied_entry = process_node_copy(entry, dstDoc, depth, parent_dir);
             }
 
             if (copied_entry)
@@ -1023,7 +1047,7 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
                 const char *filepath = fy_node_get_scalar(val_node, NULL);
                 if (filepath)
                 {
-                    struct fy_node *included = process_include(filepath, depth, dstDoc);
+                    struct fy_node *included = process_include(filepath, depth, dstDoc, parent_dir);
                     if (included)
                     {
                         // If the included node is a mapping, merge it into the new_map
@@ -1035,7 +1059,7 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
 
             // Regular case: recursive copy
             struct fy_node *copied_key = fy_node_copy(dstDoc, key_node);
-            struct fy_node *copied_val = process_node_copy(val_node, dstDoc, depth);
+            struct fy_node *copied_val = process_node_copy(val_node, dstDoc, depth, parent_dir);
 
             if (copied_key && copied_val)
             {
@@ -1099,7 +1123,7 @@ static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
     }
 }
 
-static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc)
+static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc, const char *parent_dir)
 {
     ut_kvp_download_memory_internal_t mChunk;
 
@@ -1185,7 +1209,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         }
 
         struct fy_node *srcNode = fy_document_root(srcDoc);
-        struct fy_node *root = process_node_copy(srcNode, doc, depth + 1);
+        struct fy_node *root = process_node_copy(srcNode, doc, depth + 1, parent_dir);
 
         fy_document_destroy(srcDoc);
         fclose(tmp);
@@ -1195,28 +1219,92 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
     }
     else
     {
-        // Local file include
-        FILE *file = fopen(filename, "r");
+        // Local file include - resolve relative paths
+        char resolved_path[PATH_MAX];
+        char *final_path = NULL;
+        
+        // Check if the path is absolute
+        if (filename[0] == '/')
+        {
+            // Absolute path - use realpath to normalize it
+            if (realpath(filename, resolved_path) != NULL)
+            {
+                final_path = resolved_path;
+            }
+            else
+            {
+                UT_LOG_ERROR("Error: Failed to resolve absolute path '%s'.\n", filename);
+                return NULL;
+            }
+        }
+        else
+        {
+            // Relative path - resolve relative to parent directory
+            if (parent_dir != NULL)
+            {
+                // Construct full path: parent_dir/filename
+                char temp_path[PATH_MAX];
+                snprintf(temp_path, sizeof(temp_path), "%s/%s", parent_dir, filename);
+                
+                // Resolve to absolute path
+                if (realpath(temp_path, resolved_path) != NULL)
+                {
+                    final_path = resolved_path;
+                }
+                else
+                {
+                    UT_LOG_ERROR("Error: Failed to resolve relative path '%s' from parent '%s'.\n", filename, parent_dir);
+                    return NULL;
+                }
+            }
+            else
+            {
+                // No parent directory - try resolving relative to CWD as fallback
+                if (realpath(filename, resolved_path) != NULL)
+                {
+                    final_path = resolved_path;
+                }
+                else
+                {
+                    UT_LOG_ERROR("Error: Failed to resolve path '%s'.\n", filename);
+                    return NULL;
+                }
+            }
+        }
+
+        FILE *file = fopen(final_path, "r");
         if (!file)
         {
-            UT_LOG_ERROR("Error: Cannot open include file '%s'.\n", filename);
+            UT_LOG_ERROR("Error: Cannot open include file '%s'.\n", final_path);
             return NULL;
         }
 
-        // struct fy_document *doc;
-        struct fy_document *srcDoc = fy_document_build_from_file(NULL, filename);
+        struct fy_document *srcDoc = fy_document_build_from_file(NULL, final_path);
         if (srcDoc == NULL)
         {
-            UT_LOG_ERROR("Error: Cannot parse include file '%s'.\n", filename);
+            UT_LOG_ERROR("Error: Cannot parse include file '%s'.\n", final_path);
             fclose(file);
             return NULL;
         }
 
-        struct fy_node *root;
+        // Extract parent directory from the resolved include file path
+        char *resolved_copy = strdup(final_path);
+        if (resolved_copy == NULL)
+        {
+            UT_LOG_ERROR("Memory allocation failure");
+            fclose(file);
+            fy_document_destroy(srcDoc);
+            return NULL;
+        }
+        char *include_parent_dir = dirname(resolved_copy);
+
         struct fy_node *srcNode = fy_document_root(srcDoc);
-        root = process_node_copy(srcNode, doc, depth + 1);
+        struct fy_node *root = process_node_copy(srcNode, doc, depth + 1, include_parent_dir);
+        
         fclose(file);
         fy_document_destroy(srcDoc);
+        free(resolved_copy);
+        
         return root;
     }
 }
