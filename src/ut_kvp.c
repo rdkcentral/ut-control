@@ -209,7 +209,6 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 {
     struct fy_node *node;
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
-    char *cData = NULL;
 
     if (pInstance == NULL)
     {
@@ -222,19 +221,35 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
-    cData = strdup((const char*)pData);
-
-    if (cData == NULL)
+    // Write pData to a temporary file to avoid memory leak with fy_document_build_from_malloc_string
+    FILE *tmp = tmpfile();
+    if (!tmp)
     {
-        UT_LOG_ERROR("Memory allocation failure");
+        UT_LOG_ERROR("Failed to create temporary file");
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    struct fy_document *srcDoc = fy_document_build_from_malloc_string(NULL, cData, length);
-
-    if(fy_document_resolve(srcDoc) != 0)
+    size_t written = fwrite(pData, 1, length, tmp);
+    if (written != length)
     {
-        UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+        UT_LOG_ERROR("Failed to write all data to temporary file");
+        fclose(tmp);
+        return UT_KVP_STATUS_PARSING_ERROR;
+    }
+    fflush(tmp);
+    rewind(tmp);
+
+    struct fy_document *srcDoc = fy_document_build_from_fp(NULL, tmp);
+    //using this instead of fy_document_build_from_malloc_string(), as the malloced string was not getting freed at fy_document_destroy()
+
+    if (srcDoc == NULL || fy_document_resolve(srcDoc) != 0)
+    {
+        if (srcDoc)
+        {
+            UT_LOG_ERROR("Error resolving document for anchors, aliases and merge keys");
+            fy_document_destroy(srcDoc);
+        }
+        fclose(tmp);
         ut_kvp_close(pInstance);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
@@ -251,6 +266,7 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
             UT_LOG_ERROR("Unable to parse file/memory");
             ut_kvp_close(pInstance);
             fy_document_destroy(srcDoc);
+            fclose(tmp);
             return UT_KVP_STATUS_PARSING_ERROR;
         }
     }
@@ -263,11 +279,13 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         UT_LOG_ERROR("Unable to process node");
         ut_kvp_close(pInstance);
         fy_document_destroy(srcDoc);
+        fclose(tmp);
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
     fy_document_set_root(pInternal->fy_handle, node);
     fy_document_destroy(srcDoc);
+    fclose(tmp);
 
     return UT_KVP_STATUS_SUCCESS;
 }
