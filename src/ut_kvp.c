@@ -1233,7 +1233,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
             }
             else
             {
-                UT_LOG_ERROR("Error: Failed to resolve absolute path '%s'.\n", filename);
+                UT_LOG_ERROR("Failed to resolve absolute path '%s'", filename);
                 return NULL;
             }
         }
@@ -1253,7 +1253,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
                 }
                 else
                 {
-                    UT_LOG_ERROR("Error: Failed to resolve relative path '%s' from parent '%s'.\n", filename, parent_dir);
+                    UT_LOG_ERROR("Failed to resolve relative path '%s' from parent '%s'", filename, parent_dir);
                     return NULL;
                 }
             }
@@ -1266,7 +1266,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
                 }
                 else
                 {
-                    UT_LOG_ERROR("Error: Failed to resolve path '%s'.\n", filename);
+                    UT_LOG_ERROR("Failed to resolve path '%s'", filename);
                     return NULL;
                 }
             }
@@ -1275,14 +1275,14 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         FILE *file = fopen(final_path, "r");
         if (!file)
         {
-            UT_LOG_ERROR("Error: Cannot open include file '%s'.\n", final_path);
+            UT_LOG_ERROR("Cannot open include file '%s'", final_path);
             return NULL;
         }
 
         struct fy_document *srcDoc = fy_document_build_from_file(NULL, final_path);
         if (srcDoc == NULL)
         {
-            UT_LOG_ERROR("Error: Cannot parse include file '%s'.\n", final_path);
+            UT_LOG_ERROR("Cannot parse include file '%s'", final_path);
             fclose(file);
             return NULL;
         }
