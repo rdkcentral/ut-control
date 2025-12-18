@@ -2,7 +2,7 @@
 "1":
   value: true
 plugin:
-  - include: 2s.yaml
+  - include: assets/include/2s.yaml
   - include: https://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/3s.yaml
-include_0: 4s.yaml
+include_0: assets/include/4s.yaml
 include_1: https://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/5s.yaml
