@@ -209,6 +209,7 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 {
     struct fy_node *node;
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+    size_t actual_length;
 
     if (pInstance == NULL)
     {
@@ -221,6 +222,16 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_INVALID_PARAM;
     }
 
+    // Handle -1 as a special value meaning "use strlen"
+    if (length == (uint32_t)-1)
+    {
+        actual_length = strlen(pData);
+    }
+    else
+    {
+        actual_length = length;
+    }
+
     // Write pData to a temporary file to avoid memory leak with fy_document_build_from_malloc_string
     FILE *tmp = tmpfile();
     if (!tmp)
@@ -229,8 +240,8 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
         return UT_KVP_STATUS_PARSING_ERROR;
     }
 
-    size_t written = fwrite(pData, 1, length, tmp);
-    if (written != length)
+    size_t written = fwrite(pData, 1, actual_length, tmp);
+    if (written != actual_length)
     {
         UT_LOG_ERROR("Failed to write all data to temporary file");
         fclose(tmp);
