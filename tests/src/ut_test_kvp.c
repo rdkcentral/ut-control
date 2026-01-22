@@ -159,12 +159,12 @@ void test_ut_kvp_open_memory( void )
 
     /* Negative Read Test, NULL params passed in both args*/
     UT_LOG_STEP("ut_kvp_openMemory( NULL, NULL, -1 )");
-    status = ut_kvp_openMemory( NULL, NULL, -1);
+    status = ut_kvp_openMemory( NULL, NULL, -1, NULL);
     UT_ASSERT( status == UT_KVP_STATUS_INVALID_INSTANCE );
 
     /* Negative Read Test, NULL PARAM passed in 2nd arg */
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, NULL, -1 ) - Negative");
-    status = ut_kvp_openMemory( gpMainTestInstance, NULL, -1);
+    status = ut_kvp_openMemory( gpMainTestInstance, NULL, -1, NULL);
     UT_ASSERT( status == UT_KVP_STATUS_INVALID_PARAM );
 
     /* data doesn't exist */
@@ -173,7 +173,7 @@ void test_ut_kvp_open_memory( void )
     gKVPData.buffer = strdup(kvp_str);
     if (gKVPData.buffer)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, -1);
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, -1, NULL);
         UT_ASSERT(status == UT_KVP_STATUS_PARSING_ERROR);
         free(gKVPData.buffer);
     }
@@ -182,7 +182,7 @@ void test_ut_kvp_open_memory( void )
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s - zero length file ) - Negative", KVP_VALID_TEST_ZERO_LENGTH_YAML_FILE);
     if (read_file_into_memory(KVP_VALID_TEST_ZERO_LENGTH_YAML_FILE, &gKVPData) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length, NULL);
         UT_ASSERT(status == UT_KVP_STATUS_PARSING_ERROR);
         free(gKVPData.buffer);
         gKVPData.length = 0;
@@ -192,7 +192,7 @@ void test_ut_kvp_open_memory( void )
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance,  %s ) - Positive", KVP_VALID_TEST_YAML_FILE);
     if (read_file_into_memory(KVP_VALID_TEST_YAML_FILE, &gKVPData) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length, NULL);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
         free(gKVPData.buffer);
         gKVPData.length = 0;
@@ -201,7 +201,7 @@ void test_ut_kvp_open_memory( void )
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
     if (read_file_into_memory(KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE, &gKVPData) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length, NULL);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
         free(gKVPData.buffer);
         gKVPData.length = 0;
@@ -210,7 +210,7 @@ void test_ut_kvp_open_memory( void )
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_JSON_FILE);
     if (read_file_into_memory(KVP_VALID_TEST_JSON_FILE, &gKVPData) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length, NULL);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
         free(gKVPData.buffer);
         gKVPData.length = 0;
@@ -848,7 +848,7 @@ void test_ut_kvp_add_multiple_profile_using_open_memory(void)
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_YAML_CONFIG_FILE);
     if (read_file_into_memory(KVP_VALID_TEST_YAML_CONFIG_FILE, &gKVPData) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length, NULL);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
         free(gKVPData.buffer);
         gKVPData.length = 0;
@@ -857,7 +857,7 @@ void test_ut_kvp_add_multiple_profile_using_open_memory(void)
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML);
     if (read_file_into_memory(KVP_VALID_TEST_SINGLE_INCLUDE_FILE_YAML, &gKVPData) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length, NULL);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
         free(gKVPData.buffer);
         gKVPData.length = 0;
@@ -866,7 +866,7 @@ void test_ut_kvp_add_multiple_profile_using_open_memory(void)
     UT_LOG_STEP("ut_kvp_openMemory( gpMainTestInstance, %s ) - Postive", KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML);
     if (read_file_into_memory(KVP_VALID_TEST_DEPTH_CHECK_INCLUDE_YAML, &gKVPData) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, gKVPData.buffer, gKVPData.length, NULL);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
         free(gKVPData.buffer);
         gKVPData.length = 0;
@@ -976,6 +976,8 @@ static void create_delete_kvp_memory_instance_for_given_file(const char* filenam
     ut_kvp_instance_t *pInstance = NULL;
     ut_kvp_status_t status = UT_KVP_STATUS_MAX;
     char* kvpData;
+    char *base_dir = NULL;
+    char *filename_copy = NULL;
 
     pInstance = ut_kvp_createInstance();
     if ( pInstance == NULL )
@@ -985,12 +987,24 @@ static void create_delete_kvp_memory_instance_for_given_file(const char* filenam
         return;
     }
 
+    // Extract base directory from filename for resolving relative includes
+    filename_copy = strdup(filename);
+    if (filename_copy != NULL)
+    {
+        base_dir = dirname(filename_copy);
+    }
+
     if (read_file_into_memory(filename, &kvpMemory) == 0)
     {
-        status = ut_kvp_openMemory(pInstance, kvpMemory.buffer, kvpMemory.length);
+        status = ut_kvp_openMemory(pInstance, kvpMemory.buffer, kvpMemory.length, base_dir);
         UT_ASSERT(status == UT_KVP_STATUS_SUCCESS);
         free(kvpMemory.buffer);
         kvpMemory.length = 0;
+    }
+
+    if (filename_copy != NULL)
+    {
+        free(filename_copy);
     }
 
     if ( status != UT_KVP_STATUS_SUCCESS )
@@ -1131,7 +1145,7 @@ static int test_ut_kvp_createGlobalYAMLInstanceForMallocedData( void )
 
     if (read_file_into_memory(KVP_VALID_TEST_YAML_FILE, &kvpMemory) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, kvpMemory.buffer, kvpMemory.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, kvpMemory.buffer, kvpMemory.length, NULL);
         assert(status == UT_KVP_STATUS_SUCCESS);
         free(kvpMemory.buffer);
         kvpMemory.length = 0;
@@ -1161,7 +1175,7 @@ static int test_ut_kvp_createGlobalJSONInstanceForMallocedData( void )
 
     if (read_file_into_memory(KVP_VALID_TEST_JSON_FILE, &kvpMemory) == 0)
     {
-        status = ut_kvp_openMemory(gpMainTestInstance, kvpMemory.buffer, kvpMemory.length);
+        status = ut_kvp_openMemory(gpMainTestInstance, kvpMemory.buffer, kvpMemory.length, NULL);
         assert(status == UT_KVP_STATUS_SUCCESS);
         free(kvpMemory.buffer);
         kvpMemory.length = 0;

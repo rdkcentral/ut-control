@@ -92,13 +92,15 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName);
  * @param[in] pInstance  Destination KVP instance (created with `ut_kvp_createInstance()`).
  * @param[in] pData      Caller-owned buffer containing the serialized KVP payload (text).
  * @param[in] length     Size of `pData` in bytes (use `strlen(pData)+1` for text).
+ * @param[in] base_dir   Optional base directory for resolving relative include paths (can be NULL).
+ *                       If NULL, relative includes will be resolved from CWD.
  *
  * @retval UT_KVP_STATUS_SUCCESS            Parsed successfully.
  * @retval UT_KVP_STATUS_INVALID_PARAM      Invalid pointer/length.
  * @retval UT_KVP_STATUS_PARSING_ERROR      Malformed payload.
  * @retval UT_KVP_STATUS_INVALID_INSTANCE   Invalid destination instance.
  */
-ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length);
+ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length, const char *base_dir);
 
 /**!
  * @brief Closes a previously opened KVP profile and frees its memory.

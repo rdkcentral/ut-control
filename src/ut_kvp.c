@@ -205,7 +205,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     return UT_KVP_STATUS_SUCCESS;
 }
 
-ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length )
+ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length, const char *base_dir)
 {
     struct fy_node *node;
     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
@@ -283,7 +283,8 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
     }
 
     struct fy_node *srcNode = fy_document_root(srcDoc);
-    node = process_node_copy(srcNode, pInternal->fy_handle, 0, NULL);
+    // Pass base_dir for resolving relative includes; if NULL, will fall back to CWD
+    node = process_node_copy(srcNode, pInternal->fy_handle, 0, base_dir);
 
     if (node == NULL)
     {
