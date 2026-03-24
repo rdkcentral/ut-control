@@ -463,6 +463,119 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
     return u64Value;
 }
 
+static long getIntField( ut_kvp_instance_t *pInstance, const char *pszKey, long minRange, long maxRange )
+{
+    char *pEndptr;
+    long lValue;
+    char result[UT_KVP_MAX_ELEMENT_SIZE];
+    ut_kvp_status_t status;
+    char *pField = &result[0];
+
+    errno = 0; // Clear the stdlib errno
+
+    status = ut_kvp_getField(pInstance, pszKey, result);
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        return 0;
+    }
+
+    if (strstr(result, "0x") || strstr(result, "0X"))
+    {
+        lValue = strtol(pField, &pEndptr, 16); // Base 16 conversion
+    }
+    else
+    {
+        lValue = strtol(pField, &pEndptr, 10); // Base 10 conversion
+    }
+
+    // Error checking
+    if (pField == pEndptr)
+    {
+        UT_LOG_ERROR("No conversion performed!");
+        return 0;
+    }
+    else if (*pEndptr != '\0')
+    {
+        UT_LOG_ERROR("Invalid characters in the string.");
+        return 0;
+    }
+    else if (errno == ERANGE || lValue < minRange || lValue > maxRange)
+    {
+        UT_LOG_DEBUG("Value out of range for range [%ld, %ld].", minRange, maxRange);
+        return 0;
+    }
+
+    return lValue;
+}
+
+int8_t ut_kvp_getInt8Field( ut_kvp_instance_t *pInstance, const char *pszKey )
+{
+    long value;
+    value = getIntField( pInstance, pszKey, INT8_MIN, INT8_MAX );
+
+    return (int8_t)value;
+}
+
+int16_t ut_kvp_getInt16Field( ut_kvp_instance_t *pInstance, const char *pszKey )
+{
+    long value;
+    value = getIntField( pInstance, pszKey, INT16_MIN, INT16_MAX );
+
+    return (int16_t)value;
+}
+
+int32_t ut_kvp_getInt32Field( ut_kvp_instance_t *pInstance, const char *pszKey )
+{
+    long value;
+    value = getIntField( pInstance, pszKey, INT32_MIN, INT32_MAX );
+
+    return (int32_t)value;
+}
+
+int64_t ut_kvp_getInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey )
+{
+    char *pEndptr;
+    int64_t i64Value;
+    char result[UT_KVP_MAX_ELEMENT_SIZE];
+    ut_kvp_status_t status;
+    char *pField = &result[0];
+
+    errno = 0; // Clear the stdlib errno
+    status = ut_kvp_getField(pInstance, pszKey, result);
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        return 0;
+    }
+
+    if(strstr(result, "0x") || strstr(result, "0X"))
+    {
+        i64Value = strtoll(pField, &pEndptr, 16); // Base 16 conversion
+    }
+    else
+    {
+        i64Value = strtoll(pField, &pEndptr, 10); // Base 10 conversion
+    }
+
+    // Error checking
+    if (pField == pEndptr)
+    {
+        UT_LOG_ERROR("No conversion performed!");
+        return 0;
+    }
+    else if (*pEndptr != '\0')
+    {
+        UT_LOG_ERROR("Invalid characters in the string.");
+        return 0;
+    }
+    else if (errno == ERANGE)
+    {
+        UT_LOG_ERROR("Value out of range for int64_t.");
+        return 0;
+    }
+
+    return i64Value;
+}
+
 float ut_kvp_getFloatField( ut_kvp_instance_t *pInstance, const char *pszKey)
 {
     char result[UT_KVP_MAX_ELEMENT_SIZE];
