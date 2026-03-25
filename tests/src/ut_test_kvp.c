@@ -376,7 +376,7 @@ void test_ut_kvp_int32(void)
     UT_ASSERT( result == 2147483647 );
 
     result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Negative" );
-    UT_ASSERT( result == INT32_MIN );
+    UT_ASSERT( result == -2147483648 );
 
     result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Hex" );
     UT_ASSERT( result == 0x7fffffff );
