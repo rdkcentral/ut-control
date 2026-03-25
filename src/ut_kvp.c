@@ -471,14 +471,13 @@ static long long getIntField( ut_kvp_instance_t *pInstance, const char *pszKey, 
     ut_kvp_status_t status;
     char *pField = &result[0];
 
-    errno = 0; // Clear the stdlib errno
-
     status = ut_kvp_getField(pInstance, pszKey, result);
     if ( status != UT_KVP_STATUS_SUCCESS )
     {
         return 0;
     }
 
+    errno = 0; // Clear errno immediately before strtoll to avoid false ERANGE from prior calls
     if (strstr(result, "0x") || strstr(result, "0X"))
     {
         llValue = strtoll(pField, &pEndptr, 16); // Base 16 conversion
