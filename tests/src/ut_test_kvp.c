@@ -376,7 +376,7 @@ void test_ut_kvp_int32(void)
     UT_ASSERT( result == 2147483647 );
 
     result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Negative" );
-    UT_ASSERT( result == -2147483648 );
+    UT_ASSERT( result == INT32_MIN );
 
     result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Hex" );
     UT_ASSERT( result == 0x7fffffff );
@@ -406,6 +406,13 @@ void test_ut_kvp_int64(void)
 
     result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest.checkInt64Positive" );
     UT_ASSERT( result == 9223372036854775807LL );
+
+    /* Hexadecimal Positive Tests */
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest/checkInt64Hex" );
+    UT_ASSERT( result == 0x7fffffffffffffffLL );
+
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest.checkInt64Hex" );
+    UT_ASSERT( result == 0x7fffffffffffffffLL );
 
     /* Negative Tests */
     result = ut_kvp_getInt64Field( gpMainTestInstance, "thisShouldNotWork/checkInt64Positive" );
