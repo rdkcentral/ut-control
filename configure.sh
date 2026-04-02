@@ -25,8 +25,8 @@ SCRIPT_EXEC="$(realpath $0)"
 MY_DIR="$(dirname $SCRIPT_EXEC)"
 
 # Decide which build target to use based on the presence of TARGET in input args(linux or arm)
-if [[ "$1" != "linux" && "$1" != "arm" ]]; then
-  echo "Error: argument must be 'linux' or 'arm'"
+if [[ "$1" != "linux" && "$1" != arm* ]]; then
+  echo "Error: argument must be 'linux' or 'arm' or 'arm64'"
   exit 1
 fi
 TARGET=${1}
@@ -122,8 +122,8 @@ popd > /dev/null
 # Set up paths and search criteria based on the target architecture (linux or arm)
 pushd "${FRAMEWORK_DIR}" > /dev/null
 
-if [ "$TARGET" == "arm" ]; then
-    TARGET=arm
+if [[ "$TARGET" == arm* ]]; then
+    TARGET=${TARGET}
     # Extract the sysroot value
     if [ "${CC}" == "" ]; then
         echo "CC is not set.. Exiting"
@@ -248,13 +248,15 @@ build_openssl()
     cd ${OPENSSL_DIR}
     mkdir -p ${OPENSSL_BUILD_DIR}
     if [ "$TARGET" = "arm" ]; then
-        # For arm
-        CROSS_COMPILE=
-        COMPILER_FLAGS=$(echo $CC | cut -d' ' -f2-)
-        /usr/bin/perl ./Configure linux-armv4 shared --prefix=${OPENSSL_BUILD_DIR} --openssldir=${OPENSSL_BUILD_DIR} --cross-compile-prefix=${CROSS_COMPILE} $COMPILER_FLAGS
+	    CROSS_COMPILE=
+            COMPILER_FLAGS=$(echo "$CC" | cut -d' ' -f2-)
+            /usr/bin/perl ./Configure linux-armv4 shared --prefix="${OPENSSL_BUILD_DIR}" --openssldir="${OPENSSL_BUILD_DIR}" --cross-compile-prefix="${CROSS_COMPILE}" $COMPILER_FLAGS
+    elif [ "$TARGET" = "arm64" ]; then
+            CROSS_COMPILE=
+            COMPILER_FLAGS=$(echo "$CC" | cut -d' ' -f2-)
+            /usr/bin/perl ./Configure linux-aarch64 shared --prefix="${OPENSSL_BUILD_DIR}" --openssldir="${OPENSSL_BUILD_DIR}" --cross-compile-prefix="${CROSS_COMPILE}" $COMPILER_FLAGS
     else
-        # For linux
-        ./config --prefix=${OPENSSL_BUILD_DIR}
+	    ./config --prefix="${OPENSSL_BUILD_DIR}"
     fi
     make && make install
     touch ${OPENSSL_BUILD_DIR}/.build_complete
@@ -286,9 +288,9 @@ build_curl()
 {
     cd ${CURL_DIR}
     mkdir -p ${CURL_BUILD_DIR}
-    if [ "$TARGET" = "arm" ]; then
+    if [[ "$TARGET" = arm* ]]; then
         # For arm
-        ./configure CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --host=arm --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
+        ./configure --host=${TARGET} CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
     else
         # For linux
         if [ "$OPENSSL_IS_SYSTEM_INSTALLED" -eq 1 ]; then

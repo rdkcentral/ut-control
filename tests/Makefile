@@ -47,7 +47,7 @@ endif
 
 $(info TARGET [$(TARGET)])
 
-ifeq ($(TARGET),arm)
+ifneq ($(filter arm arm64,$(TARGET)),)
 HAL_LIB_DIR := $(ROOT_DIR)/libs
 endif
 
