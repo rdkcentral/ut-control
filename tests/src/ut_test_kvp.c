@@ -18,14 +18,17 @@
  */
 
 /* Standard Libraries */
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <inttypes.h>
 
 /* Module Includes */
 #include <ut.h>
 #include <ut_kvp.h>
+#include <ut_log.h>
 
 #include "ut_test_common.h"
 
@@ -42,6 +45,7 @@
 #define KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML "assets/include/sequence-include.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_YAML "assets/yaml_tags.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_IN_SEQUENCE_YAML "assets/yaml_tags_in_sequence.yaml"
+#define KVP_VALID_TEST_SEQUENCE_ITERATION_YAML "assets/yaml_simple_and_nested_sequence.yaml"
 #define KVP_VALID_TEST_URL_HTTPS "https://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/2s.yaml"
 #define KVP_VALID_TEST_URI_HTTP "http://localhost:8000/assets/yaml_tags.yaml"
 #define KVP_VALID_TEST_URI_FILE "file://assets/yaml_tags.yaml"
@@ -62,6 +66,7 @@ static UT_test_suite_t *gpKVPSuite9 = NULL;
 static UT_test_suite_t *gpKVPSuite10 = NULL;
 static UT_test_suite_t *gpKVPSuite11 = NULL;
 static UT_test_suite_t *gpKVPSuite12 = NULL;
+static UT_test_suite_t *gpKVPSuite13 = NULL;
 
 static int test_ut_kvp_createGlobalYAMLInstance(void);
 static int test_ut_kvp_createGlobalJSONInstance(void);
@@ -248,6 +253,361 @@ void test_ut_kvp_open_memory( void )
         free(gKVPData.buffer);
         gKVPData.length = 0;
     }
+}
+
+
+void test_ut_kvp_get_iterator_with_two_elements(void)
+{
+
+  char *checkIteratorPath = "decodeTest/checkIterator";
+  ut_kvp_iterator_t *iterator =
+      ut_kvp_iterCreate(gpMainTestInstance, checkIteratorPath);
+
+  UT_ASSERT(iterator != NULL);
+  UT_LOG_STEP("Iterator loaded for path: %s", checkIteratorPath);
+
+  ut_kvp_iterDestroy(iterator);
+  UT_LOG_STEP("Iterator Deallocated");
+}
+
+void test_ut_kvp_get_iterator_with_dotted_path(void)
+{
+
+  char *checkIteratorPath = "decodeTest.checkIterator";
+  ut_kvp_iterator_t *iterator =
+      ut_kvp_iterCreate(gpMainTestInstance, checkIteratorPath);
+
+  UT_ASSERT(iterator != NULL);
+  UT_LOG_STEP("Iterator loaded for path: %s", checkIteratorPath);
+
+  ut_kvp_iterDestroy(iterator);
+  UT_LOG_STEP("Iterator Deallocated");
+}
+
+// A helper type for constructing expectations
+typedef struct iterator_test_data_t
+{
+  const char **names;
+  int32_t *ids;
+  size_t num_elements;
+  int32_t current_idx;
+  struct iterator_test_data_t *sub_elements;
+  int32_t sub_elements_length;
+} iterator_test_data_t;
+
+bool iteration_callback(ut_kvp_instance_t *pInstance, void *userData)
+{
+  iterator_test_data_t *expectations = userData;
+  char name[UT_KVP_MAX_ELEMENT_SIZE + 1] = {0};
+
+  int32_t id = ut_kvp_getInt32Field(pInstance, "id");
+  ut_kvp_status_t name_read_state =
+      ut_kvp_getStringField(pInstance, "name", name, UT_KVP_MAX_ELEMENT_SIZE);
+
+  UT_ASSERT(name_read_state == UT_KVP_STATUS_SUCCESS);
+
+  UT_ASSERT(expectations->current_idx < expectations->num_elements);
+  UT_LOG_STEP("Iteration callback at idx: %d checking that\n  name: %s == %s\n "
+              " id: %d == %d",
+              expectations->current_idx, name,
+              expectations->names[expectations->current_idx], id,
+              expectations->ids[expectations->current_idx]);
+  bool ids_match = id == expectations->ids[expectations->current_idx];
+  bool names_match =
+      strcmp(name, expectations->names[expectations->current_idx]) == 0;
+  // handle sub_elements
+  if (expectations->sub_elements && expectations->sub_elements_length > expectations->current_idx)
+  {
+    UT_LOG_STEP("Handling subiterator at idx: %d", expectations->current_idx);
+    ut_kvp_iterator_t *sub_iterator =
+        ut_kvp_iterCreate(pInstance, "sub_elements");
+    UT_ASSERT(sub_iterator != NULL);
+    if (sub_iterator == NULL)
+    {
+      return false;
+    }
+    const ut_kvp_iter_result_t iterResult = ut_kvp_iterIterate(sub_iterator, iteration_callback,
+                        &expectations->sub_elements[expectations->current_idx]);
+    UT_ASSERT(iterResult.iteration_count == expectations->sub_elements[expectations->current_idx].num_elements);
+    ut_kvp_iterDestroy(sub_iterator);
+  }
+
+  UT_ASSERT(ids_match);
+  UT_ASSERT(names_match);
+
+  expectations->current_idx++;
+  return ids_match && names_match;
+}
+
+void test_ut_kvp_iterate_elements(void)
+{
+
+  #define TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS 2
+
+  const char *names[TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS] = {"First Element", "Second Element"};
+  int32_t ids[TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS] = {0, 1};
+  iterator_test_data_t testData = {
+      .names = names,
+      .ids = ids,
+      .current_idx = 0,
+      .num_elements = TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS,
+      .sub_elements = NULL,
+      .sub_elements_length = 0
+  };
+
+  const char *checkIteratorPath = "decodeTest/checkIterator";
+  ut_kvp_iterator_t *iterator =
+      ut_kvp_iterCreate(gpMainTestInstance, checkIteratorPath);
+
+  ut_kvp_iter_result_t iterResult = ut_kvp_iterIterate(iterator, iteration_callback, &testData);
+  ut_kvp_iterDestroy(iterator);
+
+  UT_ASSERT(iterResult.status == UT_KVP_ITER_STATUS_FINISHED);
+  UT_ASSERT(iterResult.iteration_count == TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS);
+}
+
+void test_ut_kvp_iterate_unaffected_by_mutation_of_ut_kvp_instance(void)
+{
+    // SETUP local ut_kvp_instance_t since we do not want to mess with the fixture used for the rest of the tests
+    ut_kvp_status_t status;
+
+    struct ut_kvp_instance_t* localUtKvpInstance = ut_kvp_createInstance();
+    if ( localUtKvpInstance == NULL )
+    {
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        UT_FAIL("localUtKvpInstance was null");
+        return;
+    }
+
+    status = ut_kvp_open( localUtKvpInstance, KVP_VALID_TEST_SEQUENCE_ITERATION_YAML);
+    assert( status == UT_KVP_STATUS_SUCCESS );
+
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        UT_FAIL("localUtKvpInstance status was not UT_KVP_STATUS_SUCCESS");
+        return;
+    }
+
+  #define TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS_MUT 2
+
+  const char *names[TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS_MUT] = {"First Element", "Second Element"};
+  int32_t ids[TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS_MUT] = {0, 1};
+  iterator_test_data_t testData = {
+      .names = names,
+      .ids = ids,
+      .current_idx = 0,
+      .num_elements = TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS_MUT,
+      .sub_elements = NULL,
+      .sub_elements_length = 0
+  };
+
+  const char *checkIteratorPath = "decodeTest/checkIterator";
+  ut_kvp_iterator_t *iterator =
+      ut_kvp_iterCreate(localUtKvpInstance, checkIteratorPath);
+
+  //Lets close and deallocate the localUtKvpInstance, and check the iterator still works
+  ut_kvp_close(localUtKvpInstance);
+  ut_kvp_destroyInstance(localUtKvpInstance);
+
+  ut_kvp_iter_result_t iterResult = ut_kvp_iterIterate(iterator, iteration_callback, &testData);
+  ut_kvp_iterDestroy(iterator);
+
+  UT_ASSERT(iterResult.status == UT_KVP_ITER_STATUS_FINISHED);
+  UT_ASSERT(iterResult.iteration_count == TEST_UT_KVP_ITERATE_ELEMENTS_NUM_ELEMS_MUT);
+}
+
+void test_ut_kvp_iterate_elements_with_sub_elements(void)
+{
+
+  #define TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS_SUB_1 2
+  #define TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS_SUB_2 2
+  #define TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_SUB_ELEMS 2
+  #define TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS 3
+
+  const char *sub_names_1[TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS_SUB_1] = {
+      "First Sub Element",
+      "Second Sub Element"
+  };
+  int32_t sub_ids_1[TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS_SUB_1] = {1, 2};
+  iterator_test_data_t sub_elements_1 = {
+      .names = sub_names_1,
+     .ids = sub_ids_1,
+     .num_elements = TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS_SUB_1,
+     .current_idx = 0,
+     .sub_elements = NULL
+ };
+
+  const char *sub_names_2[TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS_SUB_2] = {
+      "Third Sub Element",
+      "Fourth Sub Element"
+  };
+  int32_t sub_ids_2[TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS_SUB_2] = {4, 5};
+  iterator_test_data_t sub_elements_2 = {
+    .names = sub_names_2,
+    .ids = sub_ids_2,
+    .num_elements = TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS_SUB_2,
+    .current_idx = 0,
+    .sub_elements = NULL
+  };
+  iterator_test_data_t sub_elements[TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_SUB_ELEMS] = {
+      sub_elements_1,
+      sub_elements_2
+  };
+
+  const char *names[TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS] = {
+      "First Element",
+      "Second Element",
+      "Third Element"
+  };
+  int32_t ids[TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS] = {0, 3, 6};
+  iterator_test_data_t testData = {.names = names,
+                                   .ids = ids,
+                                   .current_idx = 0,
+                                   .num_elements = TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS,
+                                   .sub_elements = sub_elements,
+                                   .sub_elements_length = 2};
+
+  const char *checkIteratorPath = "decodeTest/checkNestedIteration";
+  ut_kvp_iterator_t *iterator =
+      ut_kvp_iterCreate(gpMainTestInstance, checkIteratorPath);
+
+  ut_kvp_iter_result_t iterResult = ut_kvp_iterIterate(iterator, iteration_callback, &testData);
+  ut_kvp_iterDestroy(iterator);
+
+  UT_ASSERT(iterResult.status == UT_KVP_ITER_STATUS_FINISHED);
+  UT_ASSERT(iterResult.iteration_count == TEST_UT_KVP_ITERATE_ELEMENTS_WITH_SUB_ELEMENTS_NUM_ELEMS);
+}
+
+void test_ut_kvp_getIterator_is_null_for_nonexistent_node(void)
+{
+    const char *nonexistentNodePath = "decodeTest/NonexistentNode";
+
+    ut_kvp_iterator_t *iter = ut_kvp_iterCreate(gpMainTestInstance, nonexistentNodePath);
+
+    UT_LOG_STEP("Tried to get iterator at nonexistent node %s", nonexistentNodePath);
+    UT_ASSERT(iter == NULL);
+}
+
+void test_ut_kvp_getIterator_is_null_for_nonsequence_node(void)
+{
+    const char *nonSequencePath = "decodeTest/notASequence";
+
+    ut_kvp_iterator_t *iter = ut_kvp_iterCreate(gpMainTestInstance, nonSequencePath);
+
+    UT_LOG_STEP("Tried to get iterator for non-sequence node at %s", nonSequencePath);
+    UT_ASSERT(iter == NULL);
+}
+
+bool callback_that_should_never_be_called(ut_kvp_instance_t *pInstance, void *userData)
+{
+    (void)pInstance;
+    (void)userData;
+
+    UT_ASSERT(false);
+    return false;
+}
+
+void test_ut_kvp_iterIterateForEmptySequence(void)
+{
+    const char *emptySequencePath = "decodeTest/emptySequence";
+
+    ut_kvp_iterator_t *iter = ut_kvp_iterCreate(gpMainTestInstance, emptySequencePath);
+
+    UT_LOG_STEP("Checking if we can create an iterator for an empty list, in: %s", emptySequencePath);
+    UT_ASSERT(iter != NULL);
+
+    ut_kvp_iter_result_t iterResult = ut_kvp_iterIterate(iter, callback_that_should_never_be_called, NULL);
+
+    ut_kvp_iterDestroy(iter);
+
+    UT_LOG_STEP(
+        "Checking that iterResult (%" PRIu32 ") == %d and iterStatus (%d) == %d",
+        iterResult.iteration_count,
+        0,
+        (int)iterResult.status,
+        (int)UT_KVP_ITER_STATUS_FINISHED
+    );
+    UT_ASSERT(iterResult.iteration_count == 0); // checking number of iterations
+    UT_ASSERT(iterResult.status == UT_KVP_ITER_STATUS_FINISHED); // checking status code
+}
+
+typedef struct {
+    uint32_t magic;
+} iter_fake_pointer;
+
+void test_ut_kvp_iterDestroy_does_nothing_on_other_pointers(void)
+{
+    const uint32_t stable = 0x57ab1e;
+
+    UT_LOG_STEP("Allocating fake iter pointer");
+    iter_fake_pointer *pFake = malloc(sizeof(iter_fake_pointer));
+    pFake->magic = stable;
+
+    UT_LOG_STEP("Calling ut_kvp_iterDestroy on fake iter pointer");
+    ut_kvp_iterDestroy((ut_kvp_iterator_t*)pFake);
+
+    UT_ASSERT(pFake->magic == stable);
+
+    UT_LOG_STEP("Deallocating fake iter pointer");
+    pFake->magic = 0;
+    free(pFake);
+}
+
+void test_ut_kvp_iterIterateStatusInvalidIterator(void)
+{
+    iter_fake_pointer *fakeIterator = malloc(sizeof(iter_fake_pointer));
+    fakeIterator->magic = 0x57ab1e;
+
+    ut_kvp_iter_result_t iterResult = ut_kvp_iterIterate(fakeIterator, NULL, NULL);
+
+    fakeIterator->magic = 0;
+    free(fakeIterator);
+
+    UT_ASSERT(iterResult.iteration_count == 0);
+    UT_ASSERT(iterResult.status == UT_KVP_ITER_STATUS_INVALID_ITERATOR);
+}
+
+void test_ut_kvp_iterIterateStatusCallbackNull(void)
+{
+    const char *iterPath = "decodeTest/checkIterator";
+    ut_kvp_iterator_t *iterator = ut_kvp_iterCreate(gpMainTestInstance, iterPath);
+
+    ut_kvp_iter_result_t iterResult = ut_kvp_iterIterate(iterator, NULL, NULL);
+
+    ut_kvp_iterDestroy(iterator);
+
+    UT_ASSERT(iterResult.iteration_count == 0);
+    UT_ASSERT(iterResult.status == UT_KVP_ITER_STATUS_CALLBACK_IS_NULL);
+}
+
+bool callback_that_halts_at_id_0(ut_kvp_instance_t *pInstance, void *userData)
+{
+    int32_t id = ut_kvp_getInt32Field(pInstance, "id");
+
+    UT_LOG_STEP("Callback, element id: %" PRId32 " halting %d", id, id == 0);
+
+    if (id == 0)
+    {
+        return false;
+    } 
+    return true;
+}
+
+
+void test_ut_kvp_iterIterateCallbackReturnsFalseGivesStatusHalted(void)
+{
+    const char *iterPath = "decodeTest/checkIterator";
+    
+    ut_kvp_iterator_t *iterator = ut_kvp_iterCreate(gpMainTestInstance, iterPath);
+
+    ut_kvp_iter_result_t iterResult = ut_kvp_iterIterate(iterator, callback_that_halts_at_id_0, NULL);
+
+    ut_kvp_iterDestroy(iterator);
+
+
+    UT_ASSERT(iterResult.iteration_count == 1);
+    UT_ASSERT(iterResult.status == UT_KVP_ITER_STATUS_HALTED);
 }
 
 void test_ut_kvp_uint8(void)
@@ -1435,6 +1795,41 @@ static int test_ut_kvp_createGlobalYAMLInstanceForSequenceIncludeFileViaYaml( vo
 
 }
 
+static int test_ut_kvp_createGlobalYAMLInstanceForSequenceIteration( void)
+{
+    ut_kvp_status_t status;
+
+    gpMainTestInstance = ut_kvp_createInstance();
+    if ( gpMainTestInstance == NULL )
+    {
+        assert( gpMainTestInstance != NULL );
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        return -1;
+    }
+
+    status = ut_kvp_open( gpMainTestInstance, KVP_VALID_TEST_SEQUENCE_ITERATION_YAML);
+    assert( status == UT_KVP_STATUS_SUCCESS );
+
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        UT_LOG_ERROR("ut_kvp_open() - Read Failure");
+        return -1;
+    }
+
+    char* kvpData = ut_kvp_getData(gpMainTestInstance);
+
+    print_input_output(kvpData, KVP_VALID_TEST_SEQUENCE_ITERATION_YAML); // Print the emitted KVP string and input data from file
+
+    if(kvpData)
+    {
+        free(kvpData); // Free the emitted KVP string
+        kvpData = NULL;
+    }
+
+    return 0;
+
+}
+
 static int test_ut_kvp_createGlobalYAMLInstanceForMultipleProfileInputs( void)
 {
     /*Creating global instance for multiple profile support, so that the values
@@ -1606,4 +2001,36 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite12, "kvp bool from main yaml", test_ut_kvp_bool_on_main_yaml_for_sequence_includes);
     UT_add_test(gpKVPSuite12, "kvp node presence from main yaml", test_ut_kvp_fieldPresent_on_main_yaml_for_sequence_includes);
     UT_add_test(gpKVPSuite12, "kvp ssequence include support on malloc data", test_ut_kvp_ResolveAliasesAnchorsMergeKeysFromMallocedData);
+
+    gpKVPSuite13 = UT_add_suite(
+        "ut-kvp -  test main functions YAML Decoder for Yaml sequence "
+        "iteration support",
+        test_ut_kvp_createGlobalYAMLInstanceForSequenceIteration,
+        test_ut_kvp_freeGlobalInstance);
+    assert(gpKVPSuite13 != NULL);
+
+    UT_add_test(gpKVPSuite13, "Create Iterator with 2 elements",
+                test_ut_kvp_get_iterator_with_two_elements);
+    UT_add_test(gpKVPSuite13, "Create iterator from a path using dots",
+                test_ut_kvp_get_iterator_with_dotted_path);
+    UT_add_test(gpKVPSuite13, "Iterate Iterator",
+                test_ut_kvp_iterate_elements);
+    UT_add_test(gpKVPSuite13, "Iterate Iterator with sub-elements",
+                test_ut_kvp_iterate_elements_with_sub_elements);
+    UT_add_test(gpKVPSuite13, "Get Iterator returns null when node does not exist",
+                test_ut_kvp_getIterator_is_null_for_nonexistent_node);
+    UT_add_test(gpKVPSuite13, "Get Iterator returns null when node is not a sequence",
+                test_ut_kvp_getIterator_is_null_for_nonsequence_node);
+    UT_add_test(gpKVPSuite13, "Iter Free works only on ut_kvp_iterator_t",
+                test_ut_kvp_iterDestroy_does_nothing_on_other_pointers);
+    UT_add_test(gpKVPSuite13, "Iter Iterate invalid iterator gives invalid iterator status",
+                test_ut_kvp_iterIterateStatusInvalidIterator);
+    UT_add_test(gpKVPSuite13, "Iter Iterate callback null gives callback null iterator status",
+                test_ut_kvp_iterIterateStatusCallbackNull);
+    UT_add_test(gpKVPSuite13, "Iter Iterate on empty list is successful and never calls callback",
+                test_ut_kvp_iterIterateForEmptySequence);
+    UT_add_test(gpKVPSuite13, "Iter Iterate still works correctly if the source ut_kvp_instance is mutated",
+                test_ut_kvp_iterate_unaffected_by_mutation_of_ut_kvp_instance);
+    UT_add_test(gpKVPSuite13, "Iter Iterate returns halted when callback return is false",
+                test_ut_kvp_iterIterateCallbackReturnsFalseGivesStatusHalted);
 }
