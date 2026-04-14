@@ -24,8 +24,8 @@ set -e # error out if required
 SCRIPT_EXEC="$(realpath $0)"
 MY_DIR="$(dirname $SCRIPT_EXEC)"
 
-# Decide which build target to use based on the presence of TARGET in input args(linux or arm)
-if [[ "$1" != "linux" && "$1" != arm* ]]; then
+# Decide which build target to use based on the presence of TARGET in input args(linux or arm/arm64)
+if [[ "$1" != "linux" && "$1" != "arm" && "$1" != "arm64" ]]; then
   echo "Error: argument must be 'linux' or 'arm' or 'arm64'"
   exit 1
 fi
@@ -122,7 +122,7 @@ popd > /dev/null
 # Set up paths and search criteria based on the target architecture (linux or arm)
 pushd "${FRAMEWORK_DIR}" > /dev/null
 
-if [[ "$TARGET" == arm* ]]; then
+if [[ "$TARGET" == "arm" || "$TARGET" == "arm64" ]]; then
     TARGET=${TARGET}
     # Extract the sysroot value
     if [ "${CC}" == "" ]; then
@@ -288,7 +288,7 @@ build_curl()
 {
     cd ${CURL_DIR}
     mkdir -p ${CURL_BUILD_DIR}
-    if [[ "$TARGET" = arm* ]]; then
+    if [[ "$TARGET" == "arm" || "$TARGET" == "arm64" ]]; then
         # For arm
         ./configure --host=${TARGET} CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
     else

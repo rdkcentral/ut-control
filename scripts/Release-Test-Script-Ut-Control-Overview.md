@@ -1,11 +1,12 @@
 # Overview of release-test-script-ut-control.sh
 
-This Bash script automates the process of cloning PR branch on ut-control Git repository, compiling code for different environments, and running checks to ensure the setup is correct. It supports environments such as **Ubuntu**, **Dunfell Linux**, **Dunfell ARM**, and **VM-SYNC**.
+This Bash script automates the process of cloning PR branch on ut-control Git repository, compiling code for different environments, and running checks to ensure the setup is correct. It supports environments such as **Ubuntu**, **Dunfell Linux**, **Dunfell ARM**, **VM-SYNC**, and **ARM64**.
 where:
    Dunfell Linux : is a docker with linux environment
    Dunfell ARM : is a docker simulating the arm environment for yocto version dunfell
    Kirkstone ARM : is a docker simulating the arm environment for yocto version kirkstone
    VM-SYNC : is a docker simulating the RDK linux environment
+   ARM64 : native cross-compilation on the host using an aarch64 toolchain
 With these validations, it ensures if the PR is good for merge and has not broken the basic requirements.
 
 Following table gives an overview:
@@ -16,10 +17,12 @@ Following table gives an overview:
 |2|make TARGET=arm|rdk-kirkstone|builds ut-control for target arm
 |3|make TARGET=linux|vm-sync|builds ut-control for target linux
 |4|make TARGET=linux|none|builds ut-control for target linux
-|5|make -C tests/ TARGET=arm|rdk-dunfell|builds ut-control tests for target arm
-|6|make -C tests/  TARGET=arm|rdk-kirkstone|builds ut-control tests for target arm
-|7|make -C tests/ TARGET=linux|vm-sync|builds ut-control tests for target linux
-|8|make -C tests/ TARGET=linux|none|builds ut-control tests for target linux
+|5|make TARGET=arm64|none (host toolchain)|builds ut-control for target arm64
+|6|make -C tests/ TARGET=arm|rdk-dunfell|builds ut-control tests for target arm
+|7|make -C tests/  TARGET=arm|rdk-kirkstone|builds ut-control tests for target arm
+|8|make -C tests/ TARGET=linux|vm-sync|builds ut-control tests for target linux
+|9|make -C tests/ TARGET=linux|none|builds ut-control tests for target linux
+|10|make -C tests/ TARGET=arm64|none (host toolchain)|builds ut-control tests for target arm64
 
 ## Key Features
 
@@ -27,7 +30,9 @@ Following table gives an overview:
 - The script allows specifying a Git repository URL and branch name via command-line arguments:
 -  `-t <BRANCH_NAME>`: Specifies the branch name to clone.
   - `-u <REPO_URL>`: Specifies the Git repository URL but not mandatory
+  - `-T <TOOLCHAIN_PATH>`: Path to the arm64 toolchain env-setup script (optional)
 - If no URL is provided, it defaults to a repository URL (`git@github.com:rdkcentral/ut-control.git`).
+- If `-T` is not provided, the arm64 build defaults to `$HOME/rdkb-64bit-toolchnain/environment-setup-aarch64-rdk-linux`. If that file is absent, the script prints an error and exits.
 
 ### 2. **Automated Environment Setup**
 - Handles environment-specific setups for various packages:
@@ -38,6 +43,7 @@ Following table gives an overview:
 |2|VM-SYNC|YES|YES|YES
 |3|RDK-DUNFELL(arm)|NO|YES|YES
 |4|RDK-DUNFELL(linux)|NO|YES|NO
+|5|ARM64 (host toolchain)|NO|YES|YES
 
 For ex:
 On env 1,  the script will check for availability of CURL library, OpenSSL libraraies for Target.It would however would not look for CMAKE binary for host as this environment already provides cmake support which is provided by build essentials.
@@ -47,7 +53,8 @@ On env 2, on the other hand, none of the packages are present , hence the script
 
 ### 3. **Compilation and Logging**
 - Compiles the project using `make`:
-  - **Architecture-specific compilation** (`linux` or `arm`) based on the environment.
+  - **Architecture-specific compilation** (`linux`, `arm`, or `arm64`) based on the environment.
+  - For arm64, the toolchain env-setup script is sourced in a subshell before invoking `make`, keeping the host environment clean.
   - Logs the output of `make` to `make_log.txt` and `make_test_log.txt` for debugging purposes.
   
 ### 4. **Post-Build Verification**
@@ -73,7 +80,11 @@ On env 2, on the other hand, none of the packages are present , hence the script
 
 ## Command-Line Usage
 ```bash
+# Default (no arm64 toolchain path needed if default exists)
 ./release-test-script-ut-control.sh -t <UT_CONTROL_BRANCH_NAME_TO_BE_TESTED>
+
+# With explicit arm64 toolchain path
+./release-test-script-ut-control.sh -t <UT_CONTROL_BRANCH_NAME_TO_BE_TESTED> -T /path/to/environment-setup-aarch64-rdk-linux
 ```
 
 ## Caveats
