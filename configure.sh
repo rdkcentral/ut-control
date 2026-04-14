@@ -24,9 +24,9 @@ set -e # error out if required
 SCRIPT_EXEC="$(realpath $0)"
 MY_DIR="$(dirname $SCRIPT_EXEC)"
 
-# Decide which build target to use based on the presence of TARGET in input args(linux or arm/arm64)
-if [[ "$1" != "linux" && "$1" != "arm" && "$1" != "arm64" ]]; then
-  echo "Error: argument must be 'linux' or 'arm' or 'arm64'"
+# Decide which build target to use based on the presence of TARGET in input args(linux or arm)
+if [[ "$1" != "linux" && "$1" != "arm" ]]; then
+  echo "Error: argument must be 'linux' or 'arm'"
   exit 1
 fi
 TARGET=${1}
@@ -122,8 +122,8 @@ popd > /dev/null
 # Set up paths and search criteria based on the target architecture (linux or arm)
 pushd "${FRAMEWORK_DIR}" > /dev/null
 
-if [[ "$TARGET" == "arm" || "$TARGET" == "arm64" ]]; then
-    TARGET=${TARGET}
+if [ "$TARGET" == "arm" ]; then
+    TARGET=arm
     # Extract the sysroot value
     if [ "${CC}" == "" ]; then
         echo "CC is not set.. Exiting"
@@ -247,14 +247,20 @@ build_openssl()
 {
     cd ${OPENSSL_DIR}
     mkdir -p ${OPENSSL_BUILD_DIR}
-    if [ "$TARGET" = "arm" ]; then
-	    CROSS_COMPILE=
-            COMPILER_FLAGS=$(echo "$CC" | cut -d' ' -f2-)
-            /usr/bin/perl ./Configure linux-armv4 shared --prefix="${OPENSSL_BUILD_DIR}" --openssldir="${OPENSSL_BUILD_DIR}" --cross-compile-prefix="${CROSS_COMPILE}" $COMPILER_FLAGS
-    elif [ "$TARGET" = "arm64" ]; then
+    if [ "$TARGET" == "arm" ]; then
+            # Derive the OpenSSL platform from the compiler triplet in CC
+            # e.g. aarch64-rdk-linux-gcc -> aarch64 -> linux-aarch64
+            #      arm-oe-linux-gnueabi-gcc -> arm -> linux-armv4
+            CC_BINARY=$(echo "$CC" | awk '{print $1}')
+            CC_ARCH=$(echo "$CC_BINARY" | cut -d'-' -f1)
+            case "$CC_ARCH" in
+                aarch64) OPENSSL_PLATFORM="linux-aarch64" ;;
+                arm)     OPENSSL_PLATFORM="linux-armv4" ;;
+                *) echo "Unknown arch derived from CC: $CC_ARCH"; exit 1 ;;
+            esac
             CROSS_COMPILE=
             COMPILER_FLAGS=$(echo "$CC" | cut -d' ' -f2-)
-            /usr/bin/perl ./Configure linux-aarch64 shared --prefix="${OPENSSL_BUILD_DIR}" --openssldir="${OPENSSL_BUILD_DIR}" --cross-compile-prefix="${CROSS_COMPILE}" $COMPILER_FLAGS
+            /usr/bin/perl ./Configure "${OPENSSL_PLATFORM}" shared --prefix="${OPENSSL_BUILD_DIR}" --openssldir="${OPENSSL_BUILD_DIR}" --cross-compile-prefix="${CROSS_COMPILE}" $COMPILER_FLAGS
     else
 	    ./config --prefix="${OPENSSL_BUILD_DIR}"
     fi
@@ -288,9 +294,13 @@ build_curl()
 {
     cd ${CURL_DIR}
     mkdir -p ${CURL_BUILD_DIR}
-    if [[ "$TARGET" == "arm" || "$TARGET" == "arm64" ]]; then
-        # For arm
-        ./configure --host=${TARGET} CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
+    if [ "$TARGET" == "arm" ]; then
+        # Derive the autoconf host triplet from the CC binary name
+        # e.g. aarch64-rdk-linux-gcc -> aarch64-rdk-linux
+        CC_BINARY=$(echo "$CC" | awk '{print $1}')
+        HOST_TRIPLET=$(echo "$CC_BINARY" | sed 's/-gcc$//')
+        # For arm, use the explicit triplet; for arm/aarch64 it works the same way
+        ./configure --host=${HOST_TRIPLET} CPPFLAGS="-I${OPENSSL_BUILD_DIR}/include" LDFLAGS="-L${OPENSSL_BUILD_DIR}/lib" --prefix=${CURL_BUILD_DIR} --with-ssl=${OPENSSL_BUILD_DIR} --with-pic --without-libpsl --without-libidn2 --disable-docs --disable-libcurl-option --disable-alt-svc --disable-headers-api --disable-hsts --without-libgsasl --without-zlib
     else
         # For linux
         if [ "$OPENSSL_IS_SYSTEM_INSTALLED" -eq 1 ]; then

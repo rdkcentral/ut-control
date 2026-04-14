@@ -30,8 +30,8 @@ NC='\033[0m' # No Color
 
 # Function to print usage
 usage() {
-    echo -e "${YELLOW}Usage: $0 -u <REPO_URL> -t <ut_control_branch_name> [-T <arm64_toolchain_path>]${NC}"
-    echo -e "${YELLOW}  -T  Path to arm64 toolchain env-setup script (default: \$HOME/rdkb-64bit-toolchnain/environment-setup-aarch64-rdk-linux)${NC}"
+    echo -e "${YELLOW}Usage: $0 -u <REPO_URL> -t <ut_control_branch_name> [-T <cross_toolchain_path>]${NC}"
+    echo -e "${YELLOW}  -T  Path to cross-compilation toolchain env-setup script${NC}"
     exit 1
 }
 
@@ -40,7 +40,7 @@ while getopts "u:t:T:" opt; do
     case $opt in
         u) REPO_URL="$OPTARG" ;;
         t) ut_control_branch_name="$OPTARG" ;;
-        T) ARM64_TOOLCHAIN_PATH="$OPTARG" ;;
+        T) CROSS_TOOLCHAIN_PATH="$OPTARG" ;;
         *) usage ;;
     esac
 done
@@ -63,6 +63,19 @@ if [ -z "$REPO_URL" ]; then
     REPO_URL=git@github.com:rdkcentral/ut-control.git
 fi
 REPO_NAME=$(basename "$REPO_URL" .git)
+
+# Prompt user for cross-compilation toolchain path if not supplied via -T
+SKIP_CROSS=false
+if [ -z "$CROSS_TOOLCHAIN_PATH" ]; then
+    echo -e "${YELLOW}Cross-compilation toolchain path not provided.${NC}"
+    read -rp "Enter path to cross-compilation toolchain env file (or press Enter to skip cross compilation): " CROSS_TOOLCHAIN_INPUT
+    if [ -z "$CROSS_TOOLCHAIN_INPUT" ]; then
+        echo -e "${YELLOW}No toolchain path given. Cross compilation tests will be skipped.${NC}"
+        SKIP_CROSS=true
+    else
+        CROSS_TOOLCHAIN_PATH="$CROSS_TOOLCHAIN_INPUT"
+    fi
+fi
 
 # # Set compiler type based on the environment passed
 # case "$environment" in
@@ -185,23 +198,17 @@ validate_curl_all_other_platforms() {
 }
 
 
-# Description: Sets up the arm64 cross-compilation toolchain.
-# Checks the default path first; if unavailable, requires the user to supply -T <path>.
-setup_arm64_toolchain() {
-    local DEFAULT_TOOLCHAIN="${HOME}/rdkb-64bit-toolchnain/environment-setup-aarch64-rdk-linux"
-
-    if [ -z "$ARM64_TOOLCHAIN_PATH" ]; then
-        ARM64_TOOLCHAIN_PATH="$DEFAULT_TOOLCHAIN"
+# Description: Sets up the cross-compilation toolchain.
+# Requires the user to supply -T <path> or provide it interactively at startup.
+setup_cross_toolchain() {
+    if [ ! -f "$CROSS_TOOLCHAIN_PATH" ]; then
+        echo -e "${YELLOW}[WARN] Cross toolchain not found at: $CROSS_TOOLCHAIN_PATH${NC}"
+        echo -e "${YELLOW}Cross compilation tests will not be executed.${NC}"
+        SKIP_CROSS=true
+        return
     fi
 
-    if [ ! -f "$ARM64_TOOLCHAIN_PATH" ]; then
-        echo -e "${RED}arm64 toolchain not found at: $ARM64_TOOLCHAIN_PATH${NC}"
-        echo -e "${YELLOW}Please provide the toolchain env-setup script path using: -T <path>${NC}"
-        echo -e "${YELLOW}Example: $0 -u <REPO_URL> -t <branch> -T /path/to/environment-setup-aarch64-rdk-linux${NC}"
-        error_exit "Error: arm64 toolchain not available. Cannot proceed with arm64 compilation."
-    fi
-
-    echo -e "${GREEN}Using arm64 toolchain: $ARM64_TOOLCHAIN_PATH${NC}"
+    echo -e "${GREEN}Using cross toolchain: $CROSS_TOOLCHAIN_PATH${NC}"
 }
 
 # Description: This function validates the CURL static library based on the environment.
@@ -289,7 +296,7 @@ run_checks() {
         else
             echo -e "${GREEN}Openssl static lib does not exist. PASS ${NC}"
         fi
-    elif [[ "$environment" == "arm64" ]]; then
+    elif [[ "$environment" == "cross" ]]; then
         if [ -f "$OPENSSL_STATIC_LIB" ]; then
             echo -e "${GREEN}$OPENSSL_STATIC_LIB exists. PASS ${NC}"
         else
@@ -334,7 +341,7 @@ run_checks() {
         else
             echo -e "${RED}CMake host binary exists. FAIL ${NC}"
         fi
-    elif [[ "$environment" == "arm64" ]]; then
+    elif [[ "$environment" == "cross" ]]; then
         if [ ! -f "$CMAKE_HOST_BIN" ]; then
             echo -e "${GREEN}CMake host binary does not exist. PASS ${NC}"
         else
@@ -384,11 +391,15 @@ print_results() {
     run_checks "kirkstone_linux" "linux" $ut_control_branch_name
     popd > /dev/null
 
-    #Results for arm64
-    PLAT_DIR="${REPO_NAME}-arm64"
-    pushd ${PLAT_DIR} > /dev/null
-    run_checks "arm64" "arm64" $ut_control_branch_name
-    popd > /dev/null
+    #Results for cross
+    if [ "$SKIP_CROSS" = true ]; then
+        echo -e "${YELLOW}Cross compilation tests were skipped (no toolchain path provided).${NC}"
+    else
+        PLAT_DIR="${REPO_NAME}-cross"
+        pushd ${PLAT_DIR} > /dev/null
+        run_checks "cross" "arm" $ut_control_branch_name
+        popd > /dev/null
+    fi
 
     popd > /dev/null
 
@@ -402,21 +413,22 @@ run_on_ubuntu_linux() {
     popd > /dev/null
 }
 
-# Function to build for arm64 using a local cross-compilation toolchain
-run_on_arm64() {
-    setup_arm64_toolchain
+# Function to build using a local cross-compilation toolchain (any OE/Yocto toolchain)
+run_on_cross() {
+    setup_cross_toolchain
+    [ "$SKIP_CROSS" = true ] && return
 
     pushd ${MY_DIR} > /dev/null
-    run_git_clone "arm64"
+    run_git_clone "cross"
 
     # Source the toolchain inside a subshell to avoid polluting the parent environment
     (
-        source "$ARM64_TOOLCHAIN_PATH"
-        echo -e "${YELLOW}arm64 toolchain active: CC=$CC${NC}"
-        run_make_with_logs "arm64"
+        source "$CROSS_TOOLCHAIN_PATH"
+        echo -e "${YELLOW}Cross toolchain active: CC=$CC${NC}"
+        run_make_with_logs "arm"
     )
 
-    run_checks "arm64" "arm64" "$ut_control_branch_name"
+    run_checks "cross" "arm" "$ut_control_branch_name"
     popd > /dev/null
 }
 
@@ -461,14 +473,18 @@ EOF
 # Environment-specific setups and execution
 export -f run_make_with_logs
 export -f run_checks
-export -f setup_arm64_toolchain
-export -f run_on_arm64
+export -f setup_cross_toolchain
+export -f run_on_cross
 export -f usage
 export -f error_exit
 
 # Run tests in different environments
 run_on_ubuntu_linux
-run_on_arm64
+if [ "$SKIP_CROSS" = true ]; then
+    echo -e "${YELLOW}Skipping cross compilation tests (no toolchain path provided).${NC}"
+else
+    run_on_cross
+fi
 run_on_platform "dunfell" "linux"
 run_on_platform "kirkstone" "linux"
 run_on_platform "VM-SYNC" "linux"
