@@ -68,7 +68,7 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance);
 /**!
  * @brief Opens and parses a Key-Value Pair (KVP) file into a KVP instance.
  *
- * This function opens the specified KVP file, reads its contents, and parses the key-value pairs into the given KVP instance.
+ * This function opens the specified KVP file or URL, reads its contents, and parses the key-value pairs into the given KVP instance.
  *
  * @param[in] pInstance - Handle to the KVP instance where the parsed data will be stored.
  * @param[in] fileNameOrUrl - Null-terminated string containing the path to the KVP file/URL.
