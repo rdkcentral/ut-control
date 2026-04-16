@@ -351,6 +351,110 @@ void test_ut_kvp_uint64(void)
     UT_ASSERT( result == 0 );
 }
 
+void test_ut_kvp_int8(void)
+{
+    int8_t result;
+
+    /* Positive Tests */
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt8Positive" );
+    UT_ASSERT( result == 127 );
+
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt8Negative" );
+    UT_ASSERT( result == -128 );
+
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt8Zero" );
+    UT_ASSERT( result == 0 );
+
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt8Hex" );
+    UT_ASSERT( result == 0x7f );
+
+    /* Negative Tests */
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "thisShouldNotWork/checkInt8Positive" );
+    UT_ASSERT( result == 0 );
+
+    /* Decode out of range value */
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt16Positive" );
+    UT_ASSERT( result == 0 );
+}
+
+void test_ut_kvp_int16(void)
+{
+    int16_t result;
+
+    /* Positive Tests */
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest/checkInt16Positive" );
+    UT_ASSERT( result == 32767 );
+
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest/checkInt16Negative" );
+    UT_ASSERT( result == -32768 );
+
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest/checkInt16Hex" );
+    UT_ASSERT( result == 0x7fff );
+
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest.checkInt16Positive" );
+    UT_ASSERT( result == 32767 );
+
+    /* Negative Tests */
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "thisShouldNotWork/checkInt16Positive" );
+    UT_ASSERT( result == 0 );
+
+    /* Decode out of range value */
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest/checkInt32Positive" );
+    UT_ASSERT( result == 0 );
+}
+
+void test_ut_kvp_int32(void)
+{
+    int32_t result;
+
+    /* Positive Tests */
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Positive" );
+    UT_ASSERT( result == 2147483647 );
+
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Negative" );
+    UT_ASSERT( result == -2147483648 );
+
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Hex" );
+    UT_ASSERT( result == 0x7fffffff );
+
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest.checkInt32Positive" );
+    UT_ASSERT( result == 2147483647 );
+
+    /* Negative Tests */
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "thisShouldNotWork/checkInt32Positive" );
+    UT_ASSERT( result == 0 );
+
+    /* Decode out of range value */
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt64Positive" );
+    UT_ASSERT( result == 0 );
+}
+
+void test_ut_kvp_int64(void)
+{
+    int64_t result;
+
+    /* Positive Tests */
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest/checkInt64Positive" );
+    UT_ASSERT( result == 9223372036854775807LL );
+
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest/checkInt64Negative" );
+    UT_ASSERT( result == (-9223372036854775807LL - 1) );
+
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest.checkInt64Positive" );
+    UT_ASSERT( result == 9223372036854775807LL );
+
+    /* Hexadecimal Positive Tests */
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest/checkInt64Hex" );
+    UT_ASSERT( result == 0x7fffffffffffffffLL );
+
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest.checkInt64Hex" );
+    UT_ASSERT( result == 0x7fffffffffffffffLL );
+
+    /* Negative Tests */
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "thisShouldNotWork/checkInt64Positive" );
+    UT_ASSERT( result == 0 );
+}
+
 void test_ut_kvp_list(void)
 {
     ut_kvp_status_t status;
@@ -1359,6 +1463,10 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite2, "kvp string", test_ut_kvp_string);
     UT_add_test(gpKVPSuite2, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite2, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite2, "kvp int8", test_ut_kvp_int8);
+    UT_add_test(gpKVPSuite2, "kvp int16", test_ut_kvp_int16);
+    UT_add_test(gpKVPSuite2, "kvp int32", test_ut_kvp_int32);
+    UT_add_test(gpKVPSuite2, "kvp int64", test_ut_kvp_int64);
     UT_add_test(gpKVPSuite2, "kvp list", test_ut_kvp_list);
     UT_add_test(gpKVPSuite2, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite2, "kvp double", test_ut_kvp_getDoubleField);
@@ -1376,6 +1484,10 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite3, "kvp bool", test_ut_kvp_bool);
     UT_add_test(gpKVPSuite3, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite3, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite3, "kvp int8", test_ut_kvp_int8);
+    UT_add_test(gpKVPSuite3, "kvp int16", test_ut_kvp_int16);
+    UT_add_test(gpKVPSuite3, "kvp int32", test_ut_kvp_int32);
+    UT_add_test(gpKVPSuite3, "kvp int64", test_ut_kvp_int64);
     UT_add_test(gpKVPSuite3, "kvp list", test_ut_kvp_list);
     UT_add_test(gpKVPSuite3, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite3, "kvp double", test_ut_kvp_getDoubleField);
@@ -1397,6 +1509,10 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite5, "kvp string", test_ut_kvp_string);
     UT_add_test(gpKVPSuite5, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite5, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite5, "kvp int8", test_ut_kvp_int8);
+    UT_add_test(gpKVPSuite5, "kvp int16", test_ut_kvp_int16);
+    UT_add_test(gpKVPSuite5, "kvp int32", test_ut_kvp_int32);
+    UT_add_test(gpKVPSuite5, "kvp int64", test_ut_kvp_int64);
     UT_add_test(gpKVPSuite5, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite5, "kvp double", test_ut_kvp_getDoubleField);
     UT_add_test(gpKVPSuite5, "kvp node presence", test_ut_kvp_fieldPresent);
@@ -1412,6 +1528,10 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite6, "kvp bool", test_ut_kvp_bool);
     UT_add_test(gpKVPSuite6, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite6, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite6, "kvp int8", test_ut_kvp_int8);
+    UT_add_test(gpKVPSuite6, "kvp int16", test_ut_kvp_int16);
+    UT_add_test(gpKVPSuite6, "kvp int32", test_ut_kvp_int32);
+    UT_add_test(gpKVPSuite6, "kvp int64", test_ut_kvp_int64);
     UT_add_test(gpKVPSuite6, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite6, "kvp double", test_ut_kvp_getDoubleField);
     UT_add_test(gpKVPSuite6, "kvp node presence", test_ut_kvp_fieldPresent);

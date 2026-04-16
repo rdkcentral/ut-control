@@ -260,10 +260,45 @@ uint32_t ut_kvp_getListCount( ut_kvp_instance_t *pInstance, const char *pszKey);
  */
 unsigned char* ut_kvp_getDataBytes(ut_kvp_instance_t *pInstance, const char *pszKey, int *size);
 
-/* TODO:
- * - Implement functions for getting signed integer values (`ut_kvp_getInt8Field`, `ut_kvp_getInt16Field`, `ut_kvp_getInt32Field`,
- *`ut_kvp_getInt64Field`
+/**!
+ * @brief Gets an int8_t value from the KVP profile.
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Null-terminated string representing the key to search for.
+ *
+ * @returns The `int8_t` value on success, or 0 on error (check logs for details).
  */
+int8_t ut_kvp_getInt8Field(ut_kvp_instance_t *pInstance, const char *pszKey);
+
+/**!
+ * @brief Gets an int16_t value from the KVP profile.
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Null-terminated string representing the key to search for.
+ *
+ * @returns The `int16_t` value on success, or 0 on error (check logs for details).
+ */
+int16_t ut_kvp_getInt16Field(ut_kvp_instance_t *pInstance, const char *pszKey);
+
+/**!
+ * @brief Gets an int32_t value from the KVP profile.
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Null-terminated string representing the key to search for.
+ *
+ * @returns The `int32_t` value on success, or 0 on error (check logs for details).
+ */
+int32_t ut_kvp_getInt32Field(ut_kvp_instance_t *pInstance, const char *pszKey);
+
+/**!
+ * @brief Gets an int64_t value from the KVP profile.
+ *
+ * @param[in] pInstance - Handle to the KVP instance.
+ * @param[in] pszKey - Null-terminated string representing the key to search for.
+ *
+ * @returns The `int64_t` value on success, or 0 on error (check logs for details).
+ */
+int64_t ut_kvp_getInt64Field(ut_kvp_instance_t *pInstance, const char *pszKey);
 
 #ifdef __cplusplus
 }
