@@ -161,6 +161,7 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
         }
 
         snprintf(pYaml, UT_KVP_MAX_ELEMENT_SIZE, "include: %s\n", fileNameOrUrl);
+        pYaml[UT_KVP_MAX_ELEMENT_SIZE - 1] = '\0'; // Ensure null-termination
 
         // Pass the dynamically allocated YAML string to openMemory() for parsing
         ut_kvp_status_t status = ut_kvp_openMemory(pInstance, pYaml, strlen(pYaml));
@@ -1060,13 +1061,22 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
     const char *tag = fy_node_get_tag(srcNode, &tag_len);
     if (tag && strncmp(tag, "!include", tag_len) == 0 && fy_node_is_scalar(srcNode))
     {
-        const char *filepath = fy_node_get_scalar(srcNode, NULL);
-        if (filepath)
+        /* make a NUL-terminated C string copy from the scalar */
+        size_t f_len = 0;
+        const char *f_str = fy_node_get_scalar(srcNode, &f_len);
+        if (f_str)
         {
-            struct fy_node *included = process_include(filepath, depth, dstDoc);
-            if (included)
+            char *filepath_alloc = malloc(f_len + 1);
+            if (filepath_alloc)
             {
-                return process_node_copy(included, dstDoc, depth + 1);
+                memcpy(filepath_alloc, f_str, f_len);
+                filepath_alloc[f_len] = '\0';
+                struct fy_node *included = process_include(filepath_alloc, depth, dstDoc);
+                free(filepath_alloc);
+                if (included)
+                {
+                    return process_node_copy(included, dstDoc, depth + 1);
+                }
             }
         }
         return NULL;
@@ -1099,12 +1109,21 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
                 struct fy_node *incl = fy_node_mapping_lookup_by_string(entry, "include", 7);
                 if (incl && fy_node_is_scalar(incl))
                 {
-                    const char *filepath = fy_node_get_scalar(incl, NULL);
-                    if (filepath)
+                    /* ensure NUL-terminated string for include value by making a caller-owned copy */
+                    size_t incl_len = 0;
+                    const char *incl_str = fy_node_get_scalar(incl, &incl_len);
+                    if (incl_str)
                     {
-                        struct fy_node *included = process_include(filepath, depth, dstDoc);
-                        if (included)
-                            copied_entry = process_node_copy(included, dstDoc, depth + 1);
+                        char *filepath_alloc = malloc(incl_len + 1);
+                        if (filepath_alloc)
+                        {
+                            memcpy(filepath_alloc, incl_str, incl_len);
+                            filepath_alloc[incl_len] = '\0';
+                            struct fy_node *included = process_include(filepath_alloc, depth, dstDoc);
+                            if (included)
+                                copied_entry = process_node_copy(included, dstDoc, depth + 1);
+                            free(filepath_alloc);
+                        }                    
                     }
                 }
             }
@@ -1149,20 +1168,33 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
             const char *key_str = fy_node_get_scalar(key_node, &key_len);
 
             // Handle include keys like "include_0", "include", etc.
-            if (key_str && fy_node_get_scalar(val_node, NULL) && find_pattern_from_buffer(key_str, key_len, "include", strlen("include")))
+            size_t val_len = 0;
+            const char *val_str = fy_node_get_scalar(val_node, &val_len);
+            char *val_alloc = NULL;
+            if (val_str)
             {
-                const char *filepath = fy_node_get_scalar(val_node, NULL);
-                if (filepath)
+                val_alloc = malloc(val_len + 1);
+                if (val_alloc)
                 {
-                    struct fy_node *included = process_include(filepath, depth, dstDoc);
-                    if (included)
-                    {
-                        // If the included node is a mapping, merge it into the new_map
-                        merge_nodes(new_map, included);
-                        continue;
-                    }
+                    memcpy(val_alloc, val_str, val_len);
+                    val_alloc[val_len] = '\0';
                 }
             }
+            if (key_str && val_alloc && find_pattern_from_buffer(key_str, key_len, "include", strlen("include")))
+            {
+                /* ensure NUL-terminated string for include value */
+                struct fy_node *included = process_include(val_alloc, depth, dstDoc);
+                free(val_alloc);
+                val_alloc = NULL;
+                if (included)
+                {
+                    // If the included node is a mapping, merge it into the new_map
+                    merge_nodes(new_map, included);
+                    continue;
+                }
+            }
+            if (val_alloc)
+                free(val_alloc);
 
             // Regular case: recursive copy
             struct fy_node *copied_key = fy_node_copy(dstDoc, key_node);
