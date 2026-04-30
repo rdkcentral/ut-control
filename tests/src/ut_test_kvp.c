@@ -42,6 +42,12 @@
 #define KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML "assets/include/sequence-include.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_YAML "assets/yaml_tags.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_IN_SEQUENCE_YAML "assets/yaml_tags_in_sequence.yaml"
+#define KVP_VALID_TEST_URL_HTTPS "https://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/2s.yaml"
+#define KVP_VALID_TEST_URI_HTTP "http://localhost:8000/assets/yaml_tags.yaml"
+#define KVP_VALID_TEST_URI_FILE "file://assets/yaml_tags.yaml"
+#define KVP_VALID_TEST_NOT_VALID_URL_HTTPS "HTTPS://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/2s.yaml"
+#define KVP_VALID_TEST_NOT_VALID_URI_HTTP "HTTP://localhost:8000/assets/yaml_tags.yaml"
+#define KVP_VALID_TEST_NOT_VALID_URI_FILE "FILE://assets/yaml_tags.yaml"
 
 static ut_kvp_instance_t *gpMainTestInstance = NULL;
 static UT_test_suite_t *gpKVPSuite = NULL;
@@ -108,7 +114,7 @@ void test_ut_kvp_open( void )
     /* Negative Read Test, NULL PARAM */
     UT_LOG_STEP("ut_kvp_open( pInstance, NULL ) - Negative");
     status = ut_kvp_open( pInstance, NULL);
-    UT_ASSERT( status == UT_KVP_STATUS_INVALID_PARAM );
+    UT_ASSERT( status == UT_KVP_STATUS_NULL_PARAM );
 
     /* Filename doesn't exist */
     UT_LOG_STEP("ut_kvp_open( pInstance, %s - filename doesn't exist ) - Negative", KVP_VALID_TEST_NO_FILE);
@@ -120,9 +126,36 @@ void test_ut_kvp_open( void )
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_ZERO_LENGTH_YAML_FILE);
     UT_ASSERT( status == UT_KVP_STATUS_PARSING_ERROR );
 
+    /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URL_HTTPS PARAM */
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URL_HTTPS ) - Negative");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URL_HTTPS);
+    UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
+
+    /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URI_HTTP PARAM */
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_HTTP ) - Negative");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_HTTP);
+    UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
+
+    /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URI_FILE PARAM */
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_FILE ) - Negative");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_FILE);
+    UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
+
     /* Positive Tests */
     UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_YAML_FILE ) - Positive");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_YAML_FILE);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URL_HTTPS ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URL_HTTPS);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URI_HTTP ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URI_HTTP);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URI_FILE ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URI_FILE);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
 
     UT_LOG_STEP("ut_kvp_open( pInstance, %s ) - Postive", KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
