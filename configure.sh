@@ -247,7 +247,7 @@ build_openssl()
 {
     cd ${OPENSSL_DIR}
     mkdir -p ${OPENSSL_BUILD_DIR}
-    if [ "$TARGET" == "arm" ]; then
+    if [ "$TARGET" = "arm" ]; then
             # Derive the OpenSSL platform from the compiler triplet in CC
             # e.g. aarch64-rdk-linux-gcc -> aarch64 -> linux-aarch64
             #      arm-oe-linux-gnueabi-gcc -> arm -> linux-armv4
@@ -294,7 +294,7 @@ build_curl()
 {
     cd ${CURL_DIR}
     mkdir -p ${CURL_BUILD_DIR}
-    if [ "$TARGET" == "arm" ]; then
+    if [ "$TARGET" = "arm" ]; then
         # Derive the autoconf host triplet from the CC binary name
         # e.g. aarch64-rdk-linux-gcc -> aarch64-rdk-linux
         CC_BINARY=$(echo "$CC" | awk '{print $1}')
