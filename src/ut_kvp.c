@@ -37,14 +37,19 @@ ut_kvp_instance_t *gKVP_Instance = NULL;
 #define UT_KVP_MAGIC (0xdeadbeef)
 #define UT_KVP_MAX_INCLUDE_DEPTH 5
 
-#define UT_KVP_HTTPS_PREFIX "https://" 
+#define UT_KVP_HTTPS_PREFIX "https://"
 #define UT_KVP_HTTP_PREFIX "http://"
 #define UT_KVP_FILE_PREFIX "file://"
 
 // Automatically calculate lengths by subtracting the '\0' null terminator
 #define UT_KVP_HTTPS_PREFIX_LEN (sizeof(UT_KVP_HTTPS_PREFIX) - 1)
-#define UT_KVP_HTTP_PREFIX_LEN (sizeof(UT_KVP_HTTP_PREFIX) - 1) 
-#define UT_KVP_FILE_PREFIX_LEN (sizeof(UT_KVP_FILE_PREFIX) - 1) 
+#define UT_KVP_HTTP_PREFIX_LEN (sizeof(UT_KVP_HTTP_PREFIX) - 1)
+#define UT_KVP_FILE_PREFIX_LEN (sizeof(UT_KVP_FILE_PREFIX) - 1)
+
+// Wrapper template used to feed a URL to ut_kvp_openMemory() as a YAML include
+#define UT_KVP_INCLUDE_WRAPPER_FMT "include: %s\n"
+// Constant overhead of UT_KVP_INCLUDE_WRAPPER_FMT once %s is removed (i.e. "include: \n")
+#define UT_KVP_INCLUDE_WRAPPER_OVERHEAD (sizeof("include: \n") - 1)
 
 typedef struct
 {
@@ -104,9 +109,9 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
     pInternal = NULL;
 }
 
-static bool is_url(const char *input) 
+static bool isUrl(const char *input)
 {
-    if (input == NULL) 
+    if (input == NULL)
     {
         return false;
     }
@@ -116,7 +121,7 @@ static bool is_url(const char *input)
     {
         return true;
     }
-    
+
     // Check for https://
     if (strncmp(input, UT_KVP_HTTPS_PREFIX, UT_KVP_HTTPS_PREFIX_LEN) == 0)
     {
@@ -129,7 +134,7 @@ static bool is_url(const char *input)
 
 ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl)
 {
-     ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
 
     // Validate KVP instance handle
     if (pInternal == NULL)
@@ -144,27 +149,31 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
         return UT_KVP_STATUS_NULL_PARAM;
     }
 
-    // Determine if input is a URL(e.g., http:// or https://)
-    bool bFilenameIsAUrl = is_url(fileNameOrUrl);
-
-    // Handle URL-based input
-    if(bFilenameIsAUrl == true)
+    // Handle URL-based input (e.g. http:// or https://)
+    if (isUrl(fileNameOrUrl))
     {
-        char *pYaml = NULL;
+        // Size the wrapper buffer exactly for this URL — no fixed cap, no truncation
+        size_t urlLen = strlen(fileNameOrUrl);
+        size_t yamlSize = UT_KVP_INCLUDE_WRAPPER_OVERHEAD + urlLen + 1; /* +1 for '\0' */
+        char *pYaml = malloc(yamlSize);
 
-        pYaml = malloc(UT_KVP_MAX_ELEMENT_SIZE);
-
-        if ( pYaml == NULL )
+        if (pYaml == NULL)
         {
-            UT_LOG_ERROR("Malloc was not able to provide memory\n");
+            UT_LOG_ERROR("Failed to allocate %zu bytes for URL include wrapper", yamlSize);
             return UT_KVP_STATUS_PARSING_ERROR;
         }
 
-        snprintf(pYaml, UT_KVP_MAX_ELEMENT_SIZE, "include: %s\n", fileNameOrUrl);
-        pYaml[UT_KVP_MAX_ELEMENT_SIZE - 1] = '\0'; // Ensure null-termination
+        int written = snprintf(pYaml, yamlSize, UT_KVP_INCLUDE_WRAPPER_FMT, fileNameOrUrl);
+        if (written < 0 || (size_t)written >= yamlSize)
+        {
+            // Shouldn't happen given the exact sizing above, but handle defensively
+            UT_LOG_ERROR("snprintf truncation while building URL include wrapper");
+            free(pYaml);
+            return UT_KVP_STATUS_PARSING_ERROR;
+        }
 
         // Pass the dynamically allocated YAML string to openMemory() for parsing
-        ut_kvp_status_t status = ut_kvp_openMemory(pInstance, pYaml, strlen(pYaml));
+        ut_kvp_status_t status = ut_kvp_openMemory(pInstance, pYaml, (uint32_t)written);
         free(pYaml);
         return status;
     }

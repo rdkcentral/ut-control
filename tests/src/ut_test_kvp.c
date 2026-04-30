@@ -129,19 +129,16 @@ void test_ut_kvp_open( void )
     /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URL_HTTPS PARAM */
     UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URL_HTTPS ) - Negative");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URL_HTTPS);
-    printf("Status = %d\n", status);
     UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
 
     /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URI_HTTP PARAM */
     UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_HTTP ) - Negative");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_HTTP);
-    printf("Status = %d\n", status);
     UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
 
     /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URI_FILE PARAM */
     UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_FILE ) - Negative");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_FILE);
-    printf("Status = %d\n", status);
     UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
 
     /* Positive Tests */
