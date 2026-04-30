@@ -30,15 +30,17 @@ NC='\033[0m' # No Color
 
 # Function to print usage
 usage() {
-    echo -e "${YELLOW}Usage: $0 -u <REPO_URL> -t <ut_control_branch_name>>${NC}"
+    echo -e "${YELLOW}Usage: $0 -u <REPO_URL> -t <ut_control_branch_name> [-T <cross_toolchain_path>]${NC}"
+    echo -e "${YELLOW}  -T  Path to cross-compilation toolchain env-setup script${NC}"
     exit 1
 }
 
 # Parse command-line arguments
-while getopts "u:t:" opt; do
+while getopts "u:t:T:" opt; do
     case $opt in
         u) REPO_URL="$OPTARG" ;;
         t) ut_control_branch_name="$OPTARG" ;;
+        T) CROSS_TOOLCHAIN_PATH="$OPTARG" ;;
         *) usage ;;
     esac
 done
@@ -61,6 +63,19 @@ if [ -z "$REPO_URL" ]; then
     REPO_URL=git@github.com:rdkcentral/ut-control.git
 fi
 REPO_NAME=$(basename "$REPO_URL" .git)
+
+# Prompt user for cross-compilation toolchain path if not supplied via -T
+SKIP_CROSS=false
+if [ -z "$CROSS_TOOLCHAIN_PATH" ]; then
+    echo -e "${YELLOW}Cross-compilation toolchain path not provided.${NC}"
+    read -rp "Enter path to cross-compilation toolchain env file (or press Enter to skip cross compilation): " CROSS_TOOLCHAIN_INPUT
+    if [ -z "$CROSS_TOOLCHAIN_INPUT" ]; then
+        echo -e "${YELLOW}No toolchain path given. Cross compilation tests will be skipped.${NC}"
+        SKIP_CROSS=true
+    else
+        CROSS_TOOLCHAIN_PATH="$CROSS_TOOLCHAIN_INPUT"
+    fi
+fi
 
 # # Set compiler type based on the environment passed
 # case "$environment" in
@@ -183,6 +198,19 @@ validate_curl_all_other_platforms() {
 }
 
 
+# Description: Sets up the cross-compilation toolchain.
+# Requires the user to supply -T <path> or provide it interactively at startup.
+setup_cross_toolchain() {
+    if [ ! -f "$CROSS_TOOLCHAIN_PATH" ]; then
+        echo -e "${YELLOW}[WARN] Cross toolchain not found at: $CROSS_TOOLCHAIN_PATH${NC}"
+        echo -e "${YELLOW}Cross compilation tests will not be executed.${NC}"
+        SKIP_CROSS=true
+        return
+    fi
+
+    echo -e "${GREEN}Using cross toolchain: $CROSS_TOOLCHAIN_PATH${NC}"
+}
+
 # Description: This function validates the CURL static library based on the environment.
 validate_curl_library_created_correctly() {
     local environment="$1"
@@ -268,6 +296,12 @@ run_checks() {
         else
             echo -e "${GREEN}Openssl static lib does not exist. PASS ${NC}"
         fi
+    elif [[ "$environment" == "cross" ]]; then
+        if [ -f "$OPENSSL_STATIC_LIB" ]; then
+            echo -e "${GREEN}$OPENSSL_STATIC_LIB exists. PASS ${NC}"
+        else
+            echo -e "${RED}Openssl static lib does not exist. FAIL ${NC}"
+        fi
     fi
 
     # Test for CMAKE host binary
@@ -302,6 +336,12 @@ run_checks() {
             echo -e "${RED}CMake host binary exists. FAIL ${NC}"
         fi
     elif [[ "$environment" == "kirkstone_linux" ]]; then
+        if [ ! -f "$CMAKE_HOST_BIN" ]; then
+            echo -e "${GREEN}CMake host binary does not exist. PASS ${NC}"
+        else
+            echo -e "${RED}CMake host binary exists. FAIL ${NC}"
+        fi
+    elif [[ "$environment" == "cross" ]]; then
         if [ ! -f "$CMAKE_HOST_BIN" ]; then
             echo -e "${GREEN}CMake host binary does not exist. PASS ${NC}"
         else
@@ -351,21 +391,44 @@ print_results() {
     run_checks "kirkstone_linux" "linux" $ut_control_branch_name
     popd > /dev/null
 
+    #Results for cross
+    if [ "$SKIP_CROSS" = true ]; then
+        echo -e "${YELLOW}Cross compilation tests were skipped (no toolchain path provided).${NC}"
+    else
+        PLAT_DIR="${REPO_NAME}-cross"
+        pushd ${PLAT_DIR} > /dev/null
+        run_checks "cross" "arm" $ut_control_branch_name
+        popd > /dev/null
+    fi
+
     popd > /dev/null
 
 }
-
-# Environment-specific setups and execution
-export -f run_make_with_logs
-export -f run_checks
-export -f usage
-export -f error_exit
 
 run_on_ubuntu_linux() {
     pushd ${MY_DIR} > /dev/null
     run_git_clone "ubuntu"
     run_make_with_logs "linux"
     run_checks "ubuntu" "linux" "$ut_control_branch_name"
+    popd > /dev/null
+}
+
+# Function to build using a local cross-compilation toolchain (any OE/Yocto toolchain)
+run_on_cross() {
+    setup_cross_toolchain
+    [ "$SKIP_CROSS" = true ] && return
+
+    pushd ${MY_DIR} > /dev/null
+    run_git_clone "cross"
+
+    # Source the toolchain inside a subshell to avoid polluting the parent environment
+    (
+        source "$CROSS_TOOLCHAIN_PATH"
+        echo -e "${YELLOW}Cross toolchain active: CC=$CC${NC}"
+        run_make_with_logs "arm"
+    )
+
+    run_checks "cross" "arm" "$ut_control_branch_name"
     popd > /dev/null
 }
 
@@ -407,8 +470,21 @@ EOF
     popd > /dev/null
 }
 
+# Environment-specific setups and execution
+export -f run_make_with_logs
+export -f run_checks
+export -f setup_cross_toolchain
+export -f run_on_cross
+export -f usage
+export -f error_exit
+
 # Run tests in different environments
 run_on_ubuntu_linux
+if [ "$SKIP_CROSS" = true ]; then
+    echo -e "${YELLOW}Skipping cross compilation tests (no toolchain path provided).${NC}"
+else
+    run_on_cross
+fi
 run_on_platform "dunfell" "linux"
 run_on_platform "kirkstone" "linux"
 run_on_platform "VM-SYNC" "linux"
