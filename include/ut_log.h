@@ -62,6 +62,38 @@ extern "C"
 /**! Logs assertion failure messages with a prefix. */
 #define UT_LOG_ASSERT(prefix, format, ...)  UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ASSERT  " UT_LOG_ASCII_NC, UT_LOG_ASCII_RED#prefix ":" UT_LOG_ASCII_NC #format, ## __VA_ARGS__)
 
+/* ── Compile-time log level filtering ──────────────────────────────────────── */
+#define UT_LOG_LEVEL_NONE    0
+#define UT_LOG_LEVEL_ERROR   1
+#define UT_LOG_LEVEL_WARNING 2
+#define UT_LOG_LEVEL_INFO    3
+#define UT_LOG_LEVEL_DEBUG   4
+
+#ifndef UT_LOG_LEVEL
+    #define UT_LOG_LEVEL UT_LOG_LEVEL_INFO
+#endif
+
+// DEBUG
+#if UT_LOG_LEVEL < UT_LOG_LEVEL_DEBUG
+    #undef  UT_LOG_DEBUG
+    #define UT_LOG_DEBUG(...)
+#endif
+// INFO
+#if UT_LOG_LEVEL < UT_LOG_LEVEL_INFO
+    #undef  UT_LOG_INFO
+    #define UT_LOG_INFO(...)
+#endif
+// WARNING
+#if UT_LOG_LEVEL < UT_LOG_LEVEL_WARNING
+    #undef  UT_LOG_WARNING
+    #define UT_LOG_WARNING(...)
+#endif
+// ERROR
+#if UT_LOG_LEVEL < UT_LOG_LEVEL_ERROR
+    #undef  UT_LOG_ERROR
+    #define UT_LOG_ERROR(...)
+#endif
+/* ─────────────────────────────────────────────────────────────────────────── */
 
 /**!
  * @brief Sets the path for the active log file.
