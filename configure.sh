@@ -36,7 +36,7 @@ pushd ${MY_DIR} > /dev/null
 
 FRAMEWORK_DIR=${MY_DIR}/framework/${TARGET}
 LIBYAML_DIR=${FRAMEWORK_DIR}/libfyaml-master
-LIBYAML_VERSION=997b480cc4239a7f55771535dff52ad69bd4eb5b #30th September 2024
+LIBYAML_VERSION=v0.9.6 # March 15 2026
 
 ASPRINTF_DIR=${FRAMEWORK_DIR}/asprintf
 ASPRINTF_VERSION=0.0.3
@@ -80,12 +80,9 @@ pushd ${FRAMEWORK_DIR} > /dev/null
 if [ -d "${LIBYAML_DIR}" ]; then
     echo "Framework [libfyaml] already exists"
 else
-    echo "wget libfyaml in ${LIBYAML_DIR}"
+    echo "git clone libfyaml in ${LIBYAML_DIR}"
     # Pull fixed version
-    wget https://github.com/pantoniou/libfyaml/archive/${LIBYAML_VERSION}.zip --no-check-certificate
-    unzip ${LIBYAML_VERSION}.zip
-    mv libfyaml-${LIBYAML_VERSION} libfyaml-master
-    echo "Patching Framework [${PWD}]"
+    git clone -b ${LIBYAML_VERSION} https://github.com/pantoniou/libfyaml.git libfyaml-master
     # Copy the patch file from src directory
     cp ../../src/libyaml/patches/CorrectWarningsAndBuildIssuesInLibYaml.patch  .
     patch -i CorrectWarningsAndBuildIssuesInLibYaml.patch -p0

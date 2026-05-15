@@ -54,6 +54,7 @@ SRC_DIRS += $(LIBFYAML_DIR)/src/util
 SRC_DIRS += $(LIBFYAML_DIR)/src/xxhash
 SRC_DIRS += $(ASPRINTF_DIR)
 INC_DIRS = $(LIBFYAML_DIR)/include
+INC_DIRS += $(LIBFYAML_DIR)/src/generic
 INC_DIRS += $(ASPRINTF_DIR)
 
 # LIBFYAML Requirements
@@ -93,7 +94,7 @@ ifeq ($(TARGET),arm)
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
-XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl
+XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl -lm
 else
 #linux case
 # Check if the directory exists
