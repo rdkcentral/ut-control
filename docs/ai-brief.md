@@ -1,8 +1,11 @@
 # ut-control -- AI-Ingestible Framework Brief
 
-> Single-file reference for AI tools. Covers every public C API, the build
-> system, vendored dependencies, and integration points with ut-core and
-> ut-raft.
+> Single-file reference for AI tools. Covers the primary public C APIs, the
+> build system, vendored dependencies, and integration points with ut-core and
+> ut-raft. It is not an exhaustive symbol listing -- some public constants and
+> macros (e.g. `UT_KVP_STATUS_MAX`, `UT_CONTROL_PLANE_MAX_CALLBACK_ENTRIES`,
+> `UT_LOG_MAX_PATH`, the `UT_LOG_ASCII_*` colour codes) are referenced only
+> where relevant; consult the headers for the complete set.
 
 **Repository:** `rdkcentral/ut-control`
 **License:** Apache-2.0
@@ -39,8 +42,10 @@ plane callbacks, and structured logging.
 - Supports hex literals (`0x1A`) in integer fields.
 - Supports `!include` tags and `include` mapping keys for file/URL inclusion
   (recursive up to depth 5). URL includes use libcurl.
-- Multiple files can be loaded into the same instance; subsequent loads merge
-  into the existing document tree.
+- Multiple files can be loaded into the same instance via `ut_kvp_open()`;
+  subsequent `ut_kvp_open()` calls merge into the existing document tree.
+  (Note: `ut_kvp_openMemory()` does not accumulate across repeated calls --
+  it resets the instance root to the newly parsed payload.)
 
 ### 2.2 Instance Lifecycle
 
@@ -63,7 +68,7 @@ ut_kvp_destroyInstance(inst); // free the instance itself
 | `ut_kvp_instance_t *ut_kvp_createInstance(void)` | Allocate a new KVP instance. Returns NULL on failure. |
 | `void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)` | Close + free an instance. |
 | `ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl)` | Parse a YAML/JSON file (or URL) into the instance. Merges with existing data. |
-| `ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length)` | Parse a caller-owned memory buffer. Caller retains ownership of `pData`. |
+| `ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length)` | Parse a caller-owned memory buffer. Caller retains ownership of `pData`. Resets the instance root to this payload (does not merge across repeated calls). |
 | `void ut_kvp_close(ut_kvp_instance_t *pInstance)` | Release parsed data but keep the instance handle valid. |
 
 #### Typed Getters
@@ -112,6 +117,7 @@ return the typed value (or 0/false on error). Keys use dot-notation.
 | `UT_KVP_STATUS_NO_DATA` | No document loaded |
 | `UT_KVP_STATUS_NULL_PARAM` | NULL pointer passed |
 | `UT_KVP_STATUS_INVALID_INSTANCE` | Bad/uninitialized instance handle |
+| `UT_KVP_STATUS_MAX` | Out-of-range marker; not a valid return code |
 
 ### 2.5 Constants
 
@@ -133,7 +139,9 @@ return the typed value (or 0/false on error). Keys use dot-notation.
   - **WebSocket service thread** -- calls `lws_service()` in a tight loop.
   - **State machine thread** -- dequeues messages, parses them as KVP, and
     dispatches to registered callbacks.
-- Message queue: fixed ring of 32 slots protected by a mutex + condvar.
+- Message queue: fixed-size array of 32 slots (`MAX_MESSAGES`) with FIFO
+  semantics, protected by a mutex + condvar. Dequeue removes the head element
+  and shifts the remaining entries down (it is not a ring buffer).
 - Callback matching: when a message arrives, it is parsed into a transient
   `ut_kvp_instance_t`. For each registered callback, if
   `ut_kvp_fieldPresent(instance, registeredKey)` is true, that callback fires.
@@ -223,6 +231,11 @@ curl -X POST -H "Content-Type: application/x-yaml" \
      --data-binary "@payload.yaml" http://host:8080/api/postKVP
 ```
 
+The HTTP-POST endpoint has a hard payload limit of 4096 bytes
+(`MAX_POST_DATA_SIZE`); posts whose accumulated body would reach or exceed
+that size are rejected. Clients must keep individual payloads under this
+limit.
+
 In WebSocket mode, Python clients send via the `websockets` library:
 ```python
 async with websockets.connect("ws://host:8080") as ws:
@@ -235,8 +248,11 @@ async with websockets.connect("ws://host:8080") as ws:
 
 ### 4.1 Design
 
-- Dual output: writes to **stdout** (with ANSI colour) and to a **log file**
-  (with colour codes stripped).
+- Dual output: writes to **stdout** (with ANSI colour) and to a **log file**.
+  The `UT_LOG_*` macros route through `UT_logPrefix()`, which strips ANSI
+  colour codes before writing to the file. `UT_log()` writes its buffer to
+  the file without stripping; the `UT_LOG_*` macros are the intended public
+  interface.
 - Default log path: `/tmp/ut-log_YYYY-MM-DD_HHMMSS.log`.
 - Log file is opened/closed on every write (acknowledged as a known FIXME for
   future optimization).
@@ -294,7 +310,7 @@ Downloads and builds all vendored dependencies into
 | **asprintf** | 0.0.3 | Portable `asprintf()` (compiled into libut_control) |
 | **libwebsockets** | 4.3.3 | WebSocket/HTTP server (static `.a` linked in) |
 | **curl** | 8.8.0 | HTTP client for `!include` URL resolution (static or system) |
-| **OpenSSL** | 1.1.1w | TLS for libwebsockets/curl (static or system) |
+| **OpenSSL** | 1.1.1w | Crypto dependency (static or system). Note: the default build disables TLS -- libwebsockets is built with `-DLWS_WITH_SSL=OFF` and curl with `-DCMAKE_USE_OPENSSL=OFF`, so `wss://`/HTTPS are not enabled. |
 | **CMake** | 3.30.0 | Build tool for libwebsockets (downloaded only if system cmake < 3.13) |
 
 The script prefers system-installed OpenSSL, curl, and cmake when available.
@@ -365,7 +381,7 @@ ut-control/
     asprintf/patches/        -- Patch for vendored asprintf
     libyaml/patches/         -- Patch for vendored libfyaml
   tests/
-    src/                     -- CUnit-based test suites (L1 unit, L2 integration)
+    src/                     -- test suites built on the ut-core test framework (`<ut.h>`: `UT_init`, `UT_run_tests`, `UT_add_suite`)
     websocket-clients/       -- Python/curl client scripts for control plane testing
   configure.sh               -- Downloads + builds vendored dependencies
   Makefile                   -- Builds libut_control.so
