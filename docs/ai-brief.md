@@ -62,7 +62,7 @@ ut_kvp_destroyInstance(inst); // free the instance itself
 |---|---|
 | `ut_kvp_instance_t *ut_kvp_createInstance(void)` | Allocate a new KVP instance. Returns NULL on failure. |
 | `void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)` | Close + free an instance. |
-| `ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)` | Parse a YAML/JSON file into the instance. Merges with existing data. |
+| `ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl)` | Parse a YAML/JSON file (or URL) into the instance. Merges with existing data. |
 | `ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length)` | Parse a caller-owned memory buffer. Caller retains ownership of `pData`. |
 | `void ut_kvp_close(ut_kvp_instance_t *pInstance)` | Release parsed data but keep the instance handle valid. |
 
@@ -78,11 +78,12 @@ return the typed value (or 0/false on error). Keys use dot-notation.
 | `uint16_t ut_kvp_getUInt16Field(inst, key)` | Unsigned 16-bit integer. |
 | `uint32_t ut_kvp_getUInt32Field(inst, key)` | Unsigned 32-bit integer. |
 | `uint64_t ut_kvp_getUInt64Field(inst, key)` | Unsigned 64-bit integer. |
+| `int8_t ut_kvp_getInt8Field(inst, key)` | Signed 8-bit integer. Supports hex (`0x1A`). |
+| `int16_t ut_kvp_getInt16Field(inst, key)` | Signed 16-bit integer. |
+| `int32_t ut_kvp_getInt32Field(inst, key)` | Signed 32-bit integer. |
+| `int64_t ut_kvp_getInt64Field(inst, key)` | Signed 64-bit integer. |
 | `float ut_kvp_getFloatField(inst, key)` | Single-precision float. |
 | `double ut_kvp_getDoubleField(inst, key)` | Double-precision float. |
-
-> **Note:** Signed integer getters (`getInt8Field`, etc.) are declared as TODO
-> in the header but not yet implemented.
 
 #### String & Data Retrieval
 
@@ -289,7 +290,7 @@ Downloads and builds all vendored dependencies into
 
 | Dependency | Version / Commit | Purpose |
 |---|---|---|
-| **libfyaml** | `997b480cc4` (Sep 2024) | YAML parser (compiled into libut_control) |
+| **libfyaml** | `v0.9.6` (Mar 2026) | YAML parser (compiled into libut_control) |
 | **asprintf** | 0.0.3 | Portable `asprintf()` (compiled into libut_control) |
 | **libwebsockets** | 4.3.3 | WebSocket/HTTP server (static `.a` linked in) |
 | **curl** | 8.8.0 | HTTP client for `!include` URL resolution (static or system) |
@@ -340,8 +341,12 @@ a running test binary's control plane by:
 Example clients are in `tests/websocket-clients/`:
 - `python-client-send-yaml.py` -- sends YAML over WebSocket
 - `python-client-send-json.py` -- sends JSON over WebSocket
+- `simple_websocket.py` -- minimal WebSocket client
 - `curl-client-yaml.sh` -- sends YAML via HTTP POST
 - `curl-client-json.sh` -- sends JSON via HTTP POST
+- `curl-client-binary.sh` -- sends binary data via HTTP POST
+
+(`example.yaml` / `example.json` in the same directory are sample payloads.)
 
 ---
 
