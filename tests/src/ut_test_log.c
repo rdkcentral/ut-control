@@ -18,8 +18,6 @@
  */
 
 /* Standard Libraries */
-#include <stdlib.h>
-#include <string.h>
 #include <assert.h>
 
 /* Module Includes */
@@ -29,10 +27,12 @@
 static UT_test_suite_t *gpLogSuite = NULL;
 static UT_test_suite_t *gpLogSuite2 = NULL;
 
-/* Helper used to detect whether a macro argument is evaluated (i.e. not suppressed). */
+/* Helper used to detect whether a macro argument is evaluated (i.e. not suppressed).
+ * Marked unused to suppress -Wunused-function when all log macros that reference it
+ * are suppressed by a low UT_LOG_LEVEL (e.g. UT_LOG_LEVEL_NONE). */
 static int g_call_count = 0;
 
-static const char *count_and_return(const char *msg)
+static __attribute__((unused)) const char *count_and_return(const char *msg)
 {
     g_call_count++;
     return msg;
@@ -57,70 +57,81 @@ static void test_ut_log_level_constant_values(void)
     UT_ASSERT(UT_LOG_LEVEL_WARNING < UT_LOG_LEVEL_INFO);
     UT_ASSERT(UT_LOG_LEVEL_INFO    < UT_LOG_LEVEL_DEBUG);
 
-    UT_LOG("test_ut_log_level_constant_values passed\n");
+    UT_LOG("test_ut_log_level_constant_values end\n");
 }
 
 /**
- * @brief Verify that the default UT_LOG_LEVEL equals UT_LOG_LEVEL_INFO (3) when not
+ * @brief Verify that the default UT_LOG_LEVEL equals UT_LOG_LEVEL_WARNING (2) when not
  *        overridden at compile time.
+ *
+ * @note This test assumes the binary was compiled WITHOUT a -DUT_LOG_LEVEL override.
+ *       If the suite is built with a different level this assertion will fail by design.
+ *       Because ut_log.h has an include guard, only the level baked into this binary
+ *       can be exercised; separate builds are required to cover other levels.
  */
 static void test_ut_log_default_level(void)
 {
     UT_LOG("test_ut_log_default_level\n");
 
-    UT_ASSERT(UT_LOG_LEVEL == UT_LOG_LEVEL_INFO);
+    UT_ASSERT(UT_LOG_LEVEL == UT_LOG_LEVEL_WARNING);
 
-    UT_LOG("test_ut_log_default_level passed\n");
+    UT_LOG("test_ut_log_default_level end\n");
 }
 
 /**
- * @brief Verify that the log macros which are active at the default INFO level
- *        (UT_LOG_INFO, UT_LOG_WARNING, UT_LOG_ERROR) execute without crashing
- *        and produce output.
+ * @brief Verify that the log macros which are active at the default WARNING level
+ *        (UT_LOG_WARNING, UT_LOG_ERROR) execute without crashing and produce output.
+ *
+ * @note At the default UT_LOG_LEVEL_WARNING (2), UT_LOG_INFO and UT_LOG_DEBUG are
+ *       suppressed and therefore not exercised here.
  */
-static void test_ut_log_active_macros_at_info_level(void)
+static void test_ut_log_active_macros_at_warning_level(void)
 {
-    UT_LOG("test_ut_log_active_macros_at_info_level\n");
+    UT_LOG("test_ut_log_active_macros_at_warning_level\n");
 
-    /* These should all expand to real calls at default UT_LOG_LEVEL = INFO */
+    /* These should all expand to real calls at default UT_LOG_LEVEL = WARNING */
     UT_LOG_ERROR("error macro test: value=%d", 1);
     UT_LOG_WARNING("warning macro test: value=%d", 2);
-    UT_LOG_INFO("info macro test: value=%d", 3);
 
-    UT_LOG("test_ut_log_active_macros_at_info_level passed\n");
+    UT_LOG("test_ut_log_active_macros_at_warning_level end\n");
 }
 
 /**
- * @brief Verify that UT_LOG_DEBUG is suppressed at the default INFO level.
+ * @brief Verify that UT_LOG_DEBUG is suppressed at the default WARNING level.
  *
  * When UT_LOG_LEVEL < UT_LOG_LEVEL_DEBUG the macro is redefined to expand to
- * nothing, so any argument expressions must NOT be evaluated.
+ * do { } while (0), so any argument expressions must NOT be evaluated.
+ *
+ * @note This test is only meaningful when the binary is compiled at the default
+ *       UT_LOG_LEVEL_WARNING (2). Overriding the level at build time (e.g.
+ *       -DUT_LOG_LEVEL=4) will cause the macro to remain active and the
+ *       g_call_count assertion below will fail. Due to ut_log.h's include guard,
+ *       only one log level can be tested per binary.
  */
-static void test_ut_log_debug_suppressed_at_info_level(void)
+static void test_ut_log_debug_suppressed_at_warning_level(void)
 {
-    UT_LOG("test_ut_log_debug_suppressed_at_info_level\n");
+    UT_LOG("test_ut_log_debug_suppressed_at_warning_level\n");
 
     g_call_count = 0;
     UT_LOG_DEBUG("%s", count_and_return("debug suppressed test"));
 
-    /* At default level (INFO=3) < DEBUG(4), so the macro is a no-op and
+    /* At default level (WARNING=2) < DEBUG(4), so the macro is a no-op and
      * count_and_return() must NOT have been called. */
     UT_ASSERT(g_call_count == 0);
 
-    UT_LOG("test_ut_log_debug_suppressed_at_info_level passed\n");
+    UT_LOG("test_ut_log_debug_suppressed_at_warning_level end\n");
 }
 
 /**
  * @brief Verify that the active macros do not suppress their arguments at
- *        the default INFO level (INFO, WARNING, ERROR arguments are evaluated).
+ *        the default WARNING level (WARNING, ERROR arguments are evaluated).
+ *
+ * @note At the default UT_LOG_LEVEL_WARNING (2), UT_LOG_INFO is suppressed so
+ *       its arguments are NOT evaluated.
  */
 static void test_ut_log_active_macros_evaluate_args(void)
 {
     UT_LOG("test_ut_log_active_macros_evaluate_args\n");
-
-    g_call_count = 0;
-    UT_LOG_INFO("%s", count_and_return("info arg"));
-    UT_ASSERT(g_call_count == 1);
 
     g_call_count = 0;
     UT_LOG_WARNING("%s", count_and_return("warning arg"));
@@ -130,21 +141,25 @@ static void test_ut_log_active_macros_evaluate_args(void)
     UT_LOG_ERROR("%s", count_and_return("error arg"));
     UT_ASSERT(g_call_count == 1);
 
-    UT_LOG("test_ut_log_active_macros_evaluate_args passed\n");
+    UT_LOG("test_ut_log_active_macros_evaluate_args end\n");
 }
 
 /**
- * @brief Verify UT_LOG_INFO with multiple format specifiers works correctly.
+ * @brief Verify active log macros handle multiple format specifiers correctly.
+ *
+ * @note Only UT_LOG_WARNING and UT_LOG_ERROR are exercised here because those
+ *       are the only macros active at the default UT_LOG_LEVEL_WARNING (2).
+ *       UT_LOG_INFO would silently expand to a no-op at this level.
  */
 static void test_ut_log_format_specifiers(void)
 {
     UT_LOG("test_ut_log_format_specifiers\n");
 
-    UT_LOG_INFO("int=%d str=%s float=%.2f", 42, "hello", 3.14f);
-    UT_LOG_WARNING("hex=0x%x unsigned=%u", 0xDEAD, 255u);
+    UT_LOG_WARNING("int=%d str=%s float=%.2f", 42, "hello", 3.14f);
+    UT_LOG_WARNING("hex=0x%x unsigned=%u", 0xDEADu, 255u);
     UT_LOG_ERROR("long=%ld char=%c", 123456L, 'Z');
 
-    UT_LOG("test_ut_log_format_specifiers passed\n");
+    UT_LOG("test_ut_log_format_specifiers end\n");
 }
 
 void register_log_functions(void)
@@ -153,13 +168,13 @@ void register_log_functions(void)
     assert(gpLogSuite != NULL);
 
     UT_add_test(gpLogSuite, "log level constant values",    test_ut_log_level_constant_values);
-    UT_add_test(gpLogSuite, "log default level is INFO",    test_ut_log_default_level);
-    UT_add_test(gpLogSuite, "log format specifiers",        test_ut_log_format_specifiers);
+    UT_add_test(gpLogSuite, "log default level is WARNING",  test_ut_log_default_level);
+    UT_add_test(gpLogSuite, "log format specifiers",          test_ut_log_format_specifiers);
 
     gpLogSuite2 = UT_add_suite("ut-log - macro suppression tests", NULL, NULL);
     assert(gpLogSuite2 != NULL);
 
-    UT_add_test(gpLogSuite2, "log active macros at INFO level",       test_ut_log_active_macros_at_info_level);
-    UT_add_test(gpLogSuite2, "log DEBUG suppressed at INFO level",    test_ut_log_debug_suppressed_at_info_level);
+    UT_add_test(gpLogSuite2, "log active macros at WARNING level",    test_ut_log_active_macros_at_warning_level);
+    UT_add_test(gpLogSuite2, "log DEBUG suppressed at WARNING level", test_ut_log_debug_suppressed_at_warning_level);
     UT_add_test(gpLogSuite2, "log active macros evaluate arguments",  test_ut_log_active_macros_evaluate_args);
 }

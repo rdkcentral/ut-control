@@ -62,7 +62,7 @@ extern "C"
 /**! Logs assertion failure messages with a prefix. */
 #define UT_LOG_ASSERT(prefix, format, ...)  UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ASSERT  " UT_LOG_ASCII_NC, UT_LOG_ASCII_RED#prefix ":" UT_LOG_ASCII_NC #format, ## __VA_ARGS__)
 
-/* ── Compile-time log level filtering ──────────────────────────────────────── */
+/* Compile-time log level filtering */
 #define UT_LOG_LEVEL_NONE    0
 #define UT_LOG_LEVEL_ERROR   1
 #define UT_LOG_LEVEL_WARNING 2
@@ -70,30 +70,39 @@ extern "C"
 #define UT_LOG_LEVEL_DEBUG   4
 
 #ifndef UT_LOG_LEVEL
-    #define UT_LOG_LEVEL UT_LOG_LEVEL_INFO
+    #define UT_LOG_LEVEL UT_LOG_LEVEL_WARNING
+#endif
+
+#if UT_LOG_LEVEL < UT_LOG_LEVEL_NONE || UT_LOG_LEVEL > UT_LOG_LEVEL_DEBUG
+    /* NOTE: this guard catches out-of-range numeric values, but cannot catch
+     * non-numeric tokens (e.g. -DUT_LOG_LEVEL=DEBUG) because the preprocessor
+     * treats unknown identifiers as 0, which silently passes this check.
+     * Use the build system (make UT_LOG_LEVEL=<n>) which validates the value
+     * before passing it to the compiler. */
+    #error "UT_LOG_LEVEL must be a number: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG"
 #endif
 
 // DEBUG
 #if UT_LOG_LEVEL < UT_LOG_LEVEL_DEBUG
     #undef  UT_LOG_DEBUG
-    #define UT_LOG_DEBUG(...)
+    #define UT_LOG_DEBUG(format, ...)  do { } while (0)
 #endif
 // INFO
 #if UT_LOG_LEVEL < UT_LOG_LEVEL_INFO
     #undef  UT_LOG_INFO
-    #define UT_LOG_INFO(...)
+    #define UT_LOG_INFO(format, ...)   do { } while (0)
 #endif
 // WARNING
 #if UT_LOG_LEVEL < UT_LOG_LEVEL_WARNING
     #undef  UT_LOG_WARNING
-    #define UT_LOG_WARNING(...)
+    #define UT_LOG_WARNING(format, ...) do { } while (0)
 #endif
 // ERROR
 #if UT_LOG_LEVEL < UT_LOG_LEVEL_ERROR
     #undef  UT_LOG_ERROR
-    #define UT_LOG_ERROR(...)
+    #define UT_LOG_ERROR(format, ...)  do { } while (0)
 #endif
-/* ─────────────────────────────────────────────────────────────────────────── */
+/*------------------------------------- */
 
 /**!
  * @brief Sets the path for the active log file.
