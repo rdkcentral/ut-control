@@ -558,6 +558,35 @@ void test_ut_kvp_string(void)
 
 }
 
+/*
+ * Regression test for gh #126 : an oversized dotted key must not overflow the
+ * internal UT_KVP_MAX_ELEMENT_SIZE conversion buffer in convert_dot_to_slash().
+ * The key is converted/truncated within bounds and the call fails safely
+ * (the truncated key matches no entry) instead of corrupting the stack.
+ */
+void test_ut_kvp_oversizedKey(void)
+{
+    char result_kvp[UT_KVP_MAX_ELEMENT_SIZE] = {0xff};
+    char oversized_key[(UT_KVP_MAX_ELEMENT_SIZE * 2) + 1];
+    ut_kvp_status_t status;
+    size_t i;
+
+    /* Build a dotted key longer than UT_KVP_MAX_ELEMENT_SIZE so the
+     * conversion path must truncate rather than overflow. */
+    for (i = 0; i < sizeof(oversized_key) - 1; i++)
+    {
+        oversized_key[i] = ((i % 8) == 7) ? '.' : 'a';
+    }
+    oversized_key[sizeof(oversized_key) - 1] = '\0';
+
+    UT_LOG_STEP("ut_kvp_getStringField() - Oversized dotted key must fail safely (gh #126)");
+    status = ut_kvp_getStringField(gpMainTestInstance, oversized_key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE);
+    /* The truncated key cannot match a real entry; the only requirement is
+     * that the call returns (no buffer overflow / crash) with a failure. */
+    UT_ASSERT(status != UT_KVP_STATUS_SUCCESS);
+    UT_LOG("oversized key status[%d]", status);
+}
+
 void test_ut_kvp_dataByte( void )
 {
     int bytes_count = 0;
@@ -1458,6 +1487,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite2, "kvp uint16", test_ut_kvp_uint16);
     UT_add_test(gpKVPSuite2, "kvp bool", test_ut_kvp_bool);
     UT_add_test(gpKVPSuite2, "kvp string", test_ut_kvp_string);
+    UT_add_test(gpKVPSuite2, "kvp oversized key", test_ut_kvp_oversizedKey);
     UT_add_test(gpKVPSuite2, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite2, "kvp uint64", test_ut_kvp_uint64);
     UT_add_test(gpKVPSuite2, "kvp int8", test_ut_kvp_int8);
