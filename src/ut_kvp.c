@@ -993,29 +993,20 @@ static bool str_to_bool(const char *string)
 
 static void convert_dot_to_slash(const char *key, char *output)
 {
-    if (strchr(key, '.'))
+    size_t i;
+
+    /* Copy at most UT_KVP_MAX_ELEMENT_SIZE - 1 characters so the NUL
+     * terminator always lands inside the caller's UT_KVP_MAX_ELEMENT_SIZE
+     * buffer, converting '.' path separators to '/' as we go. */
+    for (i = 0; i < UT_KVP_MAX_ELEMENT_SIZE - 1 && key[i] != '\0'; i++)
     {
-        for (int i = 0; i <= UT_KVP_MAX_ELEMENT_SIZE; i++)
-        {
-            char key_val = key[i];
-            if (key_val == '\0')
-            {
-                break;
-            }
-            if (key_val == '.')
-            {
-                output[i] = '/';
-            }
-            else
-            {
-                output[i] = key_val;
-            }
-        }
-        output[strlen(key)] = '\0';
+        output[i] = (key[i] == '.') ? '/' : key[i];
     }
-    else
+    output[i] = '\0';
+
+    if (key[i] != '\0')
     {
-        snprintf(output, UT_KVP_MAX_ELEMENT_SIZE, "%s", key);
+        UT_LOG_ERROR("Key exceeds UT_KVP_MAX_ELEMENT_SIZE [%d]; truncated", UT_KVP_MAX_ELEMENT_SIZE);
     }
 }
 
