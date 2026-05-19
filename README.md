@@ -15,10 +15,10 @@ A C library that provides a control plane, key-value pair (KVP) configuration, a
 
 ```sh
 # Linux host build
-make TARGET=linux                            # defaults to UT_LOG_LEVEL_WARNING
+make TARGET=linux                            # default: UT_LOG_LEVEL_WARNING
 
 # ARM cross-build
-make TARGET=arm                              # defaults to UT_LOG_LEVEL_WARNING
+make TARGET=arm                              # default: UT_LOG_LEVEL_WARNING
 ```
 
 The output is `build/<TARGET>/lib/libut_control.so`.
@@ -32,52 +32,33 @@ cd build/bin
 ./ut_control_test.sh
 ```
 
-> **Note:** Each binary is compiled at a fixed log level because the build system applies a single `UT_LOG_LEVEL` value to all compilation units. Tests that assert on `UT_LOG_LEVEL` or macro suppression (e.g. `test_ut_log_default_level`) assume the binary was built **without** a `UT_LOG_LEVEL` override. Separate builds are required to cover other log levels.
-
 ---
 
-## Compile-Time Log Level Filtering
+## Log Level Filtering
 
-Control which log levels are compiled in by setting `UT_LOG_LEVEL` via a `make` variable or an environment variable :
-
-```sh
-make TARGET=linux UT_LOG_LEVEL=4            # enable DEBUG
-```
-
-or
+Control which log levels are compiled in by setting `UT_LOG_LEVEL` via a make variable or environment variable:
 
 ```sh
-export UT_LOG_LEVEL=3 && make TARGET=linux  # enable INFO via env var
+make TARGET=linux UT_LOG_LEVEL=4            # compile in DEBUG
+make TARGET=linux UT_LOG_LEVEL=0            # compile out everything
+export UT_LOG_LEVEL=3 && make TARGET=linux  # INFO via env var
 ```
 
-As a **fallback only** (e.g. when building outside of this Makefile), `UT_LOG_LEVEL` can be defined before including `ut_log.h`:
+The compiler eliminates suppressed log calls entirely — they produce zero instructions in the binary. Macro arguments of suppressed levels are **not evaluated**.
 
-```c
-// Fallback: only use this if the build system cannot pass -DUT_LOG_LEVEL
-#define UT_LOG_LEVEL UT_LOG_LEVEL_ERROR
-#include "ut_log.h"
-```
+If `UT_LOG_LEVEL` is not set it defaults to `WARNING` (2).
 
-### Default Configuration
+| Value | Constant               | Active macros                                        |
+|-------|------------------------|------------------------------------------------------|
+| 0     | `UT_LOG_LEVEL_NONE`    | none                                                 |
+| 1     | `UT_LOG_LEVEL_ERROR`   | `UT_LOG_ERROR`                                       |
+| 2     | `UT_LOG_LEVEL_WARNING` | `UT_LOG_ERROR`, `UT_LOG_WARNING` **(default)**       |
+| 3     | `UT_LOG_LEVEL_INFO`    | `UT_LOG_ERROR`, `UT_LOG_WARNING`, `UT_LOG_INFO`      |
+| 4     | `UT_LOG_LEVEL_DEBUG`   | all macros                                           |
 
-If `UT_LOG_LEVEL` is not defined, it defaults to `UT_LOG_LEVEL_WARNING` (2).
-This means `UT_LOG_ERROR` and `UT_LOG_WARNING` are active, while `UT_LOG_INFO` and `UT_LOG_DEBUG` calls are compiled out as no-ops.
-
-### Valid Values
-
-| Value | Constant              | Active macros                                      |
-|-------|-----------------------|----------------------------------------------------|
-| 0     | `UT_LOG_LEVEL_NONE`   | none                                               |
-| 1     | `UT_LOG_LEVEL_ERROR`  | `UT_LOG_ERROR`                                     |
-| 2     | `UT_LOG_LEVEL_WARNING`| `UT_LOG_ERROR`, `UT_LOG_WARNING` **(default)**     |
-| 3     | `UT_LOG_LEVEL_INFO`   | `UT_LOG_ERROR`, `UT_LOG_WARNING`, `UT_LOG_INFO`    |
-| 4     | `UT_LOG_LEVEL_DEBUG`  | all macros                                         |
-
-Passing an invalid value — either a non-numeric token or an out-of-range number — is caught by the Makefile before the compiler is invoked:
+Passing an invalid value is caught by the Makefile before the compiler is invoked:
 
 ```
 Makefile: *** UT_LOG_LEVEL must be a number 0-4: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG (got 'DEBUG').  Stop.
 Makefile: *** UT_LOG_LEVEL must be a number 0-4: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG (got '6').  Stop.
 ```
-
-> **Note:** The preprocessor `#error` guard in `ut_log.h` provides a secondary safety net only when `UT_LOG_LEVEL` is set outside of the Makefile (e.g. via a third-party build system). It cannot catch non-numeric tokens because the preprocessor treats unknown identifiers as `0`.

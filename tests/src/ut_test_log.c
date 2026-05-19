@@ -61,13 +61,8 @@ static void test_ut_log_level_constant_values(void)
 }
 
 /**
- * @brief Verify that the default UT_LOG_LEVEL equals UT_LOG_LEVEL_WARNING (2) when not
- *        overridden at compile time.
- *
- * @note This test assumes the binary was compiled WITHOUT a -DUT_LOG_LEVEL override.
- *       If the suite is built with a different level this assertion will fail by design.
- *       Because ut_log.h has an include guard, only the level baked into this binary
- *       can be exercised; separate builds are required to cover other levels.
+ * @brief Verify that the default UT_LOG_LEVEL equals UT_LOG_LEVEL_WARNING (2)
+ *        when not overridden at compile time.
  */
 static void test_ut_log_default_level(void)
 {
@@ -97,16 +92,16 @@ static void test_ut_log_active_macros_at_warning_level(void)
 }
 
 /**
- * @brief Verify that UT_LOG_DEBUG is suppressed at the default WARNING level.
+ * @brief Verify that UT_LOG_DEBUG is suppressed at the default WARNING level
+ *        and that its arguments are NOT evaluated.
  *
- * When UT_LOG_LEVEL < UT_LOG_LEVEL_DEBUG the macro is redefined to expand to
- * do { } while (0), so any argument expressions must NOT be evaluated.
+ * UT_LOG_DEBUG expands to:
+ *     do { if (UT_LOG_ENABLED(DEBUG)) UT_logPrefix(..., arg); } while(0)
  *
- * @note This test is only meaningful when the binary is compiled at the default
- *       UT_LOG_LEVEL_WARNING (2). Overriding the level at build time (e.g.
- *       -DUT_LOG_LEVEL=4) will cause the macro to remain active and the
- *       g_call_count assertion below will fail. Due to ut_log.h's include guard,
- *       only one log level can be tested per binary.
+ * When the level check is false the entire if-body is skipped, so
+ * count_and_return() is never called.
+ *
+ * @note Assumes the binary is compiled at the default WARNING (2) level.
  */
 static void test_ut_log_debug_suppressed_at_warning_level(void)
 {
@@ -115,8 +110,7 @@ static void test_ut_log_debug_suppressed_at_warning_level(void)
     g_call_count = 0;
     UT_LOG_DEBUG("%s", count_and_return("debug suppressed test"));
 
-    /* At default level (WARNING=2) < DEBUG(4), so the macro is a no-op and
-     * count_and_return() must NOT have been called. */
+    /* The if-body was not reached, so count_and_return() was not called. */
     UT_ASSERT(g_call_count == 0);
 
     UT_LOG("test_ut_log_debug_suppressed_at_warning_level end\n");

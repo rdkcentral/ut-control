@@ -51,58 +51,36 @@ extern "C"
 // Macros for Different Log Levels
 /**! Logs a step in a test sequence. */
 #define UT_LOG_STEP(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_BLUE "STEP  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs informational messages. */
-#define UT_LOG_INFO(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_CYAN "INFO  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs debug-level messages. */
-#define UT_LOG_DEBUG(format, ...)           UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_MAGENTA "DEBUG " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs warning messages. */
-#define UT_LOG_WARNING(format, ...)         UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_YELLOW "WARN  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs error messages. */
-#define UT_LOG_ERROR(format, ...)           UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ERROR " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
+/**! Logs informational messages; suppressed when active level < INFO. */
+#define UT_LOG_INFO(format, ...)            do { if (UT_LOG_ENABLED(UT_LOG_LEVEL_INFO))    UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_CYAN    "INFO  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__); } while(0)
+/**! Logs debug-level messages; suppressed when active level < DEBUG. */
+#define UT_LOG_DEBUG(format, ...)           do { if (UT_LOG_ENABLED(UT_LOG_LEVEL_DEBUG))   UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_MAGENTA "DEBUG " UT_LOG_ASCII_NC, format, ## __VA_ARGS__); } while(0)
+/**! Logs warning messages; suppressed when active level < WARNING. */
+#define UT_LOG_WARNING(format, ...)         do { if (UT_LOG_ENABLED(UT_LOG_LEVEL_WARNING)) UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_YELLOW  "WARN  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__); } while(0)
+/**! Logs error messages; suppressed when active level < ERROR. */
+#define UT_LOG_ERROR(format, ...)           do { if (UT_LOG_ENABLED(UT_LOG_LEVEL_ERROR))   UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED     "ERROR " UT_LOG_ASCII_NC, format, ## __VA_ARGS__); } while(0)
 /**! Logs assertion failure messages with a prefix. */
 #define UT_LOG_ASSERT(prefix, format, ...)  UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ASSERT  " UT_LOG_ASCII_NC, UT_LOG_ASCII_RED#prefix ":" UT_LOG_ASCII_NC #format, ## __VA_ARGS__)
 
-/* Compile-time log level filtering */
+/* Log level constants */
 #define UT_LOG_LEVEL_NONE    0
 #define UT_LOG_LEVEL_ERROR   1
 #define UT_LOG_LEVEL_WARNING 2
 #define UT_LOG_LEVEL_INFO    3
 #define UT_LOG_LEVEL_DEBUG   4
 
+/* UT_LOG_LEVEL controls which log macros are active at compile time.
+ * If not set by the build system, it defaults to WARNING (2).
+ * The compiler removes suppressed log calls completely from the binary.
+ * Valid values: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG
+ */
 #ifndef UT_LOG_LEVEL
     #define UT_LOG_LEVEL UT_LOG_LEVEL_WARNING
 #endif
-
 #if UT_LOG_LEVEL < UT_LOG_LEVEL_NONE || UT_LOG_LEVEL > UT_LOG_LEVEL_DEBUG
-    /* NOTE: this guard catches out-of-range numeric values, but cannot catch
-     * non-numeric tokens (e.g. -DUT_LOG_LEVEL=DEBUG) because the preprocessor
-     * treats unknown identifiers as 0, which silently passes this check.
-     * Use the build system (make UT_LOG_LEVEL=<n>) which validates the value
-     * before passing it to the compiler. */
     #error "UT_LOG_LEVEL must be a number: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG"
 #endif
-
-// DEBUG
-#if UT_LOG_LEVEL < UT_LOG_LEVEL_DEBUG
-    #undef  UT_LOG_DEBUG
-    #define UT_LOG_DEBUG(format, ...)  do { } while (0)
-#endif
-// INFO
-#if UT_LOG_LEVEL < UT_LOG_LEVEL_INFO
-    #undef  UT_LOG_INFO
-    #define UT_LOG_INFO(format, ...)   do { } while (0)
-#endif
-// WARNING
-#if UT_LOG_LEVEL < UT_LOG_LEVEL_WARNING
-    #undef  UT_LOG_WARNING
-    #define UT_LOG_WARNING(format, ...) do { } while (0)
-#endif
-// ERROR
-#if UT_LOG_LEVEL < UT_LOG_LEVEL_ERROR
-    #undef  UT_LOG_ERROR
-    #define UT_LOG_ERROR(format, ...)  do { } while (0)
-#endif
-/*------------------------------------- */
+#define UT_LOG_ENABLED(level)  ((level) <= (UT_LOG_LEVEL))
 
 /**!
  * @brief Sets the path for the active log file.
