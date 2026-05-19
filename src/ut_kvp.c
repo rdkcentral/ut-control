@@ -72,7 +72,7 @@ static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char 
 static void convert_dot_to_slash(const char *key, char *output);
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
-static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
+static bool merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
 static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth);
 static const void *find_pattern_from_buffer(const void *buffer, size_t bufferLength, const void *pattern, size_t patternLength);
 
@@ -250,7 +250,13 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
     else
     {
         // Subsequent files: merge into existing root
-        merge_nodes(mainRoot, copiedRoot);
+        if (!merge_nodes(mainRoot, copiedRoot))
+        {
+            /* includeNode was not consumed by merge_nodes (e.g. incompatible
+             * types); copiedRoot is an orphan node inside pInternal->fy_handle
+             * and will not be freed by fy_document_destroy — free it now. */
+            fy_node_free(copiedRoot);
+        }
     }
 
     fy_document_destroy(newDoc);
@@ -1214,18 +1220,18 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
     return NULL;
 }
 
-static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
+static bool merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
 {
     if (mainNode == NULL)
     {
         UT_LOG_ERROR("Main node is invalid");
-        return;
+        return false;
     }
 
     if (includeNode == NULL)
     {
         UT_LOG_ERROR("Included node is invalid");
-        return;
+        return false;
     }
 
     if (fy_node_is_scalar(mainNode))
@@ -1239,26 +1245,32 @@ static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
             if (!new_scalar)
             {
                 UT_LOG_ERROR("Failed to create scalar copy");
-                return;
+                return false;
             }
-
-            mainNode = new_scalar;
+            /* new_scalar is an orphan in pInternal->fy_handle — free it.
+             * Replacing a root scalar via pointer reassignment does not
+             * propagate into the document and is a no-op semantically. */
+            fy_node_free(new_scalar);
         }
         else
         {
             UT_LOG_ERROR("Included scalar is NULL");
         }
+        return false; /* includeNode was not consumed */
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
     {
         if (fy_node_insert(mainNode, includeNode) != 0)
         {
             UT_LOG_ERROR("Node merge failed");
+            return false; /* includeNode was not consumed */
         }
+        return true; /* fy_node_insert took ownership of includeNode */
     }
     else
     {
         UT_LOG_ERROR("Warning: Cannot merge nodes of incompatible types\n");
+        return false; /* includeNode was not consumed */
     }
 }
 
