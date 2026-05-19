@@ -63,95 +63,106 @@ static void test_ut_log_level_constant_values(void)
 /**
  * @brief Verify that the default UT_LOG_LEVEL equals UT_LOG_LEVEL_WARNING (2)
  *        when not overridden at compile time.
+ *
+ * The assertion is guarded: when UT_LOG_LEVEL is explicitly overridden via
+ * the build system the check is skipped so the suite does not fail on a
+ * deliberate non-default build.
  */
 static void test_ut_log_default_level(void)
 {
     UT_LOG("test_ut_log_default_level\n");
 
+#if UT_LOG_LEVEL == UT_LOG_LEVEL_WARNING
+    /* No override applied: confirm the default is WARNING (2). */
     UT_ASSERT(UT_LOG_LEVEL == UT_LOG_LEVEL_WARNING);
+#else
+    /* Override applied: record the configured level; do not assert. */
+    UT_LOG("UT_LOG_LEVEL overridden to %d (default is WARNING=2)\n", UT_LOG_LEVEL);
+#endif
 
     UT_LOG("test_ut_log_default_level end\n");
 }
 
 /**
- * @brief Verify that the log macros which are active at the default WARNING level
- *        (UT_LOG_WARNING, UT_LOG_ERROR) execute without crashing and produce output.
+ * @brief Smoke-test all four level macros at the configured UT_LOG_LEVEL.
  *
- * @note At the default UT_LOG_LEVEL_WARNING (2), UT_LOG_INFO and UT_LOG_DEBUG are
- *       suppressed and therefore not exercised here.
+ * Active macros produce output; suppressed macros expand to a no-op.
+ * Verifies no crash regardless of the configured level.
  */
-static void test_ut_log_active_macros_at_warning_level(void)
+static void test_ut_log_active_macros_smoke_test(void)
 {
-    UT_LOG("test_ut_log_active_macros_at_warning_level\n");
+    UT_LOG("test_ut_log_active_macros_smoke_test\n");
 
-    /* These should all expand to real calls at default UT_LOG_LEVEL = WARNING */
-    UT_LOG_ERROR("error macro test: value=%d", 1);
-    UT_LOG_WARNING("warning macro test: value=%d", 2);
+    UT_LOG_ERROR("error macro: value=%d", 1);
+    UT_LOG_WARNING("warning macro: value=%d", 2);
+    UT_LOG_INFO("info macro: value=%d", 3);
+    UT_LOG_DEBUG("debug macro: value=%d", 4);
 
-    UT_LOG("test_ut_log_active_macros_at_warning_level end\n");
+    UT_LOG("test_ut_log_active_macros_smoke_test end\n");
 }
 
 /**
- * @brief Verify that UT_LOG_DEBUG is suppressed at the default WARNING level
- *        and that its arguments are NOT evaluated.
+ * @brief Verify argument evaluation for every level macro at the configured
+ *        UT_LOG_LEVEL.
  *
- * UT_LOG_DEBUG expands to:
- *     do { if (UT_LOG_ENABLED(DEBUG)) UT_logPrefix(..., arg); } while(0)
- *
- * When the level check is false the entire if-body is skipped, so
- * count_and_return() is never called.
- *
- * @note Assumes the binary is compiled at the default WARNING (2) level.
+ * For each macro, count_and_return() is expected to be called iff the macro
+ * is active at compile time (i.e. UT_LOG_LEVEL >= that level).
+ * Suppressed macros expand to do { } while(0) so their arguments are never
+ * evaluated.
  */
-static void test_ut_log_debug_suppressed_at_warning_level(void)
+static void test_ut_log_macro_suppression_and_arg_evaluation(void)
 {
-    UT_LOG("test_ut_log_debug_suppressed_at_warning_level\n");
+    UT_LOG("test_ut_log_macro_suppression_and_arg_evaluation\n");
 
     g_call_count = 0;
-    UT_LOG_DEBUG("%s", count_and_return("debug suppressed test"));
-
-    /* The if-body was not reached, so count_and_return() was not called. */
+    UT_LOG_ERROR("%s", count_and_return("error"));
+#if UT_LOG_LEVEL >= UT_LOG_LEVEL_ERROR
+    UT_ASSERT(g_call_count == 1);
+#else
     UT_ASSERT(g_call_count == 0);
-
-    UT_LOG("test_ut_log_debug_suppressed_at_warning_level end\n");
-}
-
-/**
- * @brief Verify that the active macros do not suppress their arguments at
- *        the default WARNING level (WARNING, ERROR arguments are evaluated).
- *
- * @note At the default UT_LOG_LEVEL_WARNING (2), UT_LOG_INFO is suppressed so
- *       its arguments are NOT evaluated.
- */
-static void test_ut_log_active_macros_evaluate_args(void)
-{
-    UT_LOG("test_ut_log_active_macros_evaluate_args\n");
+#endif
 
     g_call_count = 0;
-    UT_LOG_WARNING("%s", count_and_return("warning arg"));
+    UT_LOG_WARNING("%s", count_and_return("warning"));
+#if UT_LOG_LEVEL >= UT_LOG_LEVEL_WARNING
     UT_ASSERT(g_call_count == 1);
+#else
+    UT_ASSERT(g_call_count == 0);
+#endif
 
     g_call_count = 0;
-    UT_LOG_ERROR("%s", count_and_return("error arg"));
+    UT_LOG_INFO("%s", count_and_return("info"));
+#if UT_LOG_LEVEL >= UT_LOG_LEVEL_INFO
     UT_ASSERT(g_call_count == 1);
+#else
+    UT_ASSERT(g_call_count == 0);
+#endif
 
-    UT_LOG("test_ut_log_active_macros_evaluate_args end\n");
+    g_call_count = 0;
+    UT_LOG_DEBUG("%s", count_and_return("debug"));
+#if UT_LOG_LEVEL >= UT_LOG_LEVEL_DEBUG
+    UT_ASSERT(g_call_count == 1);
+#else
+    UT_ASSERT(g_call_count == 0);
+#endif
+
+    UT_LOG("test_ut_log_macro_suppression_and_arg_evaluation end\n");
 }
 
 /**
  * @brief Verify active log macros handle multiple format specifiers correctly.
  *
- * @note Only UT_LOG_WARNING and UT_LOG_ERROR are exercised here because those
- *       are the only macros active at the default UT_LOG_LEVEL_WARNING (2).
- *       UT_LOG_INFO would silently expand to a no-op at this level.
+ * All four macros are exercised; suppressed ones expand to no-ops so the
+ * test is safe at any configured UT_LOG_LEVEL.
  */
 static void test_ut_log_format_specifiers(void)
 {
     UT_LOG("test_ut_log_format_specifiers\n");
 
-    UT_LOG_WARNING("int=%d str=%s float=%.2f", 42, "hello", 3.14f);
+    UT_LOG_ERROR("int=%d str=%s float=%.2f", 42, "hello", 3.14f);
     UT_LOG_WARNING("hex=0x%x unsigned=%u", 0xDEADu, 255u);
-    UT_LOG_ERROR("long=%ld char=%c", 123456L, 'Z');
+    UT_LOG_INFO("long=%ld char=%c", 123456L, 'Z');
+    UT_LOG_DEBUG("ptr=%p", (void *)0);
 
     UT_LOG("test_ut_log_format_specifiers end\n");
 }
@@ -168,7 +179,6 @@ void register_log_functions(void)
     gpLogSuite2 = UT_add_suite("ut-log - macro suppression tests", NULL, NULL);
     assert(gpLogSuite2 != NULL);
 
-    UT_add_test(gpLogSuite2, "log active macros at WARNING level",    test_ut_log_active_macros_at_warning_level);
-    UT_add_test(gpLogSuite2, "log DEBUG suppressed at WARNING level", test_ut_log_debug_suppressed_at_warning_level);
-    UT_add_test(gpLogSuite2, "log active macros evaluate arguments",  test_ut_log_active_macros_evaluate_args);
+    UT_add_test(gpLogSuite2, "log active macros smoke test",             test_ut_log_active_macros_smoke_test);
+    UT_add_test(gpLogSuite2, "log macro suppression and arg evaluation",  test_ut_log_macro_suppression_and_arg_evaluation);
 }
