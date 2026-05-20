@@ -19,10 +19,14 @@
 
 /* Standard Libraries */
 #include <assert.h>
+#include <time.h>
 
 /* Module Includes */
 #include <ut.h>
 #include <ut_log.h>
+
+#define UT_TIME_DIFF_NS(start, end) \
+    (((end).tv_sec - (start).tv_sec) * 1000000000LL + ((end).tv_nsec - (start).tv_nsec))
 
 static UT_test_suite_t *gpLogSuite = NULL;
 static UT_test_suite_t *gpLogSuite2 = NULL;
@@ -84,19 +88,46 @@ static void test_ut_log_default_level(void)
 }
 
 /**
- * @brief Smoke-test all four level macros at the configured UT_LOG_LEVEL.
+ * @brief Smoke-test all four level macros and measure their call overhead.
  *
- * Active macros produce output; suppressed macros expand to a no-op.
+ * Each macro is timed individually using CLOCK_MONOTONIC; the elapsed
+ * nanoseconds are printed via UT_LOG immediately after each call.
+ * Active macros (at the configured UT_LOG_LEVEL) perform a full
+ * format+file-write cycle; suppressed macros return early inside the
+ * wrapper, so their overhead is expected to be significantly lower.
+ * UT_LOG is also timed as a baseline reference.
  * Verifies no crash regardless of the configured level.
  */
 static void test_ut_log_active_macros_smoke_test(void)
 {
+    struct timespec ts_start, ts_end;
+
     UT_LOG("test_ut_log_active_macros_smoke_test\n");
 
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
     UT_LOG_ERROR("error macro: value=%d", 1);
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    UT_LOG("UT_LOG_ERROR   overhead: %lld ns\n", (long long)UT_TIME_DIFF_NS(ts_start, ts_end));
+
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
     UT_LOG_WARNING("warning macro: value=%d", 2);
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    UT_LOG("UT_LOG_WARNING overhead: %lld ns\n", (long long)UT_TIME_DIFF_NS(ts_start, ts_end));
+
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
     UT_LOG_INFO("info macro: value=%d", 3);
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    UT_LOG("UT_LOG_INFO    overhead: %lld ns\n", (long long)UT_TIME_DIFF_NS(ts_start, ts_end));
+
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
     UT_LOG_DEBUG("debug macro: value=%d", 4);
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    UT_LOG("UT_LOG_DEBUG   overhead: %lld ns\n", (long long)UT_TIME_DIFF_NS(ts_start, ts_end));
+
+    clock_gettime(CLOCK_MONOTONIC, &ts_start);
+    UT_LOG("actual macro: value=%d", 5);
+    clock_gettime(CLOCK_MONOTONIC, &ts_end);
+    UT_LOG("UT_LOG overhead: %lld ns\n", (long long)UT_TIME_DIFF_NS(ts_start, ts_end));
 
     UT_LOG("test_ut_log_active_macros_smoke_test end\n");
 }
@@ -105,46 +136,32 @@ static void test_ut_log_active_macros_smoke_test(void)
  * @brief Verify argument evaluation for every level macro at the configured
  *        UT_LOG_LEVEL.
  *
- * For each macro, count_and_return() is expected to be called iff the macro
- * is active at compile time (i.e. UT_LOG_LEVEL >= that level).
- * Suppressed macros expand to do { } while(0) so their arguments are never
- * evaluated.
+ * The log macros delegate to wrapper functions (UT_logPrefix_info, etc.).
+ * Because C evaluates all function arguments before the call, macro arguments
+ * are ALWAYS evaluated regardless of the active UT_LOG_LEVEL.  The level
+ * guard inside the wrapper controls whether output is produced, not whether
+ * the arguments are evaluated.
  */
 static void test_ut_log_macro_suppression_and_arg_evaluation(void)
 {
     UT_LOG("test_ut_log_macro_suppression_and_arg_evaluation\n");
 
+    /* Arguments are always evaluated — count_and_return() is always called. */
     g_call_count = 0;
     UT_LOG_ERROR("%s", count_and_return("error"));
-#if UT_LOG_LEVEL >= UT_LOG_LEVEL_ERROR
     UT_ASSERT(g_call_count == 1);
-#else
-    UT_ASSERT(g_call_count == 0);
-#endif
 
     g_call_count = 0;
     UT_LOG_WARNING("%s", count_and_return("warning"));
-#if UT_LOG_LEVEL >= UT_LOG_LEVEL_WARNING
     UT_ASSERT(g_call_count == 1);
-#else
-    UT_ASSERT(g_call_count == 0);
-#endif
 
     g_call_count = 0;
     UT_LOG_INFO("%s", count_and_return("info"));
-#if UT_LOG_LEVEL >= UT_LOG_LEVEL_INFO
     UT_ASSERT(g_call_count == 1);
-#else
-    UT_ASSERT(g_call_count == 0);
-#endif
 
     g_call_count = 0;
     UT_LOG_DEBUG("%s", count_and_return("debug"));
-#if UT_LOG_LEVEL >= UT_LOG_LEVEL_DEBUG
     UT_ASSERT(g_call_count == 1);
-#else
-    UT_ASSERT(g_call_count == 0);
-#endif
 
     UT_LOG("test_ut_log_macro_suppression_and_arg_evaluation end\n");
 }

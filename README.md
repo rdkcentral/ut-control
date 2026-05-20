@@ -44,7 +44,7 @@ make TARGET=linux UT_LOG_LEVEL=0            # compile out everything
 export UT_LOG_LEVEL=3 && make TARGET=linux  # INFO via env var
 ```
 
-The compiler eliminates suppressed log calls entirely — they produce zero instructions in the binary. Macro arguments of suppressed levels are **not evaluated**.
+The macros delegate to wrapper functions (`UT_logPrefix_error`, `UT_logPrefix_warning`, etc.) which apply the level check internally. Because C evaluates all function arguments before the call, macro arguments are **always evaluated** regardless of the active level; only the output is suppressed.
 
 If `UT_LOG_LEVEL` is not set it defaults to `WARNING` (2).
 

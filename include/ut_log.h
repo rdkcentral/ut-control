@@ -51,14 +51,14 @@ extern "C"
 // Macros for Different Log Levels
 /**! Logs a step in a test sequence. */
 #define UT_LOG_STEP(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_BLUE "STEP  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs informational messages; suppressed when active level < INFO. */
-#define UT_LOG_INFO(format, ...)            do { if (UT_LOG_ENABLED(UT_LOG_LEVEL_INFO))    UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_CYAN    "INFO  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__); } while(0)
-/**! Logs debug-level messages; suppressed when active level < DEBUG. */
-#define UT_LOG_DEBUG(format, ...)           do { if (UT_LOG_ENABLED(UT_LOG_LEVEL_DEBUG))   UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_MAGENTA "DEBUG " UT_LOG_ASCII_NC, format, ## __VA_ARGS__); } while(0)
-/**! Logs warning messages; suppressed when active level < WARNING. */
-#define UT_LOG_WARNING(format, ...)         do { if (UT_LOG_ENABLED(UT_LOG_LEVEL_WARNING)) UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_YELLOW  "WARN  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__); } while(0)
-/**! Logs error messages; suppressed when active level < ERROR. */
-#define UT_LOG_ERROR(format, ...)           do { if (UT_LOG_ENABLED(UT_LOG_LEVEL_ERROR))   UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED     "ERROR " UT_LOG_ASCII_NC, format, ## __VA_ARGS__); } while(0)
+/**! Logs informational messages; level check is inside UT_logPrefix_info. */
+#define UT_LOG_INFO(format, ...)            UT_logPrefix_info(format, ## __VA_ARGS__)
+/**! Logs debug-level messages; level check is inside UT_logPrefix_debug. */
+#define UT_LOG_DEBUG(format, ...)           UT_logPrefix_debug(format, ## __VA_ARGS__)
+/**! Logs warning messages; level check is inside UT_logPrefix_warning. */
+#define UT_LOG_WARNING(format, ...)         UT_logPrefix_warning(format, ## __VA_ARGS__)
+/**! Logs error messages; level check is inside UT_logPrefix_error. */
+#define UT_LOG_ERROR(format, ...)           UT_logPrefix_error(format, ## __VA_ARGS__)
 /**! Logs assertion failure messages with a prefix. */
 #define UT_LOG_ASSERT(prefix, format, ...)  UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ASSERT  " UT_LOG_ASCII_NC, UT_LOG_ASCII_RED#prefix ":" UT_LOG_ASCII_NC #format, ## __VA_ARGS__)
 
@@ -121,6 +121,12 @@ void UT_log(const char *function, int line, const char *format, ...);
  * @param ... - Variable arguments for the format string.
  */
 void UT_logPrefix(const char *function, int line, const char *prefix, const char *format, ...);
+
+/* Internal functions for log level specific logging */
+void UT_logPrefix_info(const char *format, ...);
+void UT_logPrefix_debug(const char *format, ...);
+void UT_logPrefix_warning(const char *format, ...);
+void UT_logPrefix_error(const char *format, ...);
 
 #ifdef __cplusplus
 }
