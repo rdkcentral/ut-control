@@ -310,7 +310,7 @@ Downloads and builds all vendored dependencies into
 | **asprintf** | 0.0.3 | Portable `asprintf()` (compiled into libut_control) |
 | **libwebsockets** | 4.3.3 | WebSocket/HTTP server (static `.a` linked in) |
 | **curl** | 8.8.0 | HTTP client for `!include` URL resolution (static or system) |
-| **OpenSSL** | 1.1.1w | Crypto dependency (static or system). Note: the default build disables TLS -- libwebsockets is built with `-DLWS_WITH_SSL=OFF` and curl with `-DCMAKE_USE_OPENSSL=OFF`, so `wss://`/HTTPS are not enabled. |
+| **OpenSSL** | 1.1.1w | Crypto dependency (static or system). curl is built with `--with-ssl`, so `https://` `!include` URLs are supported; libwebsockets is built with `-DLWS_WITH_SSL=OFF`, so the control-plane WebSocket has no `wss://` TLS. |
 | **CMake** | 3.30.0 | Build tool for libwebsockets (downloaded only if system cmake < 3.13) |
 
 The script prefers system-installed OpenSSL, curl, and cmake when available.
@@ -360,7 +360,7 @@ Example clients are in `tests/websocket-clients/`:
 - `simple_websocket.py` -- minimal WebSocket client
 - `curl-client-yaml.sh` -- sends YAML via HTTP POST
 - `curl-client-json.sh` -- sends JSON via HTTP POST
-- `curl-client-binary.sh` -- sends binary data via HTTP POST
+- `curl-client-binary.sh` -- sends YAML/JSON as a raw binary (`application/octet-stream`) payload via HTTP POST
 
 (`example.yaml` / `example.json` in the same directory are sample payloads.)
 
