@@ -169,8 +169,8 @@ static void test_ut_log_macro_suppression_and_arg_evaluation(void)
 /**
  * @brief Verify active log macros handle multiple format specifiers correctly.
  *
- * All four macros are exercised; suppressed ones expand to no-ops so the
- * test is safe at any configured UT_LOG_LEVEL.
+ * All four macros are exercised; depending on UT_LOG_LEVEL, output may be
+ * suppressed inside the wrapper functions.
  */
 static void test_ut_log_format_specifiers(void)
 {
@@ -187,14 +187,14 @@ static void test_ut_log_format_specifiers(void)
 void register_log_functions(void)
 {
     gpLogSuite = UT_add_suite("ut-log - level constant tests", NULL, NULL);
-    assert(gpLogSuite != NULL);
+    UT_ASSERT(gpLogSuite != NULL);
 
     UT_add_test(gpLogSuite, "log level constant values",    test_ut_log_level_constant_values);
     UT_add_test(gpLogSuite, "log default level is WARNING",  test_ut_log_default_level);
     UT_add_test(gpLogSuite, "log format specifiers",          test_ut_log_format_specifiers);
 
     gpLogSuite2 = UT_add_suite("ut-log - macro suppression tests", NULL, NULL);
-    assert(gpLogSuite2 != NULL);
+    UT_ASSERT(gpLogSuite2 != NULL);
 
     UT_add_test(gpLogSuite2, "log active macros smoke test",             test_ut_log_active_macros_smoke_test);
     UT_add_test(gpLogSuite2, "log macro suppression and arg evaluation",  test_ut_log_macro_suppression_and_arg_evaluation);

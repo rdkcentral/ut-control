@@ -300,7 +300,10 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 
     if (pInternal->fy_handle)
     {
-        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(srcDoc));
+        if (!merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(srcDoc)))
+        {
+            UT_LOG_ERROR("Node merge failed");
+        }
     }
     else
     {
@@ -1194,8 +1197,11 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
                 val_alloc = NULL;
                 if (included)
                 {
-                    // If the included node is a mapping, merge it into the new_map
-                    merge_nodes(new_map, included);
+                    if (!merge_nodes(new_map, included))
+                    {
+                        /* included was not consumed; free the orphan node */
+                        fy_node_free(included);
+                    }
                     continue;
                 }
             }
@@ -1236,26 +1242,7 @@ static bool merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
 
     if (fy_node_is_scalar(mainNode))
     {
-        const char *scalar = fy_node_get_scalar(includeNode, NULL);
-        size_t scalar_len = fy_node_get_scalar_length(includeNode);
-
-        if (scalar)
-        {
-            struct fy_node *new_scalar = fy_node_create_scalar_copy(fy_node_document(mainNode), scalar, scalar_len);
-            if (!new_scalar)
-            {
-                UT_LOG_ERROR("Failed to create scalar copy");
-                return false;
-            }
-            /* new_scalar is an orphan in pInternal->fy_handle — free it.
-             * Replacing a root scalar via pointer reassignment does not
-             * propagate into the document and is a no-op semantically. */
-            fy_node_free(new_scalar);
-        }
-        else
-        {
-            UT_LOG_ERROR("Included scalar is NULL");
-        }
+        UT_LOG_ERROR("Scalar merge at root not supported");
         return false; /* includeNode was not consumed */
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
@@ -1269,7 +1256,7 @@ static bool merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
     }
     else
     {
-        UT_LOG_ERROR("Warning: Cannot merge nodes of incompatible types\n");
+        UT_LOG_ERROR("Error: Cannot merge nodes of incompatible types\n");
         return false; /* includeNode was not consumed */
     }
 }

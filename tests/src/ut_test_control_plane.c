@@ -344,14 +344,14 @@ void register_cp_function()
 {
     /* L1 - ut_control function tests */
     gpAssertSuite1 = UT_add_suite("L1 - ut_control function tests", NULL, NULL);
-    assert(gpAssertSuite1 != NULL);
+    UT_ASSERT(gpAssertSuite1 != NULL);
     UT_add_test(gpAssertSuite1, "ut-cp Init Exit", test_ut_control_l1_testInitExit);
     UT_add_test(gpAssertSuite1, "ut-cp register callback", test_ut_control_l1_regsiterCallback);
     UT_add_test(gpAssertSuite1, "ut-cp websocket service", test_ut_control_l1_testStartStop);
 
     /* L2 - ut_control Module tests */
     gpAssertSuite2 = UT_add_suite("L2 - ut_control Module tests", NULL, NULL);
-    assert(gpAssertSuite2 != NULL);
+    UT_ASSERT(gpAssertSuite2 != NULL);
     UT_add_test(gpAssertSuite2, "ut-cp Init", test_ut_control_performInit);
     UT_add_test(gpAssertSuite2, "ut-cp Start", test_ut_control_performStart);
     UT_add_test(gpAssertSuite2, "ut-cp run client", run_client_function);
@@ -359,8 +359,7 @@ void register_cp_function()
     UT_add_test(gpAssertSuite2, "ut-cp Exit", test_ut_control_performExit);
 
     gpAssertSuite3 = UT_add_suite("L1 - ut_control mapping tests", NULL, NULL);
-    assert(gpAssertSuite3 != NULL);
+    UT_ASSERT(gpAssertSuite3 != NULL);
     UT_add_test(gpAssertSuite3, "ut-control Get Map Value", test_ut_control_get_map_value);
     UT_add_test(gpAssertSuite3, "ut-control get Map String", test_ut_control_get_map_string);
-
 }

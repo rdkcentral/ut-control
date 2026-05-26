@@ -167,30 +167,30 @@ void UT_logPrefix(const char *file, int line, const char *prefix, const char * f
     va_start(args, format); \
     vsnprintf(buffer, sizeof(buffer), format, args); \
     va_end(args); \
-    UT_logPrefix(__FILE__, __LINE__, (prefix_str), "%s", buffer)
+    UT_logPrefix(file, line, (prefix_str), "%s", buffer)
 
-void UT_logPrefix_info(const char * format, ...)
+void UT_logPrefix_info(const char *file, int line, const char * format, ...)
 {
     #if UT_LOG_LEVEL >= UT_LOG_LEVEL_INFO
         UT_LOG_WRAPPER_BODY(UT_LOG_ASCII_CYAN "INFO  " UT_LOG_ASCII_NC);
     #endif
 }
 
-void UT_logPrefix_debug(const char * format, ...)
+void UT_logPrefix_debug(const char *file, int line, const char * format, ...)
 {
     #if UT_LOG_LEVEL >= UT_LOG_LEVEL_DEBUG
         UT_LOG_WRAPPER_BODY(UT_LOG_ASCII_MAGENTA "DEBUG " UT_LOG_ASCII_NC);
     #endif
 }
 
-void UT_logPrefix_warning(const char * format, ...)
+void UT_logPrefix_warning(const char *file, int line, const char * format, ...)
 {
     #if UT_LOG_LEVEL >= UT_LOG_LEVEL_WARNING
         UT_LOG_WRAPPER_BODY(UT_LOG_ASCII_YELLOW "WARN  " UT_LOG_ASCII_NC);
     #endif
 }
 
-void UT_logPrefix_error(const char * format, ...)
+void UT_logPrefix_error(const char *file, int line, const char * format, ...)
 {
     #if UT_LOG_LEVEL >= UT_LOG_LEVEL_ERROR
         UT_LOG_WRAPPER_BODY(UT_LOG_ASCII_RED "ERROR " UT_LOG_ASCII_NC);
