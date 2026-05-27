@@ -1,8 +1,5 @@
 # Suppress all leaks originating from libfyaml
-leak:libfyaml
-leak:fyaml
-leak:../framework/linux/libfyaml-master/libfyaml-master
-leak:libfyaml-master/src
+leak:fy_*
 
 # Suppress all leaks originating from asprintf
 leak:asprintf

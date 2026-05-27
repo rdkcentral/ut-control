@@ -54,18 +54,25 @@ SRC_DIRS += $(LIBFYAML_DIR)/src/util
 SRC_DIRS += $(LIBFYAML_DIR)/src/xxhash
 SRC_DIRS += $(ASPRINTF_DIR)
 INC_DIRS = $(LIBFYAML_DIR)/include
+INC_DIRS += $(LIBFYAML_DIR)/src/generic
 INC_DIRS += $(ASPRINTF_DIR)
+
+XLDFLAGS += $(LDFLAGS)
 
 # LIBFYAML Requirements
 XLDFLAGS += -pthread
 
 # LIBWEBSOCKETS Requirements
-LIBWEBSOCKETS_DIR = $(FRAMEWORK_BUILD_DIR)/libwebsockets
+LIBWEBSOCKETS_DIR ?= $(FRAMEWORK_BUILD_DIR)/libwebsockets
+ifneq ($(wildcard $(LIBWEBSOCKETS_DIR)),)
 INC_DIRS += $(LIBWEBSOCKETS_DIR)/include
 XLDFLAGS += $(LIBWEBSOCKETS_DIR)/lib/libwebsockets.a
+else
+XLDFLAGS += -lwebsockets
+endif
 
 # CURL Requirements
-CURL_DIR = $(FRAMEWORK_BUILD_DIR)/curl
+CURL_DIR ?= $(FRAMEWORK_BUILD_DIR)/curl
 ifneq ($(wildcard $(CURL_DIR)),)
 INC_DIRS += $(CURL_DIR)/include
 XLDFLAGS += $(CURL_DIR)/lib/libcurl.a
@@ -93,7 +100,7 @@ ifeq ($(TARGET),arm)
 #CC := arm-rdk-linux-gnueabi-gcc -mthumb -mfpu=vfp -mcpu=cortex-a9 -mfloat-abi=soft -mabi=aapcs-linux -mno-thumb-interwork -ffixed-r8 -fomit-frame-pointer
 # CFLAGS will be overriden by Caller as required
 INC_DIRS += $(UT_DIR)/sysroot/usr/include
-XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl
+XLDFLAGS += $(OPENSSL_LIB_DIR)/libssl.a $(OPENSSL_LIB_DIR)/libcrypto.a -ldl -lm
 else
 #linux case
 # Check if the directory exists
@@ -107,7 +114,7 @@ endif
 
 # Defaults for target linux
 ifeq ($(TARGET),linux)
-CC := gcc -ggdb -o0 -Wall
+CC ?= gcc -ggdb -o0 -Wall
 endif
 
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
@@ -117,6 +124,18 @@ OBJS := $(subst $(TOP_DIR),$(BUILD_DIR),$(SRCS:.c=.o))
 
 INC_DIRS += $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
+
+# Optional compile-time log level override.
+# Usage: make TARGET=linux UT_LOG_LEVEL=4   (or export UT_LOG_LEVEL=4 before calling make)
+# Valid values: 0=NONE 1=ERROR 2=WARNING(default) 3=INFO 4=DEBUG
+# NOTE: must be a numeric value; symbolic names (e.g. UT_LOG_LEVEL=DEBUG) are not accepted
+#       because the preprocessor silently treats unknown tokens as 0.
+ifneq ($(UT_LOG_LEVEL),)
+$(if $(filter-out 0 1 2 3 4,$(UT_LOG_LEVEL)),\
+    $(error UT_LOG_LEVEL must be a number 0-4: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG (got '$(UT_LOG_LEVEL)')))
+XCFLAGS += -DUT_LOG_LEVEL=$(UT_LOG_LEVEL)
+endif
+
 XCFLAGS += $(CFLAGS) $(INC_FLAGS)
 
 # Final conversions

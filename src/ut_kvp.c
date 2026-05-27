@@ -37,6 +37,20 @@ ut_kvp_instance_t *gKVP_Instance = NULL;
 #define UT_KVP_MAGIC (0xdeadbeef)
 #define UT_KVP_MAX_INCLUDE_DEPTH 5
 
+#define UT_KVP_HTTPS_PREFIX "https://"
+#define UT_KVP_HTTP_PREFIX "http://"
+#define UT_KVP_FILE_PREFIX "file://"
+
+// Automatically calculate lengths by subtracting the '\0' null terminator
+#define UT_KVP_HTTPS_PREFIX_LEN (sizeof(UT_KVP_HTTPS_PREFIX) - 1)
+#define UT_KVP_HTTP_PREFIX_LEN (sizeof(UT_KVP_HTTP_PREFIX) - 1)
+#define UT_KVP_FILE_PREFIX_LEN (sizeof(UT_KVP_FILE_PREFIX) - 1)
+
+// Wrapper template used to feed a URL to ut_kvp_openMemory() as a YAML include
+#define UT_KVP_INCLUDE_WRAPPER_FMT "include: %s\n"
+// Constant overhead of UT_KVP_INCLUDE_WRAPPER_FMT once %s is removed (i.e. "include: \n")
+#define UT_KVP_INCLUDE_WRAPPER_OVERHEAD (sizeof("include: \n") - 1)
+
 typedef struct
 {
     uint32_t magic;
@@ -58,7 +72,7 @@ static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char 
 static void convert_dot_to_slash(const char *key, char *output);
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
-static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
+static bool merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
 static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth);
 static const void *find_pattern_from_buffer(const void *buffer, size_t bufferLength, const void *pattern, size_t patternLength);
 
@@ -95,28 +109,91 @@ void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)
     pInternal = NULL;
 }
 
-ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
+static bool isUrl(const char *input)
 {
-    if (pInstance == NULL)
+    if (input == NULL)
+    {
+        return false;
+    }
+
+    // Check for http://
+    if (strncmp(input, UT_KVP_HTTP_PREFIX, UT_KVP_HTTP_PREFIX_LEN) == 0)
+    {
+        return true;
+    }
+
+    // Check for https://
+    if (strncmp(input, UT_KVP_HTTPS_PREFIX, UT_KVP_HTTPS_PREFIX_LEN) == 0)
+    {
+        return true;
+    }
+
+    // No matches found
+    return false;
+}
+
+ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl)
+{
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+
+    // Validate KVP instance handle
+    if (pInternal == NULL)
     {
         return UT_KVP_STATUS_INVALID_INSTANCE;
     }
 
-    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
-    if (fileName == NULL)
+    // Validate fileNameOrUrl parameter
+    if (fileNameOrUrl == NULL)
     {
-        UT_LOG_ERROR("Invalid Param [fileName]");
-        return UT_KVP_STATUS_INVALID_PARAM;
+        UT_LOG_ERROR("NULL PARAM [fileNameOrUrl]");
+        return UT_KVP_STATUS_NULL_PARAM;
     }
 
-    if (access(fileName, F_OK) != 0)
+    // Handle URL-based input (e.g. http:// or https://)
+    if (isUrl(fileNameOrUrl))
     {
-        UT_LOG_ERROR("[%s] cannot be accesed", fileName);
+        // Size the wrapper buffer exactly for this URL — no fixed cap, no truncation
+        size_t urlLen = strlen(fileNameOrUrl);
+        size_t yamlSize = UT_KVP_INCLUDE_WRAPPER_OVERHEAD + urlLen + 1; /* +1 for '\0' */
+        char *pYaml = malloc(yamlSize);
+
+        if (pYaml == NULL)
+        {
+            UT_LOG_ERROR("Failed to allocate %zu bytes for URL include wrapper", yamlSize);
+            return UT_KVP_STATUS_PARSING_ERROR;
+        }
+
+        int written = snprintf(pYaml, yamlSize, UT_KVP_INCLUDE_WRAPPER_FMT, fileNameOrUrl);
+        if (written < 0 || (size_t)written >= yamlSize)
+        {
+            // Shouldn't happen given the exact sizing above, but handle defensively
+            UT_LOG_ERROR("snprintf truncation while building URL include wrapper");
+            free(pYaml);
+            return UT_KVP_STATUS_PARSING_ERROR;
+        }
+
+        // Pass the dynamically allocated YAML string to openMemory() for parsing
+        ut_kvp_status_t status = ut_kvp_openMemory(pInstance, pYaml, (uint32_t)written);
+        free(pYaml);
+        return status;
+    }
+
+    // Handle file-based input
+    if (strncmp(fileNameOrUrl, UT_KVP_FILE_PREFIX, UT_KVP_FILE_PREFIX_LEN) == 0)
+    {
+        // Skip "file://"
+        fileNameOrUrl = fileNameOrUrl + UT_KVP_FILE_PREFIX_LEN;  
+    }
+
+    // Verify that the file is accessible
+    if (access(fileNameOrUrl, F_OK) != 0)
+    {
+        UT_LOG_ERROR("[%s] cannot be accessed", fileNameOrUrl);
         return UT_KVP_STATUS_FILE_OPEN_ERROR;
     }
 
     // Load the new document
-    struct fy_document *newDoc = fy_document_build_from_file(NULL, fileName);
+    struct fy_document *newDoc = fy_document_build_from_file(NULL, fileNameOrUrl);
     if (newDoc == NULL || fy_document_resolve(newDoc) != 0)
     {
         if (newDoc)
@@ -173,7 +250,13 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, char *fileName)
     else
     {
         // Subsequent files: merge into existing root
-        merge_nodes(mainRoot, copiedRoot);
+        if (!merge_nodes(mainRoot, copiedRoot))
+        {
+            /* includeNode was not consumed by merge_nodes (e.g. incompatible
+             * types); copiedRoot is an orphan node inside pInternal->fy_handle
+             * and will not be freed by fy_document_destroy — free it now. */
+            fy_node_free(copiedRoot);
+        }
     }
 
     fy_document_destroy(newDoc);
@@ -217,7 +300,10 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 
     if (pInternal->fy_handle)
     {
-        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(srcDoc));
+        if (!merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(srcDoc)))
+        {
+            UT_LOG_ERROR("Node merge failed");
+        }
     }
     else
     {
@@ -461,6 +547,70 @@ uint64_t ut_kvp_getUInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey
 
     //UT_LOG_DEBUG("Converted value: %llu", u64Value);
     return u64Value;
+}
+
+static long long getIntField( ut_kvp_instance_t *pInstance, const char *pszKey, long long minRange, long long maxRange )
+{
+    char *pEndptr;
+    long long llValue;
+    char result[UT_KVP_MAX_ELEMENT_SIZE];
+    ut_kvp_status_t status;
+    char *pField = &result[0];
+
+    status = ut_kvp_getField(pInstance, pszKey, result);
+    if ( status != UT_KVP_STATUS_SUCCESS )
+    {
+        return 0;
+    }
+
+    errno = 0; // Clear errno immediately before strtoll to avoid false ERANGE from prior calls
+    if (strstr(result, "0x") || strstr(result, "0X"))
+    {
+        llValue = strtoll(pField, &pEndptr, 16); // Base 16 conversion
+    }
+    else
+    {
+        llValue = strtoll(pField, &pEndptr, 10); // Base 10 conversion
+    }
+
+    // Error checking
+    if (pField == pEndptr)
+    {
+        UT_LOG_ERROR("No conversion performed!");
+        return 0;
+    }
+    else if (*pEndptr != '\0')
+    {
+        UT_LOG_ERROR("Invalid characters in the string.");
+        return 0;
+    }
+    else if (errno == ERANGE || llValue < minRange || llValue > maxRange)
+    {
+        UT_LOG_DEBUG("Value out of range for range [%lld, %lld].", minRange, maxRange);
+        return 0;
+    }
+
+    return llValue;
+}
+
+int8_t ut_kvp_getInt8Field( ut_kvp_instance_t *pInstance, const char *pszKey )
+{
+    return (int8_t)getIntField( pInstance, pszKey, INT8_MIN, INT8_MAX );
+}
+
+int16_t ut_kvp_getInt16Field( ut_kvp_instance_t *pInstance, const char *pszKey )
+{
+    return (int16_t)getIntField( pInstance, pszKey, INT16_MIN, INT16_MAX );
+}
+
+int32_t ut_kvp_getInt32Field( ut_kvp_instance_t *pInstance, const char *pszKey )
+{
+    return (int32_t)getIntField( pInstance, pszKey, INT32_MIN, INT32_MAX );
+}
+
+int64_t ut_kvp_getInt64Field( ut_kvp_instance_t *pInstance, const char *pszKey )
+{
+    return (int64_t)getIntField( pInstance, pszKey, INT64_MIN, INT64_MAX );
 }
 
 float ut_kvp_getFloatField( ut_kvp_instance_t *pInstance, const char *pszKey)
@@ -852,29 +1002,20 @@ static bool str_to_bool(const char *string)
 
 static void convert_dot_to_slash(const char *key, char *output)
 {
-    if (strchr(key, '.'))
+    size_t i;
+
+    /* Copy at most UT_KVP_MAX_ELEMENT_SIZE - 1 characters so the NUL
+     * terminator always lands inside the caller's UT_KVP_MAX_ELEMENT_SIZE
+     * buffer, converting '.' path separators to '/' as we go. */
+    for (i = 0; i < UT_KVP_MAX_ELEMENT_SIZE - 1 && key[i] != '\0'; i++)
     {
-        for (int i = 0; i <= UT_KVP_MAX_ELEMENT_SIZE; i++)
-        {
-            char key_val = key[i];
-            if (key_val == '\0')
-            {
-                break;
-            }
-            if (key_val == '.')
-            {
-                output[i] = '/';
-            }
-            else
-            {
-                output[i] = key_val;
-            }
-        }
-        output[strlen(key)] = '\0';
+        output[i] = (key[i] == '.') ? '/' : key[i];
     }
-    else
+    output[i] = '\0';
+
+    if (key[i] != '\0')
     {
-        snprintf(output, UT_KVP_MAX_ELEMENT_SIZE, "%s", key);
+        UT_LOG_ERROR("Key exceeds UT_KVP_MAX_ELEMENT_SIZE [%d]; truncated", UT_KVP_MAX_ELEMENT_SIZE);
     }
 }
 
@@ -929,13 +1070,22 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
     const char *tag = fy_node_get_tag(srcNode, &tag_len);
     if (tag && strncmp(tag, "!include", tag_len) == 0 && fy_node_is_scalar(srcNode))
     {
-        const char *filepath = fy_node_get_scalar(srcNode, NULL);
-        if (filepath)
+        /* make a NUL-terminated C string copy from the scalar */
+        size_t f_len = 0;
+        const char *f_str = fy_node_get_scalar(srcNode, &f_len);
+        if (f_str)
         {
-            struct fy_node *included = process_include(filepath, depth, dstDoc);
-            if (included)
+            char *filepath_alloc = malloc(f_len + 1);
+            if (filepath_alloc)
             {
-                return process_node_copy(included, dstDoc, depth + 1);
+                memcpy(filepath_alloc, f_str, f_len);
+                filepath_alloc[f_len] = '\0';
+                struct fy_node *included = process_include(filepath_alloc, depth, dstDoc);
+                free(filepath_alloc);
+                if (included)
+                {
+                    return process_node_copy(included, dstDoc, depth + 1);
+                }
             }
         }
         return NULL;
@@ -968,12 +1118,21 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
                 struct fy_node *incl = fy_node_mapping_lookup_by_string(entry, "include", 7);
                 if (incl && fy_node_is_scalar(incl))
                 {
-                    const char *filepath = fy_node_get_scalar(incl, NULL);
-                    if (filepath)
+                    /* ensure NUL-terminated string for include value by making a caller-owned copy */
+                    size_t incl_len = 0;
+                    const char *incl_str = fy_node_get_scalar(incl, &incl_len);
+                    if (incl_str)
                     {
-                        struct fy_node *included = process_include(filepath, depth, dstDoc);
-                        if (included)
-                            copied_entry = process_node_copy(included, dstDoc, depth + 1);
+                        char *filepath_alloc = malloc(incl_len + 1);
+                        if (filepath_alloc)
+                        {
+                            memcpy(filepath_alloc, incl_str, incl_len);
+                            filepath_alloc[incl_len] = '\0';
+                            struct fy_node *included = process_include(filepath_alloc, depth, dstDoc);
+                            if (included)
+                                copied_entry = process_node_copy(included, dstDoc, depth + 1);
+                            free(filepath_alloc);
+                        }                    
                     }
                 }
             }
@@ -1018,20 +1177,36 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
             const char *key_str = fy_node_get_scalar(key_node, &key_len);
 
             // Handle include keys like "include_0", "include", etc.
-            if (key_str && fy_node_get_scalar(val_node, NULL) && find_pattern_from_buffer(key_str, key_len, "include", strlen("include")))
+            size_t val_len = 0;
+            const char *val_str = fy_node_get_scalar(val_node, &val_len);
+            char *val_alloc = NULL;
+            if (val_str)
             {
-                const char *filepath = fy_node_get_scalar(val_node, NULL);
-                if (filepath)
+                val_alloc = malloc(val_len + 1);
+                if (val_alloc)
                 {
-                    struct fy_node *included = process_include(filepath, depth, dstDoc);
-                    if (included)
-                    {
-                        // If the included node is a mapping, merge it into the new_map
-                        merge_nodes(new_map, included);
-                        continue;
-                    }
+                    memcpy(val_alloc, val_str, val_len);
+                    val_alloc[val_len] = '\0';
                 }
             }
+            if (key_str && val_alloc && find_pattern_from_buffer(key_str, key_len, "include", strlen("include")))
+            {
+                /* ensure NUL-terminated string for include value */
+                struct fy_node *included = process_include(val_alloc, depth, dstDoc);
+                free(val_alloc);
+                val_alloc = NULL;
+                if (included)
+                {
+                    if (!merge_nodes(new_map, included))
+                    {
+                        /* included was not consumed; free the orphan node */
+                        fy_node_free(included);
+                    }
+                    continue;
+                }
+            }
+            if (val_alloc)
+                free(val_alloc);
 
             // Regular case: recursive copy
             struct fy_node *copied_key = fy_node_copy(dstDoc, key_node);
@@ -1051,51 +1226,38 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
     return NULL;
 }
 
-static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
+static bool merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
 {
     if (mainNode == NULL)
     {
         UT_LOG_ERROR("Main node is invalid");
-        return;
+        return false;
     }
 
     if (includeNode == NULL)
     {
         UT_LOG_ERROR("Included node is invalid");
-        return;
+        return false;
     }
 
     if (fy_node_is_scalar(mainNode))
     {
-        const char *scalar = fy_node_get_scalar(includeNode, NULL);
-        size_t scalar_len = fy_node_get_scalar_length(includeNode);
-
-        if (scalar)
-        {
-            struct fy_node *new_scalar = fy_node_create_scalar_copy(fy_node_document(mainNode), scalar, scalar_len);
-            if (!new_scalar)
-            {
-                UT_LOG_ERROR("Failed to create scalar copy");
-                return;
-            }
-
-            mainNode = new_scalar;
-        }
-        else
-        {
-            UT_LOG_ERROR("Included scalar is NULL");
-        }
+        UT_LOG_ERROR("Scalar merge at root not supported");
+        return false; /* includeNode was not consumed */
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
     {
         if (fy_node_insert(mainNode, includeNode) != 0)
         {
             UT_LOG_ERROR("Node merge failed");
+            return false; /* includeNode was not consumed */
         }
+        return true; /* fy_node_insert took ownership of includeNode */
     }
     else
     {
-        UT_LOG_ERROR("Warning: Cannot merge nodes of incompatible types\n");
+        UT_LOG_ERROR("Error: Cannot merge nodes of incompatible types\n");
+        return false; /* includeNode was not consumed */
     }
 }
 
@@ -1109,7 +1271,7 @@ static struct fy_node* process_include(const char *filename, int depth, struct f
         return NULL;
     }
 
-   if (strncmp(filename, "http:", 5) == 0 || strncmp(filename, "https:", 6) == 0) 
+   if (strncmp(filename, UT_KVP_HTTP_PREFIX, UT_KVP_HTTP_PREFIX_LEN) == 0 || strncmp(filename, UT_KVP_HTTPS_PREFIX, UT_KVP_HTTPS_PREFIX_LEN) == 0) 
    {
         // URL include
         mChunk.memory = malloc(1);

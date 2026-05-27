@@ -51,17 +51,35 @@ extern "C"
 // Macros for Different Log Levels
 /**! Logs a step in a test sequence. */
 #define UT_LOG_STEP(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_BLUE "STEP  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs informational messages. */
-#define UT_LOG_INFO(format, ...)            UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_CYAN "INFO  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs debug-level messages. */
-#define UT_LOG_DEBUG(format, ...)           UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_MAGENTA "DEBUG " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs warning messages. */
-#define UT_LOG_WARNING(format, ...)         UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_YELLOW "WARN  " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
-/**! Logs error messages. */
-#define UT_LOG_ERROR(format, ...)           UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ERROR " UT_LOG_ASCII_NC, format, ## __VA_ARGS__)
+/**! Logs informational messages; level check is inside UT_logPrefix_info. */
+#define UT_LOG_INFO(format, ...)            UT_logPrefix_info(__FILE__, __LINE__, format, ## __VA_ARGS__)
+/**! Logs debug-level messages; level check is inside UT_logPrefix_debug. */
+#define UT_LOG_DEBUG(format, ...)           UT_logPrefix_debug(__FILE__, __LINE__, format, ## __VA_ARGS__)
+/**! Logs warning messages; level check is inside UT_logPrefix_warning. */
+#define UT_LOG_WARNING(format, ...)         UT_logPrefix_warning(__FILE__, __LINE__, format, ## __VA_ARGS__)
+/**! Logs error messages; level check is inside UT_logPrefix_error. */
+#define UT_LOG_ERROR(format, ...)           UT_logPrefix_error(__FILE__, __LINE__, format, ## __VA_ARGS__)
 /**! Logs assertion failure messages with a prefix. */
 #define UT_LOG_ASSERT(prefix, format, ...)  UT_logPrefix(__FILE__, __LINE__, UT_LOG_ASCII_RED "ASSERT  " UT_LOG_ASCII_NC, UT_LOG_ASCII_RED#prefix ":" UT_LOG_ASCII_NC #format, ## __VA_ARGS__)
 
+/* Log level constants */
+#define UT_LOG_LEVEL_NONE    0
+#define UT_LOG_LEVEL_ERROR   1
+#define UT_LOG_LEVEL_WARNING 2
+#define UT_LOG_LEVEL_INFO    3
+#define UT_LOG_LEVEL_DEBUG   4
+
+/* UT_LOG_LEVEL sets the active log verbosity. Defaults to WARNING if not set.
+ * Messages below the chosen level are silently discarded inside the wrapper.
+ * Valid values: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG
+ */
+#ifndef UT_LOG_LEVEL
+    #define UT_LOG_LEVEL UT_LOG_LEVEL_WARNING
+#endif
+#if UT_LOG_LEVEL < UT_LOG_LEVEL_NONE || UT_LOG_LEVEL > UT_LOG_LEVEL_DEBUG
+    #error "UT_LOG_LEVEL must be a number: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG"
+#endif
+#define UT_LOG_ENABLED(level)  ((level) <= (UT_LOG_LEVEL))
 
 /**!
  * @brief Sets the path for the active log file.
@@ -102,6 +120,12 @@ void UT_log(const char *function, int line, const char *format, ...);
  * @param ... - Variable arguments for the format string.
  */
 void UT_logPrefix(const char *function, int line, const char *prefix, const char *format, ...);
+
+/* Internal functions for log level specific logging */
+void UT_logPrefix_info(const char *file, int line, const char *format, ...);
+void UT_logPrefix_debug(const char *file, int line, const char *format, ...);
+void UT_logPrefix_warning(const char *file, int line, const char *format, ...);
+void UT_logPrefix_error(const char *file, int line, const char *format, ...);
 
 #ifdef __cplusplus
 }

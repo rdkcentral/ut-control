@@ -42,6 +42,12 @@
 #define KVP_VALID_TEST_SEQUENCE_INCLUDE_YAML "assets/include/sequence-include.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_YAML "assets/yaml_tags.yaml"
 #define KVP_VALID_TEST_RESOLVE_YAML_TAGS_IN_SEQUENCE_YAML "assets/yaml_tags_in_sequence.yaml"
+#define KVP_VALID_TEST_URL_HTTPS "https://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/2s.yaml"
+#define KVP_VALID_TEST_URI_HTTP "http://localhost:8000/assets/yaml_tags.yaml"
+#define KVP_VALID_TEST_URI_FILE "file://assets/yaml_tags.yaml"
+#define KVP_VALID_TEST_NOT_VALID_URL_HTTPS "HTTPS://raw.githubusercontent.com/rdkcentral/ut-control/main/tests/src/assets/include/2s.yaml"
+#define KVP_VALID_TEST_NOT_VALID_URI_HTTP "HTTP://localhost:8000/assets/yaml_tags.yaml"
+#define KVP_VALID_TEST_NOT_VALID_URI_FILE "FILE://assets/yaml_tags.yaml"
 
 static ut_kvp_instance_t *gpMainTestInstance = NULL;
 static UT_test_suite_t *gpKVPSuite = NULL;
@@ -108,7 +114,7 @@ void test_ut_kvp_open( void )
     /* Negative Read Test, NULL PARAM */
     UT_LOG_STEP("ut_kvp_open( pInstance, NULL ) - Negative");
     status = ut_kvp_open( pInstance, NULL);
-    UT_ASSERT( status == UT_KVP_STATUS_INVALID_PARAM );
+    UT_ASSERT( status == UT_KVP_STATUS_NULL_PARAM );
 
     /* Filename doesn't exist */
     UT_LOG_STEP("ut_kvp_open( pInstance, %s - filename doesn't exist ) - Negative", KVP_VALID_TEST_NO_FILE);
@@ -120,9 +126,36 @@ void test_ut_kvp_open( void )
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_ZERO_LENGTH_YAML_FILE);
     UT_ASSERT( status == UT_KVP_STATUS_PARSING_ERROR );
 
+    /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URL_HTTPS PARAM */
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URL_HTTPS ) - Negative");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URL_HTTPS);
+    UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
+
+    /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URI_HTTP PARAM */
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_HTTP ) - Negative");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_HTTP);
+    UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
+
+    /* Negative Read Test, KVP_VALID_TEST_NOT_VALID_URI_FILE PARAM */
+    UT_LOG_STEP("ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_FILE ) - Negative");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_NOT_VALID_URI_FILE);
+    UT_ASSERT( status == UT_KVP_STATUS_FILE_OPEN_ERROR );
+
     /* Positive Tests */
     UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_YAML_FILE ) - Positive");
     status = ut_kvp_open( pInstance, KVP_VALID_TEST_YAML_FILE);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URL_HTTPS ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URL_HTTPS);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URI_HTTP ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URI_HTTP);
+    UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
+
+    UT_LOG_STEP("ut_kvp_open( pInstance,  KVP_VALID_TEST_URI_FILE ) - Positive");
+    status = ut_kvp_open( pInstance, KVP_VALID_TEST_URI_FILE);
     UT_ASSERT( status == UT_KVP_STATUS_SUCCESS );
 
     UT_LOG_STEP("ut_kvp_open( pInstance, %s ) - Postive", KVP_VALID_TEST_NOT_VALID_YAML_FORMATTED_FILE);
@@ -315,6 +348,110 @@ void test_ut_kvp_uint64(void)
     UT_ASSERT( result == 0 );
 }
 
+void test_ut_kvp_int8(void)
+{
+    int8_t result;
+
+    /* Positive Tests */
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt8Positive" );
+    UT_ASSERT( result == 127 );
+
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt8Negative" );
+    UT_ASSERT( result == -128 );
+
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt8Zero" );
+    UT_ASSERT( result == 0 );
+
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt8Hex" );
+    UT_ASSERT( result == 0x7f );
+
+    /* Negative Tests */
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "thisShouldNotWork/checkInt8Positive" );
+    UT_ASSERT( result == 0 );
+
+    /* Decode out of range value */
+    result = ut_kvp_getInt8Field( gpMainTestInstance, "decodeTest/checkInt16Positive" );
+    UT_ASSERT( result == 0 );
+}
+
+void test_ut_kvp_int16(void)
+{
+    int16_t result;
+
+    /* Positive Tests */
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest/checkInt16Positive" );
+    UT_ASSERT( result == 32767 );
+
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest/checkInt16Negative" );
+    UT_ASSERT( result == -32768 );
+
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest/checkInt16Hex" );
+    UT_ASSERT( result == 0x7fff );
+
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest.checkInt16Positive" );
+    UT_ASSERT( result == 32767 );
+
+    /* Negative Tests */
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "thisShouldNotWork/checkInt16Positive" );
+    UT_ASSERT( result == 0 );
+
+    /* Decode out of range value */
+    result = ut_kvp_getInt16Field( gpMainTestInstance, "decodeTest/checkInt32Positive" );
+    UT_ASSERT( result == 0 );
+}
+
+void test_ut_kvp_int32(void)
+{
+    int32_t result;
+
+    /* Positive Tests */
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Positive" );
+    UT_ASSERT( result == 2147483647 );
+
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Negative" );
+    UT_ASSERT( result == -2147483648 );
+
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt32Hex" );
+    UT_ASSERT( result == 0x7fffffff );
+
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest.checkInt32Positive" );
+    UT_ASSERT( result == 2147483647 );
+
+    /* Negative Tests */
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "thisShouldNotWork/checkInt32Positive" );
+    UT_ASSERT( result == 0 );
+
+    /* Decode out of range value */
+    result = ut_kvp_getInt32Field( gpMainTestInstance, "decodeTest/checkInt64Positive" );
+    UT_ASSERT( result == 0 );
+}
+
+void test_ut_kvp_int64(void)
+{
+    int64_t result;
+
+    /* Positive Tests */
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest/checkInt64Positive" );
+    UT_ASSERT( result == 9223372036854775807LL );
+
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest/checkInt64Negative" );
+    UT_ASSERT( result == (-9223372036854775807LL - 1) );
+
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest.checkInt64Positive" );
+    UT_ASSERT( result == 9223372036854775807LL );
+
+    /* Hexadecimal Positive Tests */
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest/checkInt64Hex" );
+    UT_ASSERT( result == 0x7fffffffffffffffLL );
+
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "decodeTest.checkInt64Hex" );
+    UT_ASSERT( result == 0x7fffffffffffffffLL );
+
+    /* Negative Tests */
+    result = ut_kvp_getInt64Field( gpMainTestInstance, "thisShouldNotWork/checkInt64Positive" );
+    UT_ASSERT( result == 0 );
+}
+
 void test_ut_kvp_list(void)
 {
     ut_kvp_status_t status;
@@ -419,6 +556,35 @@ void test_ut_kvp_string(void)
     UT_ASSERT_STRING_EQUAL(result_kvp, "the beef is also dead" );
     UT_LOG( "checkStringDeadBeef2[%s]", result_kvp );
 
+}
+
+/*
+ * Regression test for gh #126 : an oversized dotted key must not overflow the
+ * internal UT_KVP_MAX_ELEMENT_SIZE conversion buffer in convert_dot_to_slash().
+ * The key is converted/truncated within bounds and the call fails safely
+ * (the truncated key matches no entry) instead of corrupting the stack.
+ */
+void test_ut_kvp_oversizedKey(void)
+{
+    char result_kvp[UT_KVP_MAX_ELEMENT_SIZE] = {0xff};
+    char oversized_key[(UT_KVP_MAX_ELEMENT_SIZE * 2) + 1];
+    ut_kvp_status_t status;
+    size_t i;
+
+    /* Build a dotted key longer than UT_KVP_MAX_ELEMENT_SIZE so the
+     * conversion path must truncate rather than overflow. */
+    for (i = 0; i < sizeof(oversized_key) - 1; i++)
+    {
+        oversized_key[i] = ((i % 8) == 7) ? '.' : 'a';
+    }
+    oversized_key[sizeof(oversized_key) - 1] = '\0';
+
+    UT_LOG_STEP("ut_kvp_getStringField() - Oversized dotted key must fail safely (gh #126)");
+    status = ut_kvp_getStringField(gpMainTestInstance, oversized_key, result_kvp, UT_KVP_MAX_ELEMENT_SIZE);
+    /* The truncated key cannot match a real entry; the only requirement is
+     * that the call returns (no buffer overflow / crash) with a failure. */
+    UT_ASSERT(status != UT_KVP_STATUS_SUCCESS);
+    UT_LOG("oversized key status[%d]", status);
 }
 
 void test_ut_kvp_dataByte( void )
@@ -1309,20 +1475,25 @@ void register_kvp_functions( void )
 
     gpKVPSuite=gpKVPSuite;
     gpKVPSuite = UT_add_suite("ut-kvp - test functions ", NULL, NULL);
-    assert(gpKVPSuite != NULL);
+    UT_ASSERT(gpKVPSuite != NULL);
 
     UT_add_test(gpKVPSuite, "kvp create / destroy", test_ut_kvp_testCreateDestroy);
     UT_add_test(gpKVPSuite, "kvp read", test_ut_kvp_open);
 
     gpKVPSuite2 = UT_add_suite("ut-kvp - test main functions YAML Decoder ", test_ut_kvp_createGlobalYAMLInstance, test_ut_kvp_freeGlobalInstance);
-    assert(gpKVPSuite2 != NULL);
+    UT_ASSERT(gpKVPSuite2 != NULL);
 
     UT_add_test(gpKVPSuite2, "kvp uint8", test_ut_kvp_uint8);
     UT_add_test(gpKVPSuite2, "kvp uint16", test_ut_kvp_uint16);
     UT_add_test(gpKVPSuite2, "kvp bool", test_ut_kvp_bool);
     UT_add_test(gpKVPSuite2, "kvp string", test_ut_kvp_string);
+    UT_add_test(gpKVPSuite2, "kvp oversized key", test_ut_kvp_oversizedKey);
     UT_add_test(gpKVPSuite2, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite2, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite2, "kvp int8", test_ut_kvp_int8);
+    UT_add_test(gpKVPSuite2, "kvp int16", test_ut_kvp_int16);
+    UT_add_test(gpKVPSuite2, "kvp int32", test_ut_kvp_int32);
+    UT_add_test(gpKVPSuite2, "kvp int64", test_ut_kvp_int64);
     UT_add_test(gpKVPSuite2, "kvp list", test_ut_kvp_list);
     UT_add_test(gpKVPSuite2, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite2, "kvp double", test_ut_kvp_getDoubleField);
@@ -1331,7 +1502,7 @@ void register_kvp_functions( void )
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite3 = UT_add_suite("ut-kvp - test main functions JSON Decoder ", test_ut_kvp_createGlobalJSONInstance, test_ut_kvp_freeGlobalInstance);
-    assert(gpKVPSuite3 != NULL);
+    UT_ASSERT(gpKVPSuite3 != NULL);
 
     UT_add_test(gpKVPSuite3, "kvp string", test_ut_kvp_string);
     UT_add_test(gpKVPSuite3, "kvp uint8", test_ut_kvp_uint8);
@@ -1340,6 +1511,10 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite3, "kvp bool", test_ut_kvp_bool);
     UT_add_test(gpKVPSuite3, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite3, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite3, "kvp int8", test_ut_kvp_int8);
+    UT_add_test(gpKVPSuite3, "kvp int16", test_ut_kvp_int16);
+    UT_add_test(gpKVPSuite3, "kvp int32", test_ut_kvp_int32);
+    UT_add_test(gpKVPSuite3, "kvp int64", test_ut_kvp_int64);
     UT_add_test(gpKVPSuite3, "kvp list", test_ut_kvp_list);
     UT_add_test(gpKVPSuite3, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite3, "kvp double", test_ut_kvp_getDoubleField);
@@ -1347,13 +1522,13 @@ void register_kvp_functions( void )
 
 
     gpKVPSuite4 = UT_add_suite("ut-kvp - test main functions Test without Open ", NULL, NULL);
-    assert(gpKVPSuite4 != NULL);
+    UT_ASSERT(gpKVPSuite4 != NULL);
 
     UT_add_test(gpKVPSuite4, "kvp read negative", test_ut_kvp_get_field_without_open);
 
     /* Perform the same parsing on malloc'd data*/
     gpKVPSuite5 = UT_add_suite("ut-kvp - test main functions YAML Decoder with malloc'd data", test_ut_kvp_createGlobalYAMLInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
-    assert(gpKVPSuite5 != NULL);
+    UT_ASSERT(gpKVPSuite5 != NULL);
 
     UT_add_test(gpKVPSuite5, "kvp uint8", test_ut_kvp_uint8);
     UT_add_test(gpKVPSuite5, "kvp uint16", test_ut_kvp_uint16);
@@ -1361,6 +1536,10 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite5, "kvp string", test_ut_kvp_string);
     UT_add_test(gpKVPSuite5, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite5, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite5, "kvp int8", test_ut_kvp_int8);
+    UT_add_test(gpKVPSuite5, "kvp int16", test_ut_kvp_int16);
+    UT_add_test(gpKVPSuite5, "kvp int32", test_ut_kvp_int32);
+    UT_add_test(gpKVPSuite5, "kvp int64", test_ut_kvp_int64);
     UT_add_test(gpKVPSuite5, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite5, "kvp double", test_ut_kvp_getDoubleField);
     UT_add_test(gpKVPSuite5, "kvp node presence", test_ut_kvp_fieldPresent);
@@ -1368,7 +1547,7 @@ void register_kvp_functions( void )
 
     /* Perform the same parsing tests but use a json file instead */
     gpKVPSuite6 = UT_add_suite("ut-kvp - test main functions JSON Decoder with malloc'd data", test_ut_kvp_createGlobalJSONInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
-    assert(gpKVPSuite6 != NULL);
+    UT_ASSERT(gpKVPSuite6 != NULL);
 
     UT_add_test(gpKVPSuite6, "kvp string", test_ut_kvp_string);
     UT_add_test(gpKVPSuite6, "kvp uint8", test_ut_kvp_uint8);
@@ -1376,17 +1555,21 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite6, "kvp bool", test_ut_kvp_bool);
     UT_add_test(gpKVPSuite6, "kvp uint32", test_ut_kvp_uint32);
     UT_add_test(gpKVPSuite6, "kvp uint64", test_ut_kvp_uint64);
+    UT_add_test(gpKVPSuite6, "kvp int8", test_ut_kvp_int8);
+    UT_add_test(gpKVPSuite6, "kvp int16", test_ut_kvp_int16);
+    UT_add_test(gpKVPSuite6, "kvp int32", test_ut_kvp_int32);
+    UT_add_test(gpKVPSuite6, "kvp int64", test_ut_kvp_int64);
     UT_add_test(gpKVPSuite6, "kvp float", test_ut_kvp_getFloatField);
     UT_add_test(gpKVPSuite6, "kvp double", test_ut_kvp_getDoubleField);
     UT_add_test(gpKVPSuite6, "kvp node presence", test_ut_kvp_fieldPresent);
 
     gpKVPSuite7 = UT_add_suite("ut-kvp - test kvp_open_memory()", test_ut_kvp_createGlobalKVPInstanceForMallocedData, test_ut_kvp_freeGlobalInstance);
-    assert(gpKVPSuite7 != NULL);
+    UT_ASSERT(gpKVPSuite7 != NULL);
 
     UT_add_test(gpKVPSuite7, "kvp read with malloced data", test_ut_kvp_open_memory);
 
     gpKVPSuite8 = UT_add_suite("ut-kvp - test main functions YAML Decoder for includes using build from files", NULL, NULL);
-    assert(gpKVPSuite8 != NULL);
+    UT_ASSERT(gpKVPSuite8 != NULL);
 
     UT_add_test(gpKVPSuite8, "kvp single include file", test_ut_kvp_open_singleIncludeFileWithBuildFromFile);
     UT_add_test(gpKVPSuite8, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromFile);
@@ -1396,7 +1579,7 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite8, "kvp resolve yaml tags in sequence", test_ut_kvp_ResolveYamlTagsInSequenceWithBuildFromFile);
 
     gpKVPSuite9 = UT_add_suite("ut-kvp - test main functions YAML Decoder for single include files using build from Malloced data", NULL, NULL);
-    assert(gpKVPSuite9 != NULL);
+    UT_ASSERT(gpKVPSuite9 != NULL);
 
     UT_add_test(gpKVPSuite9, "kvp single include file", test_ut_kvp_singleIncludeFileWithBuildFromMallocedData);
     UT_add_test(gpKVPSuite9, "kvp single include url", test_ut_kvp_singleIncludeUrlsWithBuildFromMallocedData);
@@ -1406,19 +1589,19 @@ void register_kvp_functions( void )
     UT_add_test(gpKVPSuite9, "kvp resolve yaml tags in sequence", test_ut_kvp_ResolveYamlTagsInSequenceWithBuildFromMallocedData);
 
     gpKVPSuite10 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml include support", test_ut_kvp_createGlobalYAMLInstanceForIncludeFileViaYaml, test_ut_kvp_freeGlobalInstance);
-    assert(gpKVPSuite10 != NULL);
+    UT_ASSERT(gpKVPSuite10 != NULL);
 
     UT_add_test(gpKVPSuite10, "kvp bool from main yaml", test_ut_kvp_bool_on_main_yaml);
     UT_add_test(gpKVPSuite10, "kvp node presence from main yaml", test_ut_kvp_fieldPresent_on_main_yaml);
 
     gpKVPSuite11 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml multiple profile inputs", test_ut_kvp_createGlobalYAMLInstanceForMultipleProfileInputs, test_ut_kvp_freeGlobalInstance);
-    assert(gpKVPSuite11 != NULL);
+    UT_ASSERT(gpKVPSuite11 != NULL);
 
     UT_add_test(gpKVPSuite11, "kvp multiple profile", test_ut_kvp_add_multiple_profile);
     UT_add_test(gpKVPSuite11, "kvp multiple profile using open memory", test_ut_kvp_add_multiple_profile_using_open_memory);
 
     gpKVPSuite12 = UT_add_suite("ut-kvp - test main functions YAML Decoder for Yaml sequence include support", test_ut_kvp_createGlobalYAMLInstanceForSequenceIncludeFileViaYaml, test_ut_kvp_freeGlobalInstance);
-    assert(gpKVPSuite12 != NULL);
+    UT_ASSERT(gpKVPSuite12 != NULL);
 
     UT_add_test(gpKVPSuite12, "kvp bool from main yaml", test_ut_kvp_bool_on_main_yaml_for_sequence_includes);
     UT_add_test(gpKVPSuite12, "kvp node presence from main yaml", test_ut_kvp_fieldPresent_on_main_yaml_for_sequence_includes);

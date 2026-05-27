@@ -1,4 +1,4 @@
-#Date: May 10, 2024
+#Date: April 29, 2026
 #Subject: [PATCH] Patch to fix compilation warning in libfyaml-master directory.
 #
 #Source: Uses code from the libfyaml-master and asprintf.c
@@ -8,105 +8,113 @@
 #---
 #
 #==========================================================================================
-diff -crB libfyaml-master/src/lib/fy-diag.c libfyaml-master-updated/src/lib/fy-diag.c
-*** libfyaml-master/src/lib/fy-diag.c	2024-04-22 17:20:09.000000000 +0000
---- libfyaml-master-updated/src/lib/fy-diag.c	2024-05-10 12:59:03.172799624 +0000
-***************
-*** 21,26 ****
---- 21,27 ----
-  #include <ctype.h>
-  
-  #include <libfyaml.h>
-+ #include <asprintf.h>
-  
-  #include "fy-parse.h"
-  
-diff -crB libfyaml-master/src/lib/fy-doc.c libfyaml-master-updated/src/lib/fy-doc.c
-*** libfyaml-master/src/lib/fy-doc.c	2024-04-22 17:20:09.000000000 +0000
---- libfyaml-master-updated/src/lib/fy-doc.c	2024-05-10 12:59:03.168799628 +0000
-***************
-*** 20,25 ****
---- 20,27 ----
-  
-  #include <libfyaml.h>
-  
-+ #include <asprintf.h>
-+ 
-  #include "fy-parse.h"
-  #include "fy-doc.h"
-  
-diff -crB libfyaml-master/src/lib/fy-event.c libfyaml-master-updated/src/lib/fy-event.c
-*** libfyaml-master/src/lib/fy-event.c	2024-04-22 17:20:09.000000000 +0000
---- libfyaml-master-updated/src/lib/fy-event.c	2024-05-10 12:59:03.172799624 +0000
-***************
-*** 19,24 ****
---- 19,25 ----
-  #include <stdarg.h>
-  
-  #include <libfyaml.h>
-+ #include <asprintf.h>
-  
-  #include "fy-parse.h"
-  #include "fy-emit.h"
-diff -crB libfyaml-master/src/lib/fy-input.c libfyaml-master-updated/src/lib/fy-input.c
-*** libfyaml-master/src/lib/fy-input.c	2024-04-22 17:20:09.000000000 +0000
---- libfyaml-master-updated/src/lib/fy-input.c	2024-05-10 12:59:03.176799618 +0000
-***************
-*** 24,29 ****
---- 24,30 ----
-  #include <errno.h>
-  
-  #include <libfyaml.h>
-+ #include <asprintf.h>
-  
-  #include "fy-parse.h"
-  #include "fy-ctype.h"
-diff -crB libfyaml-master/src/lib/fy-parse.c libfyaml-master-updated/src/lib/fy-parse.c
-*** libfyaml-master/src/lib/fy-parse.c	2024-04-22 17:20:09.000000000 +0000
---- libfyaml-master-updated/src/lib/fy-parse.c	2024-05-10 12:50:19.169421989 +0000
-***************
-*** 34,39 ****
---- 34,40 ----
-  #define ATOM_SIZE_CHECK
-  #endif
-  
-+ #if 0
-  const char *fy_library_version(void)
-  {
-  #ifndef VERSION
-***************
-*** 43,48 ****
---- 44,50 ----
-  	return VERSION;
-  #endif
-  }
-+ #endif
-  
-  int fy_parse_input_append(struct fy_parser *fyp, const struct fy_input_cfg *fyic)
-  {
-diff -crB libfyaml-master/src/lib/fy-token.c libfyaml-master-updated/src/lib/fy-token.c
-*** libfyaml-master/src/lib/fy-token.c	2024-04-22 17:20:09.000000000 +0000
---- libfyaml-master-updated/src/lib/fy-token.c	2024-05-10 12:59:03.172799624 +0000
-***************
-*** 19,24 ****
---- 19,25 ----
-  #include <stdarg.h>
-  
-  #include <libfyaml.h>
-+ #include <asprintf.h>
-  
-  #include "fy-parse.h"
-  
-diff -crB libfyaml-master/src/lib/fy-walk.c libfyaml-master-updated/src/lib/fy-walk.c
-*** libfyaml-master/src/lib/fy-walk.c	2024-04-22 17:20:09.000000000 +0000
---- libfyaml-master-updated/src/lib/fy-walk.c	2024-05-10 12:59:03.172799624 +0000
-***************
-*** 20,25 ****
---- 20,26 ----
-  #include <limits.h>
-  
-  #include <libfyaml.h>
-+ #include <asprintf.h>
-  
-  #include "fy-parse.h"
-  #include "fy-doc.h"
+--- libfyaml-master/src/lib/fy-diag.c
++++ libfyaml-master/src/lib/fy-diag.c
+@@ -18,6 +18,7 @@
+ #include <ctype.h>
+ 
+ #include <libfyaml.h>
++#include <asprintf.h>
+ 
+ #include "fy-diag.h"
+ 
+--- libfyaml-master/src/lib/fy-doc.c
++++ libfyaml-master/src/lib/fy-doc.c
+@@ -18,6 +18,7 @@
+ #include <limits.h>
+ 
+ #include <libfyaml.h>
++#include <asprintf.h>
+ 
+ #include "fy-parse.h"
+ #include "fy-doc.h"
+--- libfyaml-master/src/lib/fy-event.c
++++ libfyaml-master/src/lib/fy-event.c
+@@ -19,6 +19,7 @@
+ #include <stdarg.h>
+ 
+ #include <libfyaml.h>
++#include <asprintf.h>
+ 
+ #include "fy-parse.h"
+ #include "fy-emit.h"
+--- libfyaml-master/src/lib/fy-input.c
++++ libfyaml-master/src/lib/fy-input.c
+@@ -27,6 +27,7 @@
+ #endif
+ 
+ #include <libfyaml.h>
++#include <asprintf.h>
+ 
+ #include "fy-win32.h"
+ #include "fy-parse.h"
+--- libfyaml-master/src/lib/fy-token.c
++++ libfyaml-master/src/lib/fy-token.c
+@@ -19,6 +19,7 @@
+ #include <stdarg.h>
+ 
+ #include <libfyaml.h>
++#include <asprintf.h>
+ 
+ #include "fy-parse.h"
+ 
+--- libfyaml-master/src/lib/fy-walk.c
++++ libfyaml-master/src/lib/fy-walk.c
+@@ -20,6 +20,7 @@
+ #include <float.h>
+ 
+ #include <libfyaml.h>
++#include <asprintf.h>
+ 
+ #include "fy-parse.h"
+ #include "fy-doc.h"
+--- libfyaml-master/src/lib/fy-parse.c
++++ libfyaml-master/src/lib/fy-parse.c
+@@ -39,6 +39,7 @@
+ static struct fy_eventp *
+ fy_parser_event_resolve_hook_merge_key(struct fy_parser *fyp, struct fy_eventp *fyep);
+ 
++#if 0
+ const char *fy_library_version(void)
+ {
+ #ifndef VERSION
+@@ -48,6 +49,7 @@
+ 	return VERSION;
+ #endif
+ }
++#endif
+ 
+ int fy_parse_input_append(struct fy_parser *fyp, const struct fy_input_cfg *fyic)
+ {
+@@ -4128,7 +4130,7 @@
+ 			if (c >= 0 && c <= 0x7f && (fy_utf8_low_ascii_flags[c] & F_SIMPLE_SCALAR)) {
+ 				size_t len, consumed;
+ 				const char *p, *s, *e;
+-				int8_t cc;
++				int8_t cc = 0;
+ 				size_t run;
+ 
+ 				run = 0;
+--- libfyaml-master/include/libfyaml/libfyaml-vlsize.h
++++ libfyaml-master/include/libfyaml/libfyaml-vlsize.h
+@@ -810,13 +810,18 @@
+ static inline const uint8_t *
+ fy_decode_size_nocheck(const uint8_t *start, size_t *sizep)
+ {
+-	return fy_decode_size32_nocheck(start, sizep);
++	uint64_t sz;
++	const uint8_t *ret;
++
++	ret = fy_decode_size32_nocheck(start, &sz);
++	*sizep = (size_t)sz;
++	return ret;
+ }
+ 
+ static inline const uint8_t *
+ fy_skip_size(const uint8_t *start, size_t bufsz)
+ {
+-	return fy_skip_size32(start, bufsz, &sz);
++	return fy_skip_size32(start, bufsz);
+ }
+ 
+ static inline const uint8_t *
