@@ -48,6 +48,44 @@ typedef enum
 /**! Handle to a KVP instance. */
 typedef void ut_kvp_instance_t;    
 
+/**! Handle to a KVP node iterator */
+typedef void ut_kvp_iterator_t;
+
+/**! Status codes for ut kvp iteration */
+typedef enum
+{
+    /**! The iteration of every element in the sequence was completed successfully */
+    UT_KVP_ITER_STATUS_FINISHED = 0,
+    /**! The given pointer is not a valid ut_kvp_iterator_t */
+    UT_KVP_ITER_STATUS_INVALID_ITERATOR = 1,
+    /**! The given Callback was NULL */
+    UT_KVP_ITER_STATUS_CALLBACK_IS_NULL = 2,
+    /**! The `ut_kvp_iter_result_t` indicated an internal error, such as a failed malloc */
+    UT_KVP_ITER_STATUS_INTERNAL_ERROR = 3,
+    /**! Execution was halted due to a callback returning `false`*/
+    UT_KVP_ITER_STATUS_HALTED = 4,
+} ut_kvp_iter_status_t;
+
+/**! A struct containing the results of iterating using `ut_kvp_iterIterate` */
+typedef struct
+{
+    /**! The number of calls to `ut_kvp_iter_callback_t` during `ut_kvp_iterIterate`*/
+    uint32_t iteration_count;
+    /**! The code determining the exit status of the `ut_kvp_iterIterate` */
+    ut_kvp_iter_status_t status;
+} ut_kvp_iter_result_t;
+
+/**!
+ * @brief Callback function signature for ut kvp iteration
+ *
+ * @param[in] pInstance - The element of the current iteration. The element's data is released after the callback returns;
+ * do not retain the instance or its data beyond this function
+ * @param[in] userData - The userdata relevant to the call
+ *
+ * @returns `true` if iteration should continue `false` if it should halt
+ */
+typedef bool (*ut_kvp_iter_callback_t)(ut_kvp_instance_t *pInstance, void *userData);
+
 #define UT_KVP_MAX_ELEMENT_SIZE (256)  /**!< Maximum size of a single KVP element (in bytes). */
 
 /**!
@@ -106,6 +144,39 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
  * @param[in] pInstance - Handle to the instance to close.
  */
 void ut_kvp_close(ut_kvp_instance_t *pInstance);
+
+/**!
+ * @brief Create an iterator for the given node
+ *
+ * The node given via the `pPath` argument must be of type sequence.
+ * The returned iterator is independent of `pInstance`: once created, the iterator
+ * remains valid even if `pInstance` is closed, destroyed, or further mutated.
+ *
+ * @param[in] pInstance - Root KVP instance containing the node which should be iterated.
+ * @param[in] pPath - The path to the node that should be iterated, relative to the root node of `pInstance`.
+ *
+ * @returns - `ut_kvp_iterator_t *` on success, which must be deallocated using `ut_kvp_iterDestroy`. NULL on failure
+ */
+ut_kvp_iterator_t *ut_kvp_iterCreate(ut_kvp_instance_t *pInstance, const char *pPath);
+
+/**!
+ * @brief Cleans up memory for an iterator
+ *
+ * @param[in] pIterator - `ut_kvp_iterator_t` pointer to deallocate
+ */
+void ut_kvp_iterDestroy(ut_kvp_iterator_t *pIterator);
+
+
+/**!
+ * @brief Performs iteration, executing a callback function for each element.
+ *
+ * @param[in] pIterator - The iterator to iterate
+ * @param[in] callback - The callback function to execute for each element, if it returns `false` iteration stops
+ * @param[in] userData - A pointer to the userdata that will be passed to the callback function on each iteration
+ *
+ * @returns `ut_kvp_iter_result_t` holding a status code and the number of iterations run
+ */
+ut_kvp_iter_result_t ut_kvp_iterIterate(ut_kvp_iterator_t *pIterator, ut_kvp_iter_callback_t callback, void *userData);
 
 /**!
  * @brief Gets a boolean value from the KVP profile.

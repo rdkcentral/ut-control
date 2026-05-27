@@ -1,0 +1,27 @@
+decodeTest:
+  checkIterator:
+    - name: 'First Element'
+      id: 0
+    - name: Second Element
+      id: 1
+  checkNestedIteration:
+    - name: 'First Element'
+      id: 0
+      sub_elements:
+        - name: 'First Sub Element'
+          id: 1
+        - name: 'Second Sub Element'
+          id: 2
+    - name: 'Second Element'
+      id: 3
+      sub_elements:
+        - name: 'Third Sub Element'
+          id: 4
+        - name: 'Fourth Sub Element'
+          id: 5
+    - name: 'Third Element'
+      id: 6
+  notASequence:
+    description: |
+      This is really not a sequence
+  emptySequence: []

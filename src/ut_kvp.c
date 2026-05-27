@@ -19,11 +19,13 @@
 
 /* Standard Libraries */
 #include <errno.h>
+#include <stdint.h>
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
 #include <assert.h>
 #include <curl/curl.h>
+#include <inttypes.h>
 
 /* Application Includes */
 #include <ut_kvp.h>
@@ -35,6 +37,7 @@
 ut_kvp_instance_t *gKVP_Instance = NULL;
 
 #define UT_KVP_MAGIC (0xdeadbeef)
+#define UT_KVP_ITER_MAGIC (0xdecafbad)
 #define UT_KVP_MAX_INCLUDE_DEPTH 5
 
 #define UT_KVP_HTTPS_PREFIX "https://"
@@ -64,8 +67,16 @@ typedef struct
     size_t size;
 } ut_kvp_download_memory_internal_t;
 
+typedef struct
+{
+    uint32_t magic;
+    struct fy_document *document;
+    struct fy_node *iterator_root;
+} ut_kvp_iterator_internal_t;
+
 /* Static functions */
 static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance);
+static ut_kvp_iterator_internal_t *validateIterator(ut_kvp_iterator_t *pInstance);
 static unsigned long getUIntField( ut_kvp_instance_t *pInstance, const char *pszKey, unsigned long maxRange );
 static bool str_to_bool(const char *string);
 static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char *pszKey, char *pszResult);
@@ -348,6 +359,189 @@ void ut_kvp_close(ut_kvp_instance_t *pInstance)
         fy_document_destroy(pInternal->fy_handle);
         pInternal->fy_handle = NULL;
     }
+}
+
+ut_kvp_iterator_t *ut_kvp_iterCreate(ut_kvp_instance_t *pInstance, const char *pPath)
+{
+    ut_kvp_instance_internal_t *pInternal = validateInstance(pInstance);
+    if (pInternal == NULL)
+    {
+        UT_LOG_ERROR("Failed to create iterator, kvp instance was NULL");
+        return NULL;
+    }
+
+    if (pInternal->fy_handle == NULL)
+    {
+        UT_LOG_ERROR("Failed to create iterator, kvp instance not opened");
+        return NULL;
+    }
+
+    if (pPath == NULL)
+    {
+        UT_LOG_ERROR("Failed to create iterator, path was NULL");
+        return NULL;
+    }
+
+    struct fy_document *iterator_doc = fy_document_create(NULL);
+    if (iterator_doc == NULL)
+    {
+        UT_LOG_ERROR("Failed to create a fydoc for the iterator");
+        return NULL;
+    }
+
+    char sanitized_path[UT_KVP_MAX_ELEMENT_SIZE];
+    convert_dot_to_slash(pPath, sanitized_path);
+
+    struct fy_node *sequence_node = fy_node_by_path(
+        fy_document_root(pInternal->fy_handle),
+        sanitized_path,
+        -1, // For null terminated string
+        FYNWF_DONT_FOLLOW
+    );
+
+    if (sequence_node == NULL)
+    {
+        fy_document_destroy(iterator_doc);
+        UT_LOG_ERROR("No node found at: %s", pPath);
+        return NULL;
+    }
+
+    if (!fy_node_is_sequence(sequence_node))
+    {
+        fy_document_destroy(iterator_doc);
+        UT_LOG_ERROR("Iterator node at: %s is not a sequence", pPath);
+        return NULL;
+    }
+    struct fy_node * iterator_root_node = fy_node_copy(iterator_doc, sequence_node);
+
+    if (iterator_root_node == NULL)
+    {
+        fy_document_destroy(iterator_doc);
+        UT_LOG_ERROR("Failed to copy iterator root node at: %s", pPath);
+        return NULL;
+    }
+    
+    const int set_root_result = fy_document_set_root(iterator_doc, iterator_root_node);
+
+    if (set_root_result != 0)
+    {
+        fy_document_destroy(iterator_doc);
+        UT_LOG_ERROR("Failed to set iterator document root");
+        return NULL;
+    }
+    
+    ut_kvp_iterator_internal_t *internal_iter = malloc(sizeof(ut_kvp_iterator_internal_t));
+
+    if (internal_iter == NULL)
+    {
+        fy_document_destroy(iterator_doc);
+        UT_LOG_ERROR("Failed to allocate iterator for path: %s", pPath);
+        return NULL;
+    }
+
+    internal_iter->magic = UT_KVP_ITER_MAGIC;
+    internal_iter->document = iterator_doc;
+    internal_iter->iterator_root = iterator_root_node;
+
+    return (ut_kvp_iterator_t*)internal_iter;
+}
+
+void ut_kvp_iterDestroy(ut_kvp_iterator_t *pIterator)
+{
+    ut_kvp_iterator_internal_t *pInternal = validateIterator(pIterator);
+    if (pInternal == NULL)
+    {
+        UT_LOG_ERROR("pIterator is not a valid ut_kvp_iterator_t pointer");
+        return;
+    }
+
+    // Ensure this no longer holds our magic value
+    pInternal->magic = 0;
+    if (pInternal->document != NULL)
+    {
+        fy_document_destroy(pInternal->document);
+    }
+    free(pInternal);
+}
+
+ut_kvp_iter_result_t ut_kvp_iterIterate(ut_kvp_iterator_t *pIterator, ut_kvp_iter_callback_t callback, void *userData)
+{
+    ut_kvp_iterator_internal_t *fy_iterator = validateIterator(pIterator);
+    ut_kvp_iter_result_t result = { 0, UT_KVP_ITER_STATUS_FINISHED };
+
+    if (fy_iterator == NULL)
+    {
+        UT_LOG_ERROR("pIterator is not a valid ut_kvp_iterator_t pointer");
+        result.status = UT_KVP_ITER_STATUS_INVALID_ITERATOR;
+        return result;
+    }
+
+    if (callback == NULL)
+    {
+        UT_LOG_ERROR("Callback is NULL, no iteration will be done");
+        result.status = UT_KVP_ITER_STATUS_CALLBACK_IS_NULL;
+        return result;
+   }
+
+    struct fy_node *iterated_node;
+    void *prev_iter = NULL;
+    bool callback_result = true;
+    ut_kvp_instance_internal_t *kvp_instance_current_element = ut_kvp_createInstance();
+    if (kvp_instance_current_element == NULL)
+    {
+        UT_LOG_ERROR("Failed to allocate ut_kvp_instance for iterated elements");
+        result.status = UT_KVP_ITER_STATUS_INTERNAL_ERROR;
+        return result;
+    }
+
+    while(
+        (iterated_node = fy_node_sequence_iterate(fy_iterator->iterator_root, &prev_iter)) != NULL &&
+        callback_result
+    )
+    {
+        // In order to set a document root, we must create a new doc, copy the iterated node
+        // and set the copy as root. When we deallocate the document later, the node will go too
+        struct fy_document *fydoc = fy_document_create(NULL);
+        if (fydoc == NULL)
+        {
+            UT_LOG_ERROR("Failed to create new fy_document during iteration %" PRIu32, result.iteration_count + 1);
+            result.status = UT_KVP_ITER_STATUS_INTERNAL_ERROR;
+            break;
+        }
+
+        struct fy_node *node_copy = fy_node_copy(fydoc, iterated_node);
+        if (node_copy == NULL)
+        {
+            fy_document_destroy(fydoc);
+            UT_LOG_ERROR("Failed to copy fy_node during iteration %" PRIu32, result.iteration_count + 1);
+            result.status = UT_KVP_ITER_STATUS_INTERNAL_ERROR;
+            break;
+        }
+
+        if(fy_document_set_root(fydoc, node_copy) != 0)
+        {
+            fy_document_destroy(fydoc);
+            UT_LOG_ERROR("Failed to set document root at iteration: %" PRIu32, result.iteration_count + 1);
+            result.status = UT_KVP_ITER_STATUS_INTERNAL_ERROR;
+            break;
+        }
+
+        kvp_instance_current_element->fy_handle = fydoc;
+
+        callback_result = callback(kvp_instance_current_element, userData);
+        result.iteration_count++;
+
+        // deallocs the document
+        ut_kvp_close(kvp_instance_current_element);
+    }
+    ut_kvp_destroyInstance(kvp_instance_current_element);
+
+    if (!callback_result)
+    {
+        result.status = UT_KVP_ITER_STATUS_HALTED;
+    }
+
+    return result;
 }
 
 char* ut_kvp_getData( ut_kvp_instance_t *pInstance )
@@ -984,6 +1178,25 @@ static ut_kvp_instance_internal_t *validateInstance(ut_kvp_instance_t *pInstance
     if (pInternal->magic != UT_KVP_MAGIC)
     {
         UT_LOG_ERROR("Invalid Handle - magic failure");
+        return NULL;
+    }
+
+    return pInternal;
+}
+
+static ut_kvp_iterator_internal_t *validateIterator(ut_kvp_iterator_t *pIterator)
+{
+    ut_kvp_iterator_internal_t *pInternal = (ut_kvp_iterator_internal_t*)pIterator;
+
+    if (pIterator == NULL)
+    {
+        UT_LOG_ERROR("Invalid Handle");
+        return NULL;
+    }
+
+    if (pInternal->magic != UT_KVP_ITER_MAGIC)
+    {
+        UT_LOG_ERROR("Invalid Handle - Magic Failure");
         return NULL;
     }
 
