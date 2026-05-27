@@ -72,7 +72,7 @@ static ut_kvp_status_t ut_kvp_getField(ut_kvp_instance_t *pInstance, const char 
 static void convert_dot_to_slash(const char *key, char *output);
 static size_t write_memory_callback(void *contents, size_t size, size_t nmemb, void *userp);
 static struct fy_node* process_include(const char *filename, int depth, struct fy_document *doc);
-static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
+static bool merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode);
 static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_document *dstDoc, int depth);
 static const void *find_pattern_from_buffer(const void *buffer, size_t bufferLength, const void *pattern, size_t patternLength);
 
@@ -250,7 +250,13 @@ ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOr
     else
     {
         // Subsequent files: merge into existing root
-        merge_nodes(mainRoot, copiedRoot);
+        if (!merge_nodes(mainRoot, copiedRoot))
+        {
+            /* includeNode was not consumed by merge_nodes (e.g. incompatible
+             * types); copiedRoot is an orphan node inside pInternal->fy_handle
+             * and will not be freed by fy_document_destroy — free it now. */
+            fy_node_free(copiedRoot);
+        }
     }
 
     fy_document_destroy(newDoc);
@@ -294,7 +300,10 @@ ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uin
 
     if (pInternal->fy_handle)
     {
-        merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(srcDoc));
+        if (!merge_nodes(fy_document_root(pInternal->fy_handle), fy_document_root(srcDoc)))
+        {
+            UT_LOG_ERROR("Node merge failed");
+        }
     }
     else
     {
@@ -1188,8 +1197,11 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
                 val_alloc = NULL;
                 if (included)
                 {
-                    // If the included node is a mapping, merge it into the new_map
-                    merge_nodes(new_map, included);
+                    if (!merge_nodes(new_map, included))
+                    {
+                        /* included was not consumed; free the orphan node */
+                        fy_node_free(included);
+                    }
                     continue;
                 }
             }
@@ -1214,51 +1226,38 @@ static struct fy_node* process_node_copy(struct fy_node *srcNode, struct fy_docu
     return NULL;
 }
 
-static void merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
+static bool merge_nodes(struct fy_node *mainNode, struct fy_node *includeNode)
 {
     if (mainNode == NULL)
     {
         UT_LOG_ERROR("Main node is invalid");
-        return;
+        return false;
     }
 
     if (includeNode == NULL)
     {
         UT_LOG_ERROR("Included node is invalid");
-        return;
+        return false;
     }
 
     if (fy_node_is_scalar(mainNode))
     {
-        const char *scalar = fy_node_get_scalar(includeNode, NULL);
-        size_t scalar_len = fy_node_get_scalar_length(includeNode);
-
-        if (scalar)
-        {
-            struct fy_node *new_scalar = fy_node_create_scalar_copy(fy_node_document(mainNode), scalar, scalar_len);
-            if (!new_scalar)
-            {
-                UT_LOG_ERROR("Failed to create scalar copy");
-                return;
-            }
-
-            mainNode = new_scalar;
-        }
-        else
-        {
-            UT_LOG_ERROR("Included scalar is NULL");
-        }
+        UT_LOG_ERROR("Scalar merge at root not supported");
+        return false; /* includeNode was not consumed */
     }
     else if (fy_node_is_mapping(mainNode) && fy_node_is_mapping(includeNode))
     {
         if (fy_node_insert(mainNode, includeNode) != 0)
         {
             UT_LOG_ERROR("Node merge failed");
+            return false; /* includeNode was not consumed */
         }
+        return true; /* fy_node_insert took ownership of includeNode */
     }
     else
     {
-        UT_LOG_ERROR("Warning: Cannot merge nodes of incompatible types\n");
+        UT_LOG_ERROR("Error: Cannot merge nodes of incompatible types\n");
+        return false; /* includeNode was not consumed */
     }
 }
 

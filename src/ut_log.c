@@ -159,6 +159,44 @@ void UT_logPrefix(const char *file, int line, const char *prefix, const char * f
     fclose(fp);
 }
 
+/* Expands to the common body of every log-level wrapper:
+ * pre-formats the message into a local buffer then delegates to UT_logPrefix. */
+#define UT_LOG_WRAPPER_BODY(prefix_str) \
+    char buffer[UT_LOG_MAX_LINE_SIZE+1]; \
+    va_list args; \
+    va_start(args, format); \
+    vsnprintf(buffer, sizeof(buffer), format, args); \
+    va_end(args); \
+    UT_logPrefix(file, line, (prefix_str), "%s", buffer)
+
+void UT_logPrefix_info(const char *file, int line, const char * format, ...)
+{
+    #if UT_LOG_LEVEL >= UT_LOG_LEVEL_INFO
+        UT_LOG_WRAPPER_BODY(UT_LOG_ASCII_CYAN "INFO  " UT_LOG_ASCII_NC);
+    #endif
+}
+
+void UT_logPrefix_debug(const char *file, int line, const char * format, ...)
+{
+    #if UT_LOG_LEVEL >= UT_LOG_LEVEL_DEBUG
+        UT_LOG_WRAPPER_BODY(UT_LOG_ASCII_MAGENTA "DEBUG " UT_LOG_ASCII_NC);
+    #endif
+}
+
+void UT_logPrefix_warning(const char *file, int line, const char * format, ...)
+{
+    #if UT_LOG_LEVEL >= UT_LOG_LEVEL_WARNING
+        UT_LOG_WRAPPER_BODY(UT_LOG_ASCII_YELLOW "WARN  " UT_LOG_ASCII_NC);
+    #endif
+}
+
+void UT_logPrefix_error(const char *file, int line, const char * format, ...)
+{
+    #if UT_LOG_LEVEL >= UT_LOG_LEVEL_ERROR
+        UT_LOG_WRAPPER_BODY(UT_LOG_ASCII_RED "ERROR " UT_LOG_ASCII_NC);
+    #endif
+}
+
 static char* UT_stripColorCode(char *in_string)
 {
     int i = 0, j = 0;

@@ -124,6 +124,18 @@ OBJS := $(subst $(TOP_DIR),$(BUILD_DIR),$(SRCS:.c=.o))
 
 INC_DIRS += $(shell find $(SRC_DIRS) -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
+
+# Optional compile-time log level override.
+# Usage: make TARGET=linux UT_LOG_LEVEL=4   (or export UT_LOG_LEVEL=4 before calling make)
+# Valid values: 0=NONE 1=ERROR 2=WARNING(default) 3=INFO 4=DEBUG
+# NOTE: must be a numeric value; symbolic names (e.g. UT_LOG_LEVEL=DEBUG) are not accepted
+#       because the preprocessor silently treats unknown tokens as 0.
+ifneq ($(UT_LOG_LEVEL),)
+$(if $(filter-out 0 1 2 3 4,$(UT_LOG_LEVEL)),\
+    $(error UT_LOG_LEVEL must be a number 0-4: 0=NONE 1=ERROR 2=WARNING 3=INFO 4=DEBUG (got '$(UT_LOG_LEVEL)')))
+XCFLAGS += -DUT_LOG_LEVEL=$(UT_LOG_LEVEL)
+endif
+
 XCFLAGS += $(CFLAGS) $(INC_FLAGS)
 
 # Final conversions
