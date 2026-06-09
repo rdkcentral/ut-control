@@ -42,10 +42,11 @@ plane callbacks, and structured logging.
 - Supports hex literals (`0x1A`) in integer fields.
 - Supports `!include` tags and `include` mapping keys for file/URL inclusion
   (recursive up to depth 5). URL includes use libcurl.
-- Multiple files can be loaded into the same instance via `ut_kvp_open()`;
-  subsequent `ut_kvp_open()` calls merge into the existing document tree.
-  (Note: `ut_kvp_openMemory()` does not accumulate across repeated calls --
-  it resets the instance root to the newly parsed payload.)
+- Multiple payloads can be loaded into the same instance: `ut_kvp_open()`
+  (files/URLs) and `ut_kvp_openMemory()` (buffers) both **merge** into the
+  existing document tree on repeated calls. The first call establishes the
+  instance root; each subsequent call inserts its mapping into that root
+  (via libfyaml `fy_node_insert`), so data accumulates across calls.
 
 ### 2.2 Instance Lifecycle
 
@@ -68,7 +69,7 @@ ut_kvp_destroyInstance(inst); // free the instance itself
 | `ut_kvp_instance_t *ut_kvp_createInstance(void)` | Allocate a new KVP instance. Returns NULL on failure. |
 | `void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)` | Close + free an instance. |
 | `ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl)` | Parse a YAML/JSON file (or URL) into the instance. Merges with existing data. |
-| `ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length)` | Parse a caller-owned memory buffer. Caller retains ownership of `pData`. Resets the instance root to this payload (does not merge across repeated calls). |
+| `ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length)` | Parse a caller-owned memory buffer (caller retains ownership of `pData`). First call sets the instance root; subsequent calls merge into the existing tree, same accumulation behavior as `ut_kvp_open()`. |
 | `void ut_kvp_close(ut_kvp_instance_t *pInstance)` | Release parsed data but keep the instance handle valid. |
 
 #### Typed Getters
@@ -104,6 +105,38 @@ return the typed value (or 0/false on error). Keys use dot-notation.
 |---|---|
 | `bool ut_kvp_fieldPresent(inst, key)` | Returns `true` if the key/node exists in the document. |
 | `uint32_t ut_kvp_getListCount(inst, key)` | Returns the number of items in a YAML sequence at `key`. |
+
+#### Sequence Iteration
+
+Iterate over a YAML **sequence** node without pre-counting it (`ut_kvp_getListCount`
+plus indexed access is the alternative). An iterator is created from a sequence
+path, then driven by a callback invoked once per element. Once created, the
+iterator is independent of the source instance -- it stays valid even if the
+source instance is later closed, destroyed, or mutated.
+
+| Signature | Description |
+|---|---|
+| `ut_kvp_iterator_t *ut_kvp_iterCreate(ut_kvp_instance_t *pInstance, const char *pPath)` | Create an iterator over the sequence node at `pPath` (relative to the instance root). Returns NULL on failure (e.g. `pPath` is not a sequence). Must be freed with `ut_kvp_iterDestroy()`. |
+| `ut_kvp_iter_result_t ut_kvp_iterIterate(ut_kvp_iterator_t *pIterator, ut_kvp_iter_callback_t callback, void *userData)` | Invoke `callback` once per element, passing `userData` through. Stops early if a callback returns `false`. Returns the iteration count + status. |
+| `void ut_kvp_iterDestroy(ut_kvp_iterator_t *pIterator)` | Free an iterator. |
+
+Callback signature:
+```c
+typedef bool (*ut_kvp_iter_callback_t)(ut_kvp_instance_t *pInstance, void *userData);
+```
+- `pInstance` is the **current element**, valid only for the duration of the
+  callback (its data is released after the callback returns -- do not retain it).
+- Return `true` to continue iterating, `false` to halt.
+
+Result/status (`ut_kvp_iter_result_t` = `{ uint32_t iteration_count; ut_kvp_iter_status_t status; }`):
+
+| `ut_kvp_iter_status_t` | Meaning |
+|---|---|
+| `UT_KVP_ITER_STATUS_FINISHED` (0) | Every element was iterated successfully. |
+| `UT_KVP_ITER_STATUS_INVALID_ITERATOR` (1) | The iterator pointer is not valid. |
+| `UT_KVP_ITER_STATUS_CALLBACK_IS_NULL` (2) | The supplied callback was NULL. |
+| `UT_KVP_ITER_STATUS_INTERNAL_ERROR` (3) | Internal error (e.g. allocation failure). |
+| `UT_KVP_ITER_STATUS_HALTED` (4) | A callback returned `false`, halting iteration. |
 
 ### 2.4 Status Codes (`ut_kvp_status_t`)
 
@@ -285,7 +318,7 @@ All macros automatically inject `__FILE__` and `__LINE__`.
 ### 4.4 Output Format
 
 ```
-<newline><timestamp>, <prefix (padded 16)>, <basename(file)>, <line> : <message>
+<newline><timestamp>, <prefix (right-justified, width 16)>, <basename(file)>,<line (right-justified, width 6)> : <message>
 ```
 
 Example:
