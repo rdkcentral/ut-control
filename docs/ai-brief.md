@@ -314,6 +314,18 @@ All macros automatically inject `__FILE__` and `__LINE__`.
 | `const char *UT_log_getLogFilename(void)` | Return the active log file path. |
 | `void UT_log(const char *function, int line, const char *format, ...)` | Core log function (used internally). |
 | `void UT_logPrefix(const char *file, int line, const char *prefix, const char *format, ...)` | Core log function with custom prefix (called by all macros). |
+| `void UT_logPrefix_info(const char *file, int line, const char *format, ...)` | Level-gated wrapper that `UT_LOG_INFO` expands to; emits only when `UT_LOG_LEVEL >= UT_LOG_LEVEL_INFO`. |
+| `void UT_logPrefix_debug(const char *file, int line, const char *format, ...)` | Wrapper that `UT_LOG_DEBUG` expands to; emits only when `UT_LOG_LEVEL >= UT_LOG_LEVEL_DEBUG`. |
+| `void UT_logPrefix_warning(const char *file, int line, const char *format, ...)` | Wrapper that `UT_LOG_WARNING` expands to; emits only when `UT_LOG_LEVEL >= UT_LOG_LEVEL_WARNING`. |
+| `void UT_logPrefix_error(const char *file, int line, const char *format, ...)` | Wrapper that `UT_LOG_ERROR` expands to; emits only when `UT_LOG_LEVEL >= UT_LOG_LEVEL_ERROR`. |
+
+**Compile-time log level:** the `UT_LOG_INFO/DEBUG/WARNING/ERROR` macros expand
+to the `UT_logPrefix_*` wrappers above, each of which checks the compile-time
+`UT_LOG_LEVEL` and emits only when its level is enabled. Levels:
+`UT_LOG_LEVEL_NONE` (0), `UT_LOG_LEVEL_ERROR` (1), `UT_LOG_LEVEL_WARNING` (2),
+`UT_LOG_LEVEL_INFO` (3), `UT_LOG_LEVEL_DEBUG` (4); it defaults to
+`UT_LOG_LEVEL_WARNING` when not defined. The remaining macros (`UT_LOG`,
+`UT_LOG_STEP`, `UT_LOG_ASSERT`, `UT_LOG_PREFIX`) are not level-gated.
 
 ### 4.4 Output Format
 
