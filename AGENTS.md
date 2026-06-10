@@ -42,11 +42,13 @@ plane callbacks, and structured logging.
 - Supports hex literals (`0x1A`) in integer fields.
 - Supports `!include` tags and `include` mapping keys for file/URL inclusion
   (recursive up to depth 5). URL includes use libcurl.
-- Multiple payloads can be loaded into the same instance: `ut_kvp_open()`
-  (files/URLs) and `ut_kvp_openMemory()` (buffers) both **merge** into the
-  existing document tree on repeated calls. The first call establishes the
-  instance root; each subsequent call inserts its mapping into that root
-  (via libfyaml `fy_node_insert`), so data accumulates across calls.
+- Multiple files can be loaded into the same instance via `ut_kvp_open()`: the
+  first call sets the instance root and each subsequent `ut_kvp_open()` call
+  **merges** into the existing document tree (via libfyaml `fy_node_insert`), so
+  file loads accumulate. `ut_kvp_openMemory()` behaves differently — it **sets
+  the instance root to the newly parsed payload on every call** and does *not*
+  accumulate across repeated calls (it ends by replacing the root via
+  `fy_document_set_root`).
 
 ### 2.2 Instance Lifecycle
 
@@ -69,7 +71,7 @@ ut_kvp_destroyInstance(inst); // free the instance itself
 | `ut_kvp_instance_t *ut_kvp_createInstance(void)` | Allocate a new KVP instance. Returns NULL on failure. |
 | `void ut_kvp_destroyInstance(ut_kvp_instance_t *pInstance)` | Close + free an instance. |
 | `ut_kvp_status_t ut_kvp_open(ut_kvp_instance_t *pInstance, const char *fileNameOrUrl)` | Parse a YAML/JSON file (or URL) into the instance. Merges with existing data. |
-| `ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length)` | Parse a caller-owned memory buffer (caller retains ownership of `pData`). First call sets the instance root; subsequent calls merge into the existing tree, same accumulation behavior as `ut_kvp_open()`. |
+| `ut_kvp_status_t ut_kvp_openMemory(ut_kvp_instance_t *pInstance, char *pData, uint32_t length)` | Parse a caller-owned memory buffer (caller retains ownership of `pData`). Sets the instance root to this payload on every call; repeated calls do **not** accumulate (unlike `ut_kvp_open()`, which merges). |
 | `void ut_kvp_close(ut_kvp_instance_t *pInstance)` | Release parsed data but keep the instance handle valid. |
 
 #### Typed Getters
