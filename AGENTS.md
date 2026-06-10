@@ -430,6 +430,5 @@ ut-control/
     websocket-clients/       -- Python/curl client scripts for control plane testing
   configure.sh               -- Downloads + builds vendored dependencies
   Makefile                   -- Builds libut_control.so
-  docs/
-    ai-brief.md              -- This file
+  AGENTS.md                  -- This file (AI-ingestible framework brief)
 ```
