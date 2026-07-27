@@ -32,6 +32,8 @@ BIN_DIR := $(ROOT_DIR)/build/bin
 TOP_DIR := $(ROOT_DIR)
 ECHOE = /bin/echo -e
 
+FLAGS_SCRIPT = $(ROOT_DIR)/check_makefile_flags.py
+
 SRC_DIRS = $(ROOT_DIR)/src
 INC_DIRS := $(ROOT_DIR)/../include
 LIB_DIR = $(ROOT_DIR)/../build/${TARGET}/lib
@@ -71,9 +73,23 @@ export TARGET_EXEC
 export BUILD_DIR
 export LIB_DIR
 
-.PHONY: clean list build skeleton
+.PHONY: clean list build skeleton check_makefile_flags
 
-build:
+# Walk the build files for a lowercase -o glued to an optimisation level
+# (-o0, -os, -og). gcc accepts these silently and a later -o $@ on the same
+# command line wins, so nothing ever fails - which is why #130 went unnoticed.
+# Runs before build.sh so a flag typo is reported in seconds.
+#
+# The script also supports asserting what a variable expands to
+# (--expect CC=-ggdb,-O0,-Wall). Not wired up here yet: `CC ?=` in the top
+# level Makefile never fires, because GNU make treats ?= as
+# "ifeq ($(origin CC),undefined)" and the built-in CC has origin default. Once
+# that is resolved the expectation can be turned on.
+check_makefile_flags:
+	@$(ECHOE) UT [$@]
+	@$(FLAGS_SCRIPT) $(ROOT_DIR)/..
+
+build: check_makefile_flags
 	@$(ECHOE) UT [$@]
 	$(ROOT_DIR)/build.sh
 	make -C ./ut-core test
