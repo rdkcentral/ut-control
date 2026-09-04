@@ -114,7 +114,7 @@ endif
 
 # Defaults for target linux
 ifeq ($(TARGET),linux)
-CC ?= gcc -ggdb -o0 -Wall
+CC ?= gcc -ggdb -O0 -Wall
 endif
 
 SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
