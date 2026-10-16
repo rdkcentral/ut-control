@@ -3,7 +3,7 @@
 #  * If not stated otherwise in this file or this component's LICENSE file the
 #  * following copyright and licenses apply:
 #  *
-#  * Copyright 2023 RDK Management
+#  * Copyright 2026 RDK Management
 #  *
 #  * Licensed under the Apache License, Version 2.0 (the "License");
 #  * you may not use this file except in compliance with the License.
@@ -86,8 +86,9 @@ def scan_file(path):
 
 
 def scan_tree(root):
-    """Scan every build file under root. Returns a list of (path, line, text)."""
+    """Scan build files under root and return scanned count, findings, and read errors."""
     findings = []
+    read_errors = []
     scanned = 0
 
     for directory, subdirectories, filenames in os.walk(root):
@@ -99,14 +100,15 @@ def scan_tree(root):
 
             path = os.path.join(directory, filename)
             hits = scan_file(path)
+            relative = os.path.relpath(path, root)
             if hits is None:
+                read_errors.append(relative)
                 continue
 
             scanned += 1
-            relative = os.path.relpath(path, root)
             findings.extend((relative, number, text) for number, text in hits)
 
-    return scanned, findings
+    return scanned, findings, read_errors
 
 
 def read_make_variables(make_dir, make_args):
@@ -182,7 +184,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     root = os.path.abspath(args.root)
 
-    scanned, findings = scan_tree(root)
+    scanned, findings, read_errors = scan_tree(root)
 
     if findings:
         print(f"\n{RED}Mistyped optimisation flags:{RESET}")
@@ -212,6 +214,8 @@ if __name__ == "__main__":
     print(f"Build files scanned under {os.path.relpath(root, os.getcwd())} :: {scanned}")
     flag_colour = RED if findings else GREEN
     print(f"Mistyped optimisation flags :: {flag_colour}{len(findings)}{RESET}")
+    read_error_colour = RED if read_errors else GREEN
+    print(f"Unreadable build files :: {read_error_colour}{len(read_errors)}{RESET}")
     if args.expect:
         expect_colour = RED if expectation_failures else GREEN
         checked = len(args.expect)
@@ -219,5 +223,5 @@ if __name__ == "__main__":
         print(f"Expected flag sets met :: {expect_colour}{met} / {checked}{RESET}")
     print("--------------------------------------------------------------------")
 
-    if findings or expectation_failures:
+    if findings or read_errors or expectation_failures:
         sys.exit(1)
