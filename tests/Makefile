@@ -73,7 +73,9 @@ export TARGET_EXEC
 export BUILD_DIR
 export LIB_DIR
 
-.PHONY: clean list build skeleton check_makefile_flags
+.PHONY: clean list build skeleton check_makefile_flags all
+
+all: build
 
 # Walk the build files for a lowercase -o glued to an optimisation level
 # (-o0, -os, -og). gcc accepts these silently and a later -o $@ on the same
@@ -87,7 +89,7 @@ export LIB_DIR
 # that is resolved the expectation can be turned on.
 check_makefile_flags:
 	@$(ECHOE) UT [$@]
-	@$(FLAGS_SCRIPT) $(ROOT_DIR)/..
+	@python3 $(FLAGS_SCRIPT) $(ROOT_DIR)/..
 
 build: check_makefile_flags
 	@$(ECHOE) UT [$@]
