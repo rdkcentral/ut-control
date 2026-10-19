@@ -27,7 +27,7 @@
 #include <time.h>
 #include <libgen.h>
 
-#define UT_MAX_TIME_STRING (20)
+#define UT_MAX_TIME_STRING (64)
 
 /* #FIXME: By default all filenames MUST assume current running directory and linux, not target, for all development the target is LINUX */
 #define UT_LOG_DEFAULT_PATH "/tmp/"  // Move to "./" in the future, when 
@@ -39,12 +39,13 @@ void UT_log_setLogFilePath(char *inputFilePath)
 {
     char        time_now[UT_MAX_TIME_STRING] = {'\0'};
     time_t      now;
+    struct tm   tm_buf;
     struct tm   *tmp;
     int         length;
 
     length = strlen(inputFilePath);
     time(&now);
-    tmp = localtime(&now);
+    tmp = localtime_r(&now, &tm_buf);
     strftime(time_now, sizeof(time_now), "%F_%H%M%S", tmp);
     if ( inputFilePath[length-1] == '/' )
     {
@@ -66,15 +67,16 @@ const char *UT_log_getLogFilename( void )
 
 void UT_log(const char *function, int line, const char * format, ...)
 {
-    char        time_now[20] = { '\0' };
-    FILE        *fp = NULL;
-    va_list     list;
-    time_t      now;
-    struct tm   *tmp;
-    char        singleLineBuffer[UT_LOG_MAX_LINE_SIZE+1]={0};
-    size_t      lineSize;
+    char            time_now[UT_MAX_TIME_STRING] = { '\0' };
+    FILE            *fp = NULL;
+    va_list         list;
+    struct timespec ts;
+    struct tm       tm_buf;
+    struct tm       *tmp;
+    char            singleLineBuffer[UT_LOG_MAX_LINE_SIZE+1]={0};
+    size_t          lineSize;
 
-    time(&now);
+    clock_gettime(CLOCK_REALTIME, &ts);
 
     if ( gLogInit == false )
     {
@@ -90,8 +92,9 @@ void UT_log(const char *function, int line, const char * format, ...)
         return;
     }
 
-    tmp = localtime(&now);
-    strftime(time_now, sizeof(time_now), "%Y-%m-%d-%X", tmp);
+    tmp = localtime_r(&ts.tv_sec, &tm_buf);
+    strftime(time_now, sizeof(time_now), "%Y-%m-%d %H:%M:%S", tmp); // example: 2023-06-19 14:30:45
+    snprintf(time_now + strlen(time_now), sizeof(time_now) - strlen(time_now), ".%06ld", ts.tv_nsec / 1000); // example: 2023-06-19 14:30:45.123456
 #if 0
     snprintf( singleLineBuffer, UT_LOG_MAX_LINE_SIZE, "\n%s, %s,%6d : ", time_now, function, line );
 #else
@@ -113,15 +116,16 @@ void UT_log(const char *function, int line, const char * format, ...)
 
 void UT_logPrefix(const char *file, int line, const char *prefix, const char * format, ...)
 {
-    char        time_now[20] = { '\0' };
-    FILE        *fp = NULL;
-    va_list     list;
-    time_t      now;
-    struct tm   *tmp;
-    char        singleLineBuffer[UT_LOG_MAX_LINE_SIZE+1]={0};
-    size_t      lineSize;
+    char            time_now[UT_MAX_TIME_STRING] = { '\0' };
+    FILE            *fp = NULL;
+    va_list         list;
+    struct timespec ts;
+    struct tm       tm_buf;
+    struct tm       *tmp;
+    char            singleLineBuffer[UT_LOG_MAX_LINE_SIZE+1]={0};
+    size_t          lineSize;
 
-    time(&now);
+    clock_gettime(CLOCK_REALTIME, &ts);
 
     if ( gLogInit == false )
     {
@@ -137,8 +141,9 @@ void UT_logPrefix(const char *file, int line, const char *prefix, const char * f
         return;
     }
 
-    tmp = localtime(&now);
-    strftime(time_now, sizeof(time_now), "%Y-%m-%d-%X", tmp);
+    tmp = localtime_r(&ts.tv_sec, &tm_buf);
+    strftime(time_now, sizeof(time_now), "%Y-%m-%d %H:%M:%S", tmp); // example: 2023-06-19 14:30:45
+    snprintf(time_now + strlen(time_now), sizeof(time_now) - strlen(time_now), ".%06ld", ts.tv_nsec / 1000); // example: 2023-06-19 14:30:45.123456
 #if 1
     snprintf( singleLineBuffer, UT_LOG_MAX_LINE_SIZE, "\n%s, %*s, %s,%6d : ", time_now, 16, prefix, basename((char *)file), line );
 #else
